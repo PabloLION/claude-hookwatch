@@ -19,7 +19,7 @@ system. hookwatch bridges both.
 ```csv
 Version,Scope,Description
 v0,Core,"Logging + SQLite + basic web UI + plugin system + Zod validation"
-v1,Human UX,"UI polish + desktop notifications + waterfall chart + swim lanes + session renaming"
+v1,Human UX,"UI polish + desktop notifications + waterfall chart + swim lanes + session renaming + log retention"
 v2,HITL,"Human-in-the-loop — detect risky actions, ask the human"
 v3,Guardrails,"Automated HITL — machine decides based on rules"
 ```
@@ -42,6 +42,7 @@ B3,Per-event-type JSON files,Non-goal,—
 B4,Per-session directories,Non-goal,—
 B5,OTEL backend export,TBD,tracked (claude-hookwatch-0rm)
 B6,Promoted top-level fields,Non-goal,subsumed by SQLite
+B7,Log retention (high/low water mark),Goal,v1 (human UX)
 C1,Block dangerous commands,Goal,v2 (HITL)
 C2,Protect secrets/env files,Goal,v2 (HITL)
 C3,File scope enforcement,Goal,v2 (HITL)
@@ -142,6 +143,13 @@ The handler must be resilient to unknown event types: log them with a generic
 schema rather than crashing. This ensures forward compatibility when Claude Code
 adds new events.
 
+**Event type discovery:** hooks.json requires explicit registration per event
+type. During implementation, attempt a wildcard catch-all key (`"*"`) in
+hooks.json to auto-capture future event types. If the plugin system does not
+support wildcards, register all known types explicitly and document that users
+should file an issue when new Claude Code event types appear and hookwatch
+misses them. Silent event loss is unacceptable.
+
 ### FR-2: SQLite Storage
 
 Events are stored in a local SQLite database using `bun:sqlite` (built-in, zero
@@ -209,7 +217,8 @@ hooks/
 
 ### FR-4: Web UI (v0: basic, v1: polished)
 
-hookwatch serves a local web UI for browsing and querying events.
+hookwatch serves a local web UI for browsing and querying events. Built with
+**Svelte** — small bundle size, compiles to vanilla JS, no virtual DOM overhead.
 
 **v0 features:**
 
@@ -294,31 +303,58 @@ session. Each SessionStart increments a run counter for that session_id.
 
 ### FR-9: Configuration
 
-Minimal configuration via a single file:
+Minimal configuration via a single TOML file:
 
 ```text
-~/.claude/hookwatch/config.json
+~/.claude/hookwatch/config.toml
 ```
 
-```json
-{
-  "dbPath": "~/.claude/hookwatch/hookwatch.db",
-  "notifications": {
-    "desktop": false
-  },
-  "hitl": {
-    "enabled": false,
-    "timeout": 300
-  },
-  "sessionNaming": {
-    "includeFirstPrompt": true,
-    "maxLength": 60
-  }
-}
+```toml
+# Database location (default: ~/.claude/hookwatch/hookwatch.db)
+db_path = "~/.claude/hookwatch/hookwatch.db"
+
+[notifications]
+desktop = false  # v1: native OS notifications
+
+[hitl]
+enabled = false  # v2: human-in-the-loop
+timeout = 300    # seconds to wait for user response
+
+[session_naming]
+include_first_prompt = true
+max_length = 60
+
+[retention]
+# v1: log retention with high/low water mark
+# Both rules are active — either one triggers cleanup
+max_age_days = 365       # delete events older than this
+max_size_mb = 1024       # high-water mark: trigger cleanup above this
+target_size_mb = 819     # low-water mark: trim down to this (~80% of max)
 ```
 
 Defaults are sensible — hookwatch works with zero configuration. The config
 file is optional.
+
+**TOML rationale:** Supports comments (JSON does not), human-readable, widely
+understood. TOML parsing may require a small library (e.g. `smol-toml`, ~15KB)
+if Bun does not support native TOML imports — verify during implementation.
+
+### FR-10: Log Retention (v1)
+
+Configurable data cleanup using a high-water / low-water mark pattern.
+
+- **Trigger:** SessionStart hook — runs once per session, before any work
+- **Rules:** Both `max_age_days` and `max_size_mb` are active. Either condition
+  triggers cleanup independently
+- **Age cleanup:** `DELETE FROM events WHERE ts < datetime('now', '-N days')`
+- **Size cleanup:** When DB exceeds `max_size_mb` (high-water mark), delete
+  oldest events until size drops below `target_size_mb` (low-water mark, default
+  80% of max). This margin prevents re-triggering every session
+- **Post-cleanup:** Run SQLite `VACUUM` to reclaim disk space (rebuilds the
+  database file to match actual data size)
+- **Logging:** Cleanup is logged silently as a hookwatch internal event (not
+  surfaced to the user). Users can query cleanup history from the database
+- **Default (v1):** 365 days / 1024 MB / 819 MB target. v0 keeps everything
 
 ## Non-Functional Requirements
 
@@ -379,28 +415,15 @@ HITL included (v2),"User requirement. PreToolUse blocking decisions add meaningf
 Plugin compliant,"User requirement. One-command install/uninstall. Only DazzleML has done this; hookwatch extends it to full event coverage.","Manual settings.json editing (used by 7/10 upstream tools)"
 Single handler,"One handler.ts for all events. Simpler than 19 separate scripts (observability has 26). Event routing via payload inspection.","Per-event scripts (observability), per-category handlers"
 Zod validation,"Runtime validation of stdin payloads. Detects upstream schema changes. Only runtime dependency (justified by correctness guarantees).","Hand-written validators, no validation (trust stdin)"
+Bun runtime (not standalone),"Users already need Bun for bun:sqlite. Small TS files over ~80MB binary. Plugin updates are file changes, no recompilation. Easy to switch later via bun build --compile.","Standalone binary (eliminates runtime dep but large)"
+TOML config,"Supports comments (JSON does not). Human-readable. May need smol-toml (~15KB) if Bun lacks native TOML imports.","JSON (no comments), YAML (verbose)"
+Svelte for web UI,"Small bundle, compiles to vanilla JS, no virtual DOM overhead. Fits lightweight local UI goal.","Vanilla HTML/JS (zero deps but harder to maintain), React/Preact (heavier)"
+Log retention (v1),"High/low water mark pattern. Checked at SessionStart (once per session). Both age and size limits active. Margin prevents re-triggering.","No retention (user responsibility), PreCompact trigger (adds latency during active work)"
 ```
 
 ## Open Questions
 
-- **Bun as a runtime dependency:** hookwatch requires Bun installed on the
-  user's machine. Should we compile to a standalone binary (Bun supports this)
-  to eliminate the runtime dependency? Trade-off: binary size vs install
-  simplicity.
-
-- **Log retention:** Should hookwatch auto-delete old data? Or is that the
-  user's responsibility? Current position: user's responsibility.
-
-- **Event type discovery:** How do we stay current with new Claude Code event
-  types? The handler already accepts unknown events gracefully, but hooks.json
-  requires explicit registration per event type. A wildcard matcher would solve
-  this if the plugin system supports it.
-
-- **Config file format:** JSON is simple but doesn't support comments. TOML or
-  YAML would be more user-friendly but add parsing complexity.
-
-- **Web UI framework:** What to use for the frontend? Options include a
-  single-file vanilla HTML/JS approach (zero deps), or a lightweight framework.
+None — all initial questions resolved. See Key Decisions for rationale.
 
 ## Tracked Issues
 

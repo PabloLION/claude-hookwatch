@@ -2,67 +2,52 @@
 
 ## Project Overview
 
-Claude Code plugin that logs all 14 hook event types to local JSONL files.
-Install with `claude plugin install`, uninstall cleanly with `claude plugin remove`.
+Claude Code plugin that captures all 19 hook event types, stores them in a
+local SQLite database, and serves a web UI for browsing and querying events.
+Install with `claude plugin install`, uninstall cleanly with `claude plugin
+remove`.
 
 ## File Structure
 
 ```text
-plugin.json              — Plugin manifest (entry point, metadata)
+.claude-plugin/
+  plugin.json              — Plugin manifest (name, version, author)
 hooks/
-  handler.py             — Single hook handler for all 14 event types
-skills/
-  hookwatch/
-    SKILL.md             — Query skill (future)
+  hooks.json               — Hook registration (all 19 event types, ".*" matchers)
+  handler.ts               — Single entry point for all events
+src/
+  schemas/                 — Zod schemas for each event type
+  db.ts                    — SQLite database operations (bun:sqlite)
+  server.ts                — Local web UI server
+  ui/                      — Web UI frontend
+docs/
+  design.md                — Design document (goals, non-goals, FRs, NFRs)
+  hook-stdin-schema.md     — Complete stdin schema for all 19 events
 ```
 
 ## Code Conventions
 
-- **Python 3.8+** — stdlib only (`sys`, `json`, `os`, `datetime`, `pathlib`)
-- **No external dependencies** — no pip, no uv, no requirements.txt
-- **Single handler** — one `handler.py` handles all event types; the event type
-  is determined from the JSON payload on stdin
-- **No server** — no HTTP, no ports, no WebSocket, no CORS concerns
-- **Append-only** — logs are never modified, only appended
+- **Bun/TypeScript** — Bun runs `.ts` natively, no transpilation or bundling
+- **bun:sqlite** — built-in SQLite module, WAL mode, zero external dependencies
+- **Zod** — runtime validation of stdin payloads (only runtime dependency)
+- **Single handler** — one `handler.ts` handles all event types; event routing
+  via `hook_event_name` field from stdin JSON
+- **Localhost only** — web UI binds to `127.0.0.1`, no external network calls
+- **Append-only** — events are never modified after insertion
 
-## Hook Events (all 14)
+## Reference Docs
 
-```text
-PreToolUse          PostToolUse         PostToolUseFailure
-UserPromptSubmit    Notification        PermissionRequest
-Stop                SessionStart        SessionEnd
-SubagentStart       SubagentStop        PreCompact
-TeammateIdle        TaskCompleted
-```
-
-## JSONL Schema
-
-Log directory: `~/.claude/hookwatch/YYYY-MM-DD.jsonl`
-
-Each line:
-
-```json
-{
-  "ts": "ISO 8601 timestamp",
-  "event": "PreToolUse",
-  "session_id": "string",
-  "cwd": "/working/directory",
-  "tool_name": "Bash",
-  "data": {}
-}
-```
-
-- `tool_name` is present only for tool-related events (PreToolUse, PostToolUse,
-  PostToolUseFailure)
-- `data` contains the full event payload as received on stdin
-- `ts` is generated at write time, not extracted from the payload
+- Hook events (19 types), SQLite schema, querying → `./README.md`
+- Full stdin payload schema per event type → `./docs/hook-stdin-schema.md`
+- Design decisions, FRs, NFRs, versioning → `./docs/design.md`
 
 ## Testing Approach
 
-- Unit tests: mock stdin with sample payloads, verify JSONL output
-- Integration: install plugin in a scratch project, trigger events, verify logs
-- All 14 event types must have at least one test case
-- Test daily rotation (file naming by date)
+- Unit tests: mock stdin with sample payloads, verify SQLite rows
+- Integration: install plugin in a scratch project, trigger events, verify DB
+- All 19 event types must have at least one test case
+- Zod schema validation tests against known payloads
+- Web UI: Playwright for browser testing
 
 ## Commit Conventions
 
@@ -74,28 +59,14 @@ Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 
 Atomic commits — one logical change per commit.
 
-## Landing the Plane (Session Completion)
+## Session Close Protocol
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+When ending a work session, complete ALL steps:
 
-**MANDATORY WORKFLOW:**
-
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   bd sync
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
+1. **File issues** — create beads issues for remaining work
+2. **Quality gates** (if code changed) — tests, linters, type checks
+3. **Update issues** — close finished work, update in-progress items
+4. **Sync issues** — `bd sync --flush-only` (local export to JSONL)
+5. **Commit** — all changes committed
+6. **Push** (if remote configured) — `git push` with `git status` verification
+7. **Hand off** — provide context for next session
