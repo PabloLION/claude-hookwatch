@@ -1,0 +1,10 @@
+project_name: hookwatch
+project_type: library
+project_level: 3
+user_name: pablo
+user_skill_level: intermediate
+communication_language: English
+document_output_language: English
+planning_artifacts: ./planning-artifacts
+implementation_artifacts: ./implementation-artifacts
+project_knowledge: ./docs

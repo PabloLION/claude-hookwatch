@@ -1,0 +1,18 @@
+project: hookwatch
+level: 3
+last_updated: 20260226T050000+01
+
+phases:
+  analysis:
+    product-brief: not-started
+    research: not-started
+  planning:
+    prd: required
+    tech-spec: optional
+    ux-design: optional
+  solutioning:
+    architecture: required
+    epics-stories: not-started
+  implementation:
+    sprint-planning: not-started
+    current-sprint: null
