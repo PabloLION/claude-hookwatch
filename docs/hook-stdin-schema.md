@@ -1,9 +1,9 @@
 # Hook Stdin Schema Reference
 
 Status: Draft
-Created: 20260224
+Created: 20260224, updated 20260225
 Source: [Claude Code hooks reference](https://code.claude.com/docs/en/hooks),
-cross-verified 20260224.
+cross-verified against [hooks changelog](../changelog) 20260225.
 
 Complete reference for the JSON payload Claude Code sends to hooks via stdin.
 Used by hookwatch to define TypeScript interfaces and Zod validation schemas.
@@ -19,6 +19,29 @@ transcript_path,string,Absolute path to conversation JSONL file
 cwd,string,Working directory when hook fires
 permission_mode,string,"One of: default, plan, acceptEdits, dontAsk, bypassPermissions"
 hook_event_name,string,Event name that triggered this hook (matches the key in hooks.json)
+```
+
+### Environment Variables
+
+These are passed to the hook process as env vars (not in stdin JSON):
+
+```csv
+Variable,Since,Description
+CLAUDE_PLUGIN_ROOT,—,Absolute path to plugin root (plugin hooks only)
+CLAUDE_PROJECT_DIR,1.0.58,Absolute path to the project directory
+```
+
+### Hook Config Options
+
+Per-hook configuration in hooks.json:
+
+```csv
+Option,Type,Since,Description
+matcher,string,—,Regex matched against event-specific field (see Matcher Target Summary)
+type,string,—,"command (shell command) or prompt (LLM evaluation)"
+command,string,—,Shell command to execute (type=command)
+once,boolean,2.1.0,"If true, hook runs only once per session"
+model,string,2.0.36,Model to use for prompt-based hooks (type=prompt)
 ```
 
 ## Event-Specific Fields
@@ -220,6 +243,19 @@ worktree_path,string,yes,Absolute path to the worktree being removed
 
 - **Matcher target:** none (always fires)
 
+### Setup
+
+Present in [Agent SDK types](https://platform.claude.com/docs/en/agent-sdk/typescript)
+(`SetupHookInput`) but not yet documented in the
+[hooks reference](https://code.claude.com/docs/en/hooks).
+
+```csv
+Field,Type,Required,Values
+trigger,string,yes,"init, maintenance"
+```
+
+- **Matcher target:** unknown (undocumented)
+
 ## Matcher Target Summary
 
 Every matcher target field is included in the stdin payload. hookwatch uses
@@ -296,23 +332,72 @@ Other,Non-blocking error,stderr shown in verbose mode only
 }
 ```
 
+```csv
+Field,Since,Description
+permissionDecision,1.0.59,"allow, deny, or ask"
+updatedInput,2.0.30,"Modified tool inputs (2.1.0: works with ask decision)"
+additionalContext,2.1.9,Text injected into context for the model
+```
+
 Note: top-level `decision`/`reason` fields are deprecated in favor of
 `hookSpecificOutput.permissionDecision`/`hookSpecificOutput.permissionDecisionReason`.
 
-## Unconfirmed Events
+### UserPromptSubmit Output
 
-The following event names appear in upstream tools (conclaude) but are NOT found
-in official Claude Code documentation as of 20260224:
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "UserPromptSubmit",
+    "additionalContext": "..."
+  }
+}
+```
 
-- `SlashCommand`
-- `SkillStart`
+Since 1.0.59. Injects additional context alongside the user's prompt.
 
-These may be community inventions or undocumented. hookwatch's unknown-event
-resilience (FR-1) handles them gracefully if they appear.
+### TeammateIdle / TaskCompleted Exit Behavior
 
-## Confirmed Event Count
+Since 2.1.33. For these events, exit code 2 has special meaning:
 
-**19 confirmed events:** SessionStart, SessionEnd, UserPromptSubmit, PreToolUse,
-PostToolUse, PostToolUseFailure, PermissionRequest, Notification, SubagentStart,
-SubagentStop, Stop, PreCompact, TeammateIdle, TaskCompleted, ConfigChange,
-WorktreeCreate, WorktreeRemove, and 2 unconfirmed (SlashCommand, SkillStart).
+- **TeammateIdle** — exit 2 sends stderr as feedback and keeps the teammate
+  working (prevents idle)
+- **TaskCompleted** — exit 2 prevents completion and sends stderr as feedback
+
+## Event Count
+
+**18 events.** 17 are documented in the
+[hooks reference](https://code.claude.com/docs/en/hooks). Setup is the 18th —
+present in the
+[Agent SDK types](https://platform.claude.com/docs/en/agent-sdk/typescript)
+(`@anthropic-ai/claude-agent-sdk`) but not yet in the hooks reference.
+
+```text
+SessionStart    SessionEnd       UserPromptSubmit  PreToolUse
+PostToolUse     PostToolUseFailure  PermissionRequest  Notification
+SubagentStart   SubagentStop     Stop              PreCompact
+TeammateIdle    TaskCompleted    ConfigChange      WorktreeCreate
+WorktreeRemove  Setup*
+```
+
+\* SDK-only — not in hooks reference docs.
+
+### Not events
+
+`SlashCommand` and `SkillStart` appear in conclaude's source code but are NOT
+Claude Code hook events. Claude Code 2.1.0 added "hooks support for skill and
+slash command frontmatter" — this lets skills/commands define hooks using
+existing events (PreToolUse, PostToolUse, Stop), not new event types. conclaude
+implements them internally by parsing UserPromptSubmit prompts and SubagentStart
+payloads.
+
+hookwatch's unknown-event resilience (FR-1) handles any future events
+gracefully if they appear.
+
+## Sources
+
+```csv
+Source,URL,Content
+Hooks reference,https://code.claude.com/docs/en/hooks,"17 events, narrative + JSON examples"
+Agent SDK types,https://platform.claude.com/docs/en/agent-sdk/typescript,"18 events, TypeScript type definitions (authoritative)"
+Hooks changelog,./changelog (local),"Version history of every hook-related change"
+```

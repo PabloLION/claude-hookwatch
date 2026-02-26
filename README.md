@@ -1,11 +1,11 @@
 # claude-hookwatch
 
-Claude Code plugin that captures all 19 hook event types, stores them in a
+Claude Code plugin that captures all 18 hook event types, stores them in a
 local SQLite database, and serves a web UI for browsing and querying events.
 
 ## Features
 
-- Covers all 19 hook events (PreToolUse, PostToolUse, SessionStart, etc.)
+- Covers all 18 hook events (PreToolUse, PostToolUse, SessionStart, etc.)
 - Installs as a Claude Code plugin — one command in, one command out
 - SQLite storage via `bun:sqlite` — fast queries, WAL mode, zero external deps
 - Web UI for real-time event browsing and filtering
@@ -45,12 +45,12 @@ payload,TEXT,Full event JSON from stdin
 hook_duration_ms,INTEGER,Hook execution time in milliseconds
 ```
 
-The full stdin schema for all 19 event types is documented in
+The full stdin schema for all 18 event types is documented in
 `./docs/hook-stdin-schema.md`.
 
 ## Hook Events
 
-All 19 Claude Code hook event types are captured:
+All 18 Claude Code hook event types are captured:
 
 ```csv
 Event,Description
@@ -71,9 +71,13 @@ TaskCompleted,Task marked complete
 ConfigChange,Configuration changed
 WorktreeCreate,Git worktree created
 WorktreeRemove,Git worktree removed
-SlashCommand,Slash command invoked (unconfirmed)
-SkillStart,Skill execution starts (unconfirmed)
+Setup,Plugin/environment initialization (SDK-only — not in hooks reference docs)
 ```
+
+17 events are documented in the [hooks reference](https://code.claude.com/docs/en/hooks).
+Setup is the 18th — present in the
+[Agent SDK types](https://platform.claude.com/docs/en/agent-sdk/typescript)
+(`@anthropic-ai/claude-agent-sdk`) but not yet in the hooks reference.
 
 ## Querying
 
@@ -128,7 +132,7 @@ See `./docs/design.md` for the full design document and feature decisions.
 
 - [disler/claude-code-hooks-multi-agent-observability](https://github.com/disler/claude-code-hooks-multi-agent-observability) — real-time dashboard with 12 events and SQLite, no plugin system
 - [connerohnesorge/conclaude](https://github.com/connerohnesorge/conclaude) — 18 events, Rust, no plugin system
-- [DazzleML/claude-session-logger](https://github.com/DazzleML/claude-session-logger) — only plugin-compliant tool found, covers 2 of 19 events
+- [DazzleML/claude-session-logger](https://github.com/DazzleML/claude-session-logger) — only plugin-compliant tool found, covers 2 of 18 events
 - [karanb192/claude-code-hooks](https://github.com/karanb192/claude-code-hooks) — 12 events, JSONL logger, no plugin system
 
 hookwatch is the only tool targeting full event coverage + plugin compliance +

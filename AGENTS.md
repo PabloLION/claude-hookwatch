@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Claude Code plugin that captures all 19 hook event types, stores them in a
+Claude Code plugin that captures all 18 hook event types, stores them in a
 local SQLite database, and serves a web UI for browsing and querying events.
 Install with `claude plugin install`, uninstall cleanly with `claude plugin
 remove`.
@@ -13,7 +13,7 @@ remove`.
 .claude-plugin/
   plugin.json              — Plugin manifest (name, version, author)
 hooks/
-  hooks.json               — Hook registration (all 19 event types, ".*" matchers)
+  hooks.json               — Hook registration (all 18 event types, ".*" matchers)
   handler.ts               — Single entry point for all events
 src/
   schemas/                 — Zod schemas for each event type
@@ -22,7 +22,7 @@ src/
   ui/                      — Web UI frontend
 docs/
   design.md                — Design document (goals, non-goals, FRs, NFRs)
-  hook-stdin-schema.md     — Complete stdin schema for all 19 events
+  hook-stdin-schema.md     — Complete stdin schema for all 18 events
 ```
 
 ## Code Conventions
@@ -37,7 +37,7 @@ docs/
 
 ## Reference Docs
 
-- Hook events (19 types), SQLite schema, querying → `./README.md`
+- Hook events (18 types), SQLite schema, querying → `./README.md`
 - Full stdin payload schema per event type → `./docs/hook-stdin-schema.md`
 - Design decisions, FRs, NFRs, versioning → `./docs/design.md`
 
@@ -45,7 +45,7 @@ docs/
 
 - Unit tests: mock stdin with sample payloads, verify SQLite rows
 - Integration: install plugin in a scratch project, trigger events, verify DB
-- All 19 event types must have at least one test case
+- All 18 event types must have at least one test case
 - Zod schema validation tests against known payloads
 - Web UI: Playwright for browser testing
 

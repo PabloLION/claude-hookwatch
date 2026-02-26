@@ -5,13 +5,13 @@ Created: 20260224, updated 20260225
 
 ## Overview
 
-hookwatch is a Claude Code plugin that captures all 19 hook event types, stores
+hookwatch is a Claude Code plugin that captures all 18 hook event types, stores
 them in a local SQLite database, and serves a web UI for browsing and querying
 events. It installs via `claude plugin install` and uninstalls cleanly.
 
 The gap it fills: no existing tool combines full event coverage with plugin
 compliance. DazzleML/claude-session-logger is the only plugin-compliant tool but
-covers 2 of 19 event types. conclaude covers 18 event types but has no plugin
+covers 2 of 18 event types. conclaude covers 18 event types but has no plugin
 system. hookwatch bridges both.
 
 ## Versioning
@@ -33,7 +33,7 @@ for the full upstream comparison.
 
 ```csv
 #,Feature,Decision,Version
-A1,Full hook event coverage (19 types),Goal,v0
+A1,Full hook event coverage (18 types),Goal,v0
 A2,Unknown event resilience,Goal,v0
 A3,Matcher patterns per event,Non-goal,—
 B1,JSONL daily files,Non-goal,—
@@ -130,7 +130,7 @@ I1-I7 API-level,"Fundamentally different approach (proxy/OTEL). Not hook-based."
 
 ### FR-1: Event Capture
 
-hookwatch handles all 19 confirmed Claude Code hook event types. Every event's
+hookwatch handles all 18 confirmed Claude Code hook event types. Every event's
 full stdin payload (common fields + event-specific fields) is captured. The
 complete schema is documented in `./hook-stdin-schema.md`.
 
@@ -213,7 +213,7 @@ hooks/
 }
 ```
 
-(Abbreviated — all 19 event types follow the same pattern.)
+(Abbreviated — all 18 event types follow the same pattern.)
 
 ### FR-4: Web UI (v0: basic, v1: polished)
 
@@ -413,7 +413,7 @@ SQLite over JSONL,"bun:sqlite is built-in (zero deps). SQL queries for time rang
 Web UI included,"Local web server for browsing events. Enables v1 UX polish and v2 HITL response routing through the UI.","No server (CLI only), Grafana (separate install)"
 HITL included (v2),"User requirement. PreToolUse blocking decisions add meaningful safety. Web UI provides the response routing mechanism.","Logging-only (no blocking), platform-native dialogs"
 Plugin compliant,"User requirement. One-command install/uninstall. Only DazzleML has done this; hookwatch extends it to full event coverage.","Manual settings.json editing (used by 7/10 upstream tools)"
-Single handler,"One handler.ts for all events. Simpler than 19 separate scripts (observability has 26). Event routing via payload inspection.","Per-event scripts (observability), per-category handlers"
+Single handler,"One handler.ts for all events. Simpler than 18 separate scripts (observability has 26). Event routing via payload inspection.","Per-event scripts (observability), per-category handlers"
 Zod validation,"Runtime validation of stdin payloads. Detects upstream schema changes. Only runtime dependency (justified by correctness guarantees).","Hand-written validators, no validation (trust stdin)"
 Bun runtime (not standalone),"Users already need Bun for bun:sqlite. Small TS files over ~80MB binary. Plugin updates are file changes, no recompilation. Easy to switch later via bun build --compile.","Standalone binary (eliminates runtime dep but large)"
 TOML config,"Supports comments (JSON does not). Human-readable. May need smol-toml (~15KB) if Bun lacks native TOML imports.","JSON (no comments), YAML (verbose)"
@@ -444,7 +444,7 @@ Detailed comparison of all 10 upstream tools is in
 
 ```csv
 Tool,Events,Plugin,Server,Language
-hookwatch (this project),19,yes,yes (local),Bun/TypeScript
+hookwatch (this project),18,yes,yes (local),Bun/TypeScript
 DazzleML/claude-session-logger,2,yes,no,Python
 disler/observability,12,no,yes,Python + Bun
 connerohnesorge/conclaude,18,no,no,Rust
