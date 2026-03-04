@@ -1,6 +1,6 @@
 project: hookwatch
 level: 3
-last_updated: 20260304T200000+01
+last_updated: 20260305T010000+01
 
 phases:
   analysis:
@@ -11,7 +11,7 @@ phases:
     tech-spec: optional
     ux-design: optional
   solutioning:
-    architecture: required
+    architecture: complete
     epics-stories: not-started
   implementation:
     sprint-planning: not-started
