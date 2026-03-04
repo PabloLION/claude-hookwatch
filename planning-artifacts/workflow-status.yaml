@@ -14,5 +14,5 @@ phases:
     architecture: complete
     epics-stories: complete
   implementation:
-    sprint-planning: not-started
+    sprint-planning: complete
     current-sprint: null
