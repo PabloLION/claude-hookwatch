@@ -12,7 +12,7 @@ phases:
     ux-design: optional
   solutioning:
     architecture: complete
-    epics-stories: not-started
+    epics-stories: complete
   implementation:
     sprint-planning: not-started
     current-sprint: null
