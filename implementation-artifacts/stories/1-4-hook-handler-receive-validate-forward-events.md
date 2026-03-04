@@ -1,4 +1,4 @@
-# Story 1.4: Hook Handler -- Receive, Validate & Forward Events
+# Story 1.4: Hook Handler: Receive, Validate & Forward Events
 
 Status: ready-for-dev
 

@@ -80,6 +80,12 @@ new Response(
 )
 ```
 
+### Dependencies
+
+- Story 2.1: event list page — provides `src/ui/events/event-list.ts` and `eventList` signal in `src/ui/app.ts`, and `src/server/ingest.ts` which this story modifies to call `broadcast()`
+- Story 1.3: ingest endpoint (`src/server/ingest.ts`) — must exist for `broadcast()` integration
+- Story 2.2: session filter — `activeSession` signal must exist in `src/ui/app.ts` for the client-side SSE filter check
+
 ### Naming Conventions
 
 - snake_case for JSON event fields (`session_id`, `tool_name`)
@@ -108,6 +114,7 @@ src/
 - [Source: ./planning-artifacts/architecture.md#Frontend Architecture]
 - [Source: ./planning-artifacts/architecture.md#Implementation Patterns & Consistency Rules]
 - [Source: ./planning-artifacts/epics.md#Story 2.4]
+- [Source: ./planning-artifacts/prd.md#Web UI]
 
 ## Dev Agent Record
 

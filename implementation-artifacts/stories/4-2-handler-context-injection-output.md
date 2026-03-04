@@ -119,6 +119,7 @@ tests/
 - [Source: ./planning-artifacts/architecture.md#FR → Directory Mapping] — FR27-28 in src/handler/
 - [Source: ./planning-artifacts/architecture.md#Data Architecture] — bidirectional validation
 - [Source: ./planning-artifacts/epics.md#Story 4.2]
+- [Source: ./planning-artifacts/prd.md#Context Injection]
 
 ## Dev Agent Record
 

@@ -23,8 +23,8 @@ so that I can focus on what happened in a specific session.
 ## Tasks / Subtasks
 
 - [ ] Add a distinct session_id query helper in `src/db/queries.ts` — parameterized SELECT DISTINCT session_id FROM events ORDER BY ts DESC (AC: #1)
-- [ ] Extend `src/schemas/query.ts` — add optional `session_id` field to the filter schema (AC: #2)
-- [ ] Extend `src/server/query.ts` — handle `session_id` filter in the query handler, add WHERE clause when present (AC: #2)
+- [ ] Extend `src/schemas/query.ts` — add optional `session_id` field to the filter schema and add `queryType` discriminator field (values: `"events"` | `"sessions"`) (AC: #1, #2)
+- [ ] Extend `src/server/query.ts` — route on `queryType`: when `"sessions"` run DISTINCT session_id query; when `"events"` (default) apply optional `session_id` WHERE clause (AC: #1, #2)
 - [ ] Create `src/ui/sessions/session-filter.ts` — Preact component that fetches distinct session IDs on mount and renders a `<select>` dropdown with "All sessions" as the default option (AC: #1, #3)
 - [ ] Create `src/ui/sessions/session-list.ts` — helper module for fetching and formatting session list data (AC: #1)
 - [ ] Define `activeSession` signal in `src/ui/app.ts` — shared state that drives filtering across components (AC: #2, #3)
@@ -51,8 +51,9 @@ so that I can focus on what happened in a specific session.
 
 ### Session List Endpoint
 
-- Session list is fetched via the same `POST /api/query` endpoint with a special query type, or via a distinct-sessions helper query
-- Returns an array of unique session_id values sorted by most recent event timestamp
+- Session list is fetched via the same `POST /api/query` endpoint using a `queryType: "sessions"` discriminator field in the request body
+- The query handler routes on `queryType` — when `"sessions"`, it runs the `SELECT DISTINCT session_id` query and returns an array of unique session_id values sorted by most recent event timestamp
+- The `queryType` field is added to `src/schemas/query.ts` alongside the existing filter fields
 
 ### UI Component
 
@@ -61,6 +62,10 @@ so that I can focus on what happened in a specific session.
 - Remaining options: one per distinct session_id
 - Preact + htm tagged template literals — NO JSX/TSX
 - NEVER use `innerHTML` or `dangerouslySetInnerHTML` (ch-u88)
+
+### Dependencies
+
+- Story 2.1: event list page — provides `src/ui/events/event-list.ts`, `src/server/query.ts`, and `src/schemas/query.ts` that this story extends
 
 ### Naming Conventions
 
@@ -93,6 +98,7 @@ src/
 - [Source: ./planning-artifacts/architecture.md#Frontend Architecture]
 - [Source: ./planning-artifacts/architecture.md#Implementation Patterns & Consistency Rules]
 - [Source: ./planning-artifacts/epics.md#Story 2.2]
+- [Source: ./planning-artifacts/prd.md#Web UI]
 
 ## Dev Agent Record
 

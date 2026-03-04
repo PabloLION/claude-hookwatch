@@ -68,6 +68,11 @@ PermissionRequest
 - htm auto-escapes all interpolated values — event payloads containing HTML-like strings are rendered safely as text
 - Render JSON as text content inside `<pre>` — never parse it as HTML
 
+### Dependencies
+
+- Story 2.1: event list component (`src/ui/events/event-list.ts`) — this story modifies that component to add expand/collapse
+- Story 2.2: session filter — `activeSession` signal must exist in `src/ui/app.ts` before this story modifies `event-list.ts`
+
 ### Naming Conventions
 
 - snake_case for JSON fields from API (`tool_name`, `tool_input`, `session_id`)
@@ -90,6 +95,7 @@ src/
 - [Source: ./planning-artifacts/architecture.md#Security Hardening (Red Team Analysis)]
 - [Source: ./planning-artifacts/architecture.md#Implementation Patterns & Consistency Rules]
 - [Source: ./planning-artifacts/epics.md#Story 2.3]
+- [Source: ./planning-artifacts/prd.md#Web UI]
 
 ## Dev Agent Record
 

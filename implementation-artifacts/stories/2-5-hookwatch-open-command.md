@@ -73,6 +73,12 @@ so that I can view events even when the server timed out.
 - Server spawn logic may be shared with `src/handler/spawn.ts` (Story 1.5) — extract to a shared utility if both stories need the same spawn + health-poll logic
 - Health check endpoint: `GET /health` returns 200 OK (Story 1.3)
 
+### Dependencies
+
+- Story 1.3: Bun server — provides `GET /health` endpoint used for server detection, and `src/server/index.ts` to be spawned
+- Story 1.5: server auto-start spawn logic (`src/handler/spawn.ts`) — may be shared or extracted to a utility for reuse here
+- Story 1.6: CLI framework (`src/cli/index.ts`) — the `open` subcommand stub registered there is implemented in this story
+
 ### Naming Conventions
 
 - camelCase for TypeScript code (`openCommand`, `serverPort`, `isServerRunning`)
@@ -95,6 +101,7 @@ src/
 - [Source: ./planning-artifacts/architecture.md#Server Configuration]
 - [Source: ./planning-artifacts/architecture.md#Handler-Server Coordination]
 - [Source: ./planning-artifacts/epics.md#Story 2.5]
+- [Source: ./planning-artifacts/prd.md#CLI — hookwatch open]
 
 ## Dev Agent Record
 

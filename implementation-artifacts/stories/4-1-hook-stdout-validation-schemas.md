@@ -18,16 +18,22 @@ so that messages sent to Claude Code are validated before delivery.
    missing, **then** validation fails with a descriptive error, and the handler
    does not output invalid JSON to Claude Code.
 
+3. **Given** the handler constructs a system message, **when** the `systemMessage`
+   field is populated, **then** it follows the format
+   `"hookwatch: captured {EventType} event for {detail}"` — for example
+   `"hookwatch: captured PreToolUse event for tool Bash"` — so that Claude Code
+   can attribute the injected context to hookwatch.
+
 ## Tasks / Subtasks
 
 - [ ] Create `src/schemas/output.ts` with base `hookOutputSchema` for generic hook output fields (AC: #1, #2)
 - [ ] Define `preToolUseOutputSchema` extending base with `hookSpecificOutput` containing `permissionDecision`, `updatedInput`, `additionalContext` (AC: #1)
 - [ ] Define `userPromptSubmitOutputSchema` extending base with `hookSpecificOutput` containing `additionalContext` (AC: #1)
 - [ ] Apply `.strict()` on all output schemas — we control the output, no unknown fields allowed (AC: #1, #2)
-- [ ] Add hookwatch-specific `systemMessage` field logic: message identifies source hook name and event type (AC: #1)
+- [ ] Add hookwatch-specific `systemMessage` field logic: message identifies source hook name and event type using format `"hookwatch: captured {EventType} event for {detail}"` (AC: #1, #3)
 - [ ] Export inferred TypeScript types: `HookOutput`, `PreToolUseOutput`, `UserPromptSubmitOutput` (AC: #1)
-- [ ] Create `src/schemas/output.test.ts` — tests for valid output passing, missing field rejection, strict mode rejecting unknown fields, systemMessage content validation (AC: #1, #2)
-- [ ] Run Biome lint + `bun test` to verify (AC: #1, #2)
+- [ ] Create `src/schemas/output.test.ts` — tests for valid output passing, missing field rejection, strict mode rejecting unknown fields, systemMessage format validation (AC: #1, #2, #3)
+- [ ] Run Biome lint + `bun test` to verify (AC: #1, #2, #3)
 
 ## Dev Notes
 
@@ -104,6 +110,10 @@ The `systemMessage` field in hookwatch output identifies the source:
 
 - Format: `"hookwatch: captured {EventType} event for {detail}"` (e.g., `"hookwatch: captured PreToolUse event for tool Bash"`)
 - This enables Claude Code to attribute injected context to hookwatch
+
+### Dependencies
+
+- Story 1.2: Zod event validation schemas (`src/schemas/events.ts`) — contrast pattern: stdin schemas use `.passthrough()`, output schemas (this story) use `.strict()`
 
 ### Project Structure Notes
 

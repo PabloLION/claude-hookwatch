@@ -15,7 +15,7 @@ so that I can debug my hook's input/output behavior visually.
    distinct visual indicator.
 
 2. **Given** a developer clicks on a wrap event, **when** the detail view
-   expands, **then** stdin, stdout, and stderr are displayed in separate panels,
+   expands, **then** stdout and stderr are displayed in separate panels,
    and the original command and exit code are shown.
 
 3. **Given** the session filter is active, **when** wrap events are filtered,
@@ -23,11 +23,10 @@ so that I can debug my hook's input/output behavior visually.
 
 ## Tasks / Subtasks
 
-- [ ] Create `src/ui/wrap/wrap-viewer.ts` — Preact component for rendering wrap event detail view with three I/O panels (AC: #2)
+- [ ] Create `src/ui/wrap/wrap-viewer.ts` — Preact component for rendering wrap event detail view with two I/O panels (stdout and stderr) (AC: #2)
 - [ ] Add wrap event visual indicator to the event list component — different background color or icon to distinguish `"Wrap"` events from hook events (AC: #1)
 - [ ] Implement stdout panel — `<pre><code>` block displaying captured stdout text (AC: #2)
 - [ ] Implement stderr panel — `<pre><code>` block displaying captured stderr text (AC: #2)
-- [ ] Implement stdin panel — `<pre><code>` block displaying captured stdin text (AC: #2)
 - [ ] Display original command as formatted text (e.g., `my-hook-script.sh arg1 arg2`) above the I/O panels (AC: #2)
 - [ ] Display exit code with color coding — green for exit code 0, red for non-zero (AC: #2)
 - [ ] Use collapsible panels — `<details>` or `<article>` elements via Pico CSS for each I/O stream (AC: #2)
@@ -52,7 +51,8 @@ The wrap-viewer component renders the detail view for wrap events. It receives t
 
 - **Command header**: the original command array joined as a shell-like string
 - **Exit code badge**: color-coded inline element (green background for `0`, red for non-zero)
-- **Three collapsible I/O panels**: stdin, stdout, stderr — each in a `<details>` element with `<pre><code>` content
+- **Two collapsible I/O panels**: stdout and stderr — each in a `<details>` element with `<pre><code>` content
+- Note: stdin is not captured (piped through without buffering per Story 3.1) — no stdin panel
 
 Example component structure using htm:
 
@@ -70,10 +70,6 @@ html`
     <details>
       <summary>stderr</summary>
       <pre><code>${stderr}</code></pre>
-    </details>
-    <details>
-      <summary>stdin</summary>
-      <pre><code>${stdin}</code></pre>
     </details>
   </article>
 `
@@ -104,7 +100,7 @@ html`
 - Playwright browser tests in `tests/` directory
 - Test scenarios:
   - Load event list with mix of hook and wrap events — verify wrap events have visual indicator
-  - Click wrap event — verify three panels render with correct content
+  - Click wrap event — verify stdout and stderr panels render with correct content
   - Verify exit code 0 renders green, exit code 1 renders red
   - Apply session filter — verify wrap events filter correctly
 - Unit tests not needed for pure Preact components — Playwright covers rendering behavior
@@ -129,16 +125,22 @@ tests/
 - Preact signals: camelCase, no suffix
 - CSS class prefixes: `hw-` namespace for hookwatch-specific styles
 
+### Dependencies
+
+- Story 2.1: event list component (`src/ui/events/event-list.ts`) — this story adds wrap visual indicator to that component
+- Story 2.3: event detail component (`src/ui/events/event-detail.ts`) — modified to delegate to wrap-viewer for `"Wrap"` event type
+- Story 3.1: wrap command — defines the wrap event payload schema (`command`, `stdout`, `stderr`, `exit_code`) that this component renders
+
 ### References
 
-- [Source: planning-artifacts/architecture.md#Frontend Architecture]
-- [Source: planning-artifacts/architecture.md#API & Communication]
-- [Source: planning-artifacts/architecture.md#Data Architecture]
-- [Source: planning-artifacts/architecture.md#Complete Project Directory Structure]
-- [Source: planning-artifacts/architecture.md#Security Hardening (Red Team Analysis)]
-- [Source: planning-artifacts/architecture.md#Implementation Patterns & Consistency Rules]
-- [Source: planning-artifacts/epics.md#Story 3.2]
-- [Source: planning-artifacts/prd.md#FR14]
+- [Source: ./planning-artifacts/architecture.md#Frontend Architecture]
+- [Source: ./planning-artifacts/architecture.md#API & Communication]
+- [Source: ./planning-artifacts/architecture.md#Data Architecture]
+- [Source: ./planning-artifacts/architecture.md#Complete Project Directory Structure]
+- [Source: ./planning-artifacts/architecture.md#Security Hardening (Red Team Analysis)]
+- [Source: ./planning-artifacts/architecture.md#Implementation Patterns & Consistency Rules]
+- [Source: ./planning-artifacts/epics.md#Story 3.2]
+- [Source: ./planning-artifacts/prd.md#Web UI]
 
 ## Dev Agent Record
 

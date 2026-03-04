@@ -97,6 +97,12 @@ src/
 - Path alias: `@/` maps to `./src/` via tsconfig.json `paths`
 - No server-side rendering — Preact mounts client-side
 
+### Dependencies
+
+- Story 1.1: database layer (`@/db/connection`, `@/db/queries`, `@/db/schema`) must exist for query helpers
+- Story 1.2: Zod schemas (`@/schemas/events`) used by the ingest path that feeds these queries
+- Story 1.3: Bun server (`src/server/index.ts`, `src/server/ingest.ts`) — this story extends the existing server
+
 ### Testing
 
 - Playwright for browser integration tests — verify HTML served, events rendered, empty state
@@ -110,7 +116,8 @@ src/
 - [Source: ./planning-artifacts/architecture.md#Complete Project Directory Structure]
 - [Source: ./planning-artifacts/architecture.md#Implementation Patterns & Consistency Rules]
 - [Source: ./planning-artifacts/epics.md#Story 2.1]
-- [Source: ./planning-artifacts/prd.md#Executive Summary]
+- [Source: ./planning-artifacts/prd.md#Web UI]
+- [Source: ./planning-artifacts/prd.md#Bun Server]
 
 ## Dev Agent Record
 

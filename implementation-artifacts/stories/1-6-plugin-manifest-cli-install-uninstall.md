@@ -109,6 +109,10 @@ Register all 18 event types with `".*"` matcher to capture everything:
 4. Verify uninstall succeeded
 ```
 
+### Dependencies
+
+- Story 1.4: Hook Handler (`src/handler/index.ts`) must exist — the handler path in `hooks.json` resolves to this file
+
 ### Distribution Model
 
 - `npm install -g hookwatch` installs the package globally

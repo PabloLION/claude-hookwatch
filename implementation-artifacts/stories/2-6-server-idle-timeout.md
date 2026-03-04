@@ -27,7 +27,7 @@ so that it doesn't consume resources when I'm not using it.
 - [ ] Implement idle timer reset — create a `resetIdleTimer()` function that clears and re-creates the timeout, call it on every incoming request (any endpoint: events, query, static, health, SSE) (AC: #2)
 - [ ] Wire idle timer reset into the request handler — add `resetIdleTimer()` call at the top of the Bun.serve fetch handler so every HTTP request resets the timer (AC: #2)
 - [ ] Implement graceful shutdown function — close all SSE connections (from `src/server/stream.ts` client set), close the SQLite database connection, log shutdown reason, then call `process.exit(0)` (AC: #1)
-- [ ] Verify auto-start recovery — confirm that Story 1.5's handler auto-start logic (`src/handler/spawn.ts`) works correctly after an idle shutdown (AC: #3)
+- [ ] Add integration test case to `tests/handler-server.test.ts` — start server with short idle timeout, wait for shutdown, fire a mock hook event via `src/handler/index.ts`, verify server auto-restarts and event is delivered successfully (AC: #3)
 - [ ] Write unit test for idle timer — verify timer fires after configured duration with no activity, and resets when activity occurs (AC: #1, #2)
 - [ ] Write integration test — start server, wait for idle timeout (use short timeout in test), verify process exits (AC: #1)
 - [ ] Write integration test — start server, send request before timeout, verify timer resets and server stays alive (AC: #2)
@@ -73,13 +73,19 @@ idle_timeout_minutes = 30
 - This AC depends on Story 1.5 (Server Auto-Start from Handler)
 - When the server shuts down from idle timeout, the next hook event triggers the handler
 - The handler detects connection refused, spawns a new server instance
-- No additional implementation needed in this story — verify the existing flow works
+- Verify via integration test: start server → wait for idle shutdown → send hook event → confirm delivery
 
 ### Testing Strategy
 
 - For idle timeout tests, use a very short timeout (e.g., 500ms) to avoid slow tests
 - Use environment variable or test-specific config to override the default timeout
 - Verify `process.exit` is called (mock or check process exit code)
+
+### Dependencies
+
+- Story 1.3: Bun server (`src/server/index.ts`) — idle timer and graceful shutdown added here
+- Story 1.5: server auto-start from handler (`src/handler/spawn.ts`) — required for AC #3 recovery path
+- Story 2.4: SSE live updates (`src/server/stream.ts`) — graceful shutdown must close all SSE connections from the stream client set
 
 ### Naming Conventions
 
@@ -107,6 +113,7 @@ src/
 - [Source: ./planning-artifacts/architecture.md#Process Patterns]
 - [Source: ./planning-artifacts/architecture.md#Implementation Patterns & Consistency Rules]
 - [Source: ./planning-artifacts/epics.md#Story 2.6]
+- [Source: ./planning-artifacts/prd.md#Bun Server]
 
 ## Dev Agent Record
 
