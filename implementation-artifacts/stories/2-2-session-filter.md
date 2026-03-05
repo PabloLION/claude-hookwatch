@@ -38,7 +38,7 @@ so that I can focus on what happened in a specific session.
 
 ### Signal-Driven Filtering
 
-- `activeSession` signal defined in `src/ui/app.ts` — `null` means "All sessions"
+- `activeSession` signal is defined and owned by `src/ui/app.ts` — `null` means "All sessions". It is passed as a prop to both `session-filter.ts` and `event-list.ts`; neither component creates its own copy
 - When `activeSession` changes, `event-list.ts` re-fetches from the server with the appropriate filter
 - No client-side filtering — always query the server so pagination and large datasets work correctly
 
@@ -54,6 +54,42 @@ so that I can focus on what happened in a specific session.
 - Session list is fetched via the same `POST /api/query` endpoint using a `queryType: "sessions"` discriminator field in the request body
 - The query handler routes on `queryType` — when `"sessions"`, it runs the `SELECT DISTINCT session_id` query and returns an array of unique session_id values sorted by most recent event timestamp
 - The `queryType` field is added to `src/schemas/query.ts` alongside the existing filter fields
+- Response schema for `POST /api/query` with `queryType: "sessions"`:
+
+```ts
+{ sessions: Array<{ session_id: string; event_count: number; first_ts: number; last_ts: number }> }
+```
+
+  `first_ts` and `last_ts` are Unix epoch milliseconds; `event_count` is the number of events in that session.
+
+### Component Interfaces
+
+`session-list.ts` is a data helper module (not a Preact component). It exports one function:
+
+```ts
+// src/ui/sessions/session-list.ts
+export async function fetchSessions(): Promise<Array<{ session_id: string; event_count: number; first_ts: number; last_ts: number }>>
+```
+
+`session-filter.ts` is the Preact component. It accepts the `activeSession` signal as a prop so `app.ts` remains the single owner of that signal:
+
+```ts
+// src/ui/sessions/session-filter.ts
+import type { Signal } from "@preact/signals"
+export function SessionFilter({ activeSession }: { activeSession: Signal<string | null> }): VNode
+```
+
+On mount it calls `fetchSessions()` from `session-list.ts` to populate the dropdown. On `<select>` change it sets `activeSession.value`.
+
+`event-list.ts` also receives `activeSession` as a prop and subscribes to it to re-fetch events when the signal changes.
+
+`app.ts` owns the signal and passes it to both components:
+
+```ts
+// src/ui/app.ts
+const activeSession = signal<string | null>(null)
+// renders: html`<${SessionFilter} activeSession=${activeSession} /><${EventList} activeSession=${activeSession} />`
+```
 
 ### UI Component
 

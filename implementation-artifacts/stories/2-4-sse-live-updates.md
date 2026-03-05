@@ -38,9 +38,17 @@ so that I can watch agent activity live.
 
 ## Dev Notes
 
+### Security Constraints
+
+Mandatory rules from AGENTS.md (ch-lar, ch-u88):
+
+- All database writes use parameterized queries only — never string-concatenate values into SQL (ch-lar)
+- Never use `innerHTML` or `dangerouslySetInnerHTML` in any UI component — htm auto-escapes interpolated values (ch-u88)
+- SSE event data must be `JSON.stringify(event)` — never interpolate raw event fields directly into the SSE message string or into HTML
+
 ### Server-Side SSE
 
-- Endpoint: `GET /api/events/stream`
+- Endpoint: `GET /api/events/stream` — this is the production live-update route, distinct from the dev-mode reload endpoint (`/dev/events`). Route must be registered before any catch-all static file handler in `src/server/index.ts` to avoid shadowing
 - Response headers: `Content-Type: text/event-stream`, `Cache-Control: no-cache`, `Connection: keep-alive`
 - SSE message format: `data: ${JSON.stringify(event)}\n\n`
 - Maintain a `Set<WritableStreamDefaultWriter>` (or equivalent Bun response writers) of connected clients
@@ -63,22 +71,32 @@ so that I can watch agent activity live.
 
 ### Bun.serve SSE Pattern
 
-Bun's `Bun.serve` returns a `Response` object. For SSE, use a `ReadableStream` with a controller that stays open:
+Bun's `Bun.serve` returns a `Response` object. For SSE, use a `ReadableStream` with a controller that stays open. `TextEncoder` is a global in Bun — no import needed:
 
 ```ts
+const encoder = new TextEncoder(); // global in Bun, no import required
+
 new Response(
   new ReadableStream({
     start(controller) {
       // Add controller to client set
-      // On data: controller.enqueue(encoder.encode(`data: ${json}\n\n`))
+      // On data: controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
     },
     cancel() {
       // Remove controller from client set
     },
   }),
-  { headers: { "Content-Type": "text/event-stream" } }
+  {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+    },
+  }
 )
 ```
+
+Backend imports use the `@/` path alias (`@/*` maps to `./src/*` via tsconfig paths). Example: `import { db } from "@/db"`, `import { broadcast } from "@/server/stream"`.
 
 ### Dependencies
 

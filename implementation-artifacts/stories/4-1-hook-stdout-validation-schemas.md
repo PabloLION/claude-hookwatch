@@ -12,7 +12,11 @@ so that messages sent to Claude Code are validated before delivery.
 
 1. **Given** the hook stdout schema is defined, **when** a valid system message
    JSON is validated, **then** it passes with typed fields (message content,
-   source hook name, event type).
+   systemMessage string). Note: there is no separate typed field for hook name
+   or event type — they are embedded in the `systemMessage` string value
+   (e.g., `"hookwatch: captured PreToolUse event for tool Bash"`). The schema
+   validates the `systemMessage` field is present and a string; format
+   conformance is tested separately.
 
 2. **Given** a malformed stdout JSON is validated, **when** required fields are
    missing, **then** validation fails with a descriptive error, and the handler
@@ -64,6 +68,11 @@ Base output structure (any event):
 
 ### Event-Specific Output
 
+Only two hook types use `hookSpecificOutput`: `PreToolUse` and
+`UserPromptSubmit`. All other hooks (Notification, Stop, SessionStart, etc.)
+use only the base output fields (`continue`, `systemMessage`, etc.) — there is
+no `hookSpecificOutput` for them.
+
 PreToolUse decision output:
 
 ```json
@@ -114,6 +123,10 @@ The `systemMessage` field in hookwatch output identifies the source:
 ### Dependencies
 
 - Story 1.2: Zod event validation schemas (`src/schemas/events.ts`) — contrast pattern: stdin schemas use `.passthrough()`, output schemas (this story) use `.strict()`
+- Story 4.2 (handler context injection) imports and uses the validation schemas
+  exported by this story. All schemas must be exported from `@/schemas/output`
+  (resolves to `src/schemas/output.ts`). Do not move or rename this module
+  without updating Story 4.2's imports.
 
 ### Project Structure Notes
 

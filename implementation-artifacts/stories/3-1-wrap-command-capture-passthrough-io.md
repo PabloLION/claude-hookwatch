@@ -38,6 +38,7 @@ so that I can see exactly what data flows through my hook.
 - [ ] Implement best-effort capture — if server is unreachable after auto-start attempt, still pass through I/O to terminal (do not fail the wrapped command) (AC: #1, #3)
 - [ ] Forward child process exit code as the `hookwatch wrap` exit code (AC: #2)
 - [ ] Create `src/cli/wrap.test.ts` — unit tests with mock child process covering tee behavior, exit code capture, event POST, and auto-start fallback (AC: #1, #2, #3)
+- [ ] Run `bunx biome check` and `bun test` — verify no lint errors and all tests pass before marking story complete
 
 ## Dev Notes
 
@@ -75,7 +76,7 @@ Common columns populated:
 Column,Value
 event,"Wrap"
 ts,Date.now() at wrap completion
-session_id,generated or empty string (wrap is not a Claude Code session event)
+session_id,UUID v4 generated at wrap command start time — shared across all events from that invocation
 cwd,process.cwd() of the hookwatch wrap invocation
 tool_name,null
 session_name,null
@@ -83,10 +84,23 @@ hook_duration_ms,elapsed time of wrapped command execution
 payload,JSON with command/stdout/stderr/exit_code
 ```
 
+### session_id for Wrap Sessions
+
+- Generate a UUID v4 at the start of each `hookwatch wrap` invocation (before spawning the child process)
+- Use `crypto.randomUUID()` — available natively in Bun
+- Pass this UUID as `session_id` in the wrap event payload stored to the events table
+- If multiple events were ever emitted from a single wrap session in future (e.g., streaming), they would all share the same UUID — this is the same model as Claude Code session IDs
+
+### Port Discovery
+
+- Read `~/.claude/hookwatch/hookwatch.port` to discover which port the running server is on
+- If the file does not exist or the port is unresponsive, treat as server not running and invoke auto-start
+- Auto-start writes the chosen port to `~/.claude/hookwatch/hookwatch.port` so subsequent processes can discover it
+
 ### Auto-Start
 
-- Reuse `src/handler/spawn.ts` — same spawn logic as Story 1.5
-- Flow: attempt POST to `/api/events` -> connection refused -> spawn server -> poll `/health` at 50ms intervals (max 2s) -> retry POST
+- Reuse `src/handler/spawn.ts` — same spawn + port-discovery logic as Story 1.5
+- Flow: read `~/.claude/hookwatch/hookwatch.port` -> attempt POST to `/api/events` on that port -> if connection refused or file missing -> spawn server -> server writes chosen port to `~/.claude/hookwatch/hookwatch.port` -> poll `/health` at 50ms intervals (max 2s) -> retry POST
 - If server still unreachable after auto-start: log warning to stderr, still pass through I/O (capture is best-effort, passthrough is mandatory)
 
 ### Error Handling
@@ -121,7 +135,7 @@ src/
 
 - Story 1.3: Bun server — provides `POST /api/events` ingest endpoint that this story POSTs wrap events to
 - Story 1.5: server auto-start spawn logic (`src/handler/spawn.ts`) — reused for auto-starting the server when unreachable
-- Story 1.6: CLI framework (`src/cli/index.ts`) — the `wrap` subcommand stub registered there is implemented in this story
+- Story 1.6: CLI framework (`src/cli/index.ts`) — the `wrap` subcommand is a new CLI command registered via citty in the CLI entrypoint; Story 1.6 sets up the citty entrypoint and the `hookwatch install`/`uninstall` commands, but the `wrap` subcommand itself is added and fully implemented in this story
 
 ### References
 

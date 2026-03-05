@@ -34,12 +34,41 @@ so that I can understand exactly what data the agent sent.
 
 ## Dev Notes
 
+### Preact + htm Import
+
+All UI components use Preact + htm loaded from ESM CDN — no build step, no JSX.
+Use this exact import at the top of every UI file:
+
+```ts
+import { html, render, useState, useEffect } from 'https://esm.sh/htm/preact/standalone';
+```
+
+For shared state (signals), import from the same bundle:
+
+```ts
+import { signal, computed } from 'https://esm.sh/@preact/signals';
+```
+
+Never import from npm package paths or use JSX syntax. htm template literals
+(`html\`...\``) replace JSX throughout.
+
+### Payload Fetch Strategy
+
+The events list response from `POST /api/query` includes the full `payload`
+field for every event — no second request needed. This avoids extra round-trips
+and keeps the detail view instant.
+
+- The `payload` column is stored as TEXT (full stdin JSON string) in SQLite
+- The query endpoint returns it as a string in the JSON response
+- Parse it client-side with `JSON.parse(event.payload)` before display
+- Do not implement a `GET /api/events/:id` endpoint for v0
+
 ### JSON Display
 
-- Format: `JSON.stringify(parsedPayload, null, 2)` inside `<pre><code>` block
+- Format: `JSON.stringify(JSON.parse(event.payload), null, 2)` inside a `<pre><code>` block
 - Pico CSS auto-styles `<code>` blocks — no external syntax highlighter in v0
 - Syntax highlighting is minimal — monospace font with Pico's code styling is sufficient
-- The `payload` column stores the full stdin JSON as TEXT — parse it client-side for display
+- Render formatted JSON as a text node inside `<pre>` — never set it via innerHTML
 
 ### Tool-Related Events
 
@@ -56,11 +85,39 @@ PermissionRequest
 - Display in a definition list (`<dl><dt>Tool</dt><dd>tool_name</dd>...`) above the raw payload
 - Non-tool events (e.g., `SessionStart`, `Stop`) show only the raw payload
 
+`tool_input` is an object — render it as a nested JSON block:
+`JSON.stringify(payload.tool_input, null, 2)` inside its own `<pre><code>` block.
+
+### PermissionRequest: tool_use_id Handling
+
+`PermissionRequest` is the only tool-related event that does **not** include
+`tool_use_id` (see `./docs/hook-stdin-schema.md`). Render it defensively:
+
+- If `tool_use_id` is present in the parsed payload: display as a linkable
+  reference in the tool info header (e.g., `<code>toolu_01ABC123...</code>`)
+- If absent (as is always the case for `PermissionRequest`): display `N/A`
+
+This makes the absence explicit instead of rendering an empty or undefined value.
+
+### Signal Ownership
+
+`expandedEventIds` is a local signal owned by `event-list.ts`. It does not
+belong in `app.ts` — it is UI interaction state, not shared application state.
+
+The `selectedEvent` signal (the currently clicked event object, if needed by
+other components) should also be owned by `event-list.ts` and passed down as a
+prop. `app.ts` owns only signals that multiple sibling components consume
+(e.g., `activeSession`, `eventList`).
+
 ### Expand/Collapse
 
-- Track expanded state via a Preact signal (e.g., `expandedEventId` signal holding the ID of the currently expanded event, or `null` if none)
-- Only one event expanded at a time (accordion behavior) — or allow multiple, depending on UX preference. Single-expand is simpler
-- Click handler on the event row toggles the signal
+- Allow multiple sections open simultaneously (not exclusive accordion) — simpler
+  to implement and better UX when comparing fields across events
+- Track expanded state via a `Set<string>` held in a Preact signal
+  (e.g., `expandedEventIds` signal in `event-list.ts`):
+  - Click on a collapsed row: add its ID to the set
+  - Click on an expanded row: remove its ID from the set
+- This is a multi-expand model — no accordion constraint
 
 ### Security
 

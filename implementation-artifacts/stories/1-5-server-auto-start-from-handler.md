@@ -27,12 +27,12 @@ so that event capture works without manual setup.
 
 - [ ] Create `src/handler/spawn.ts` — spawn logic + health probe (AC: #1, #2)
 - [ ] Implement `Bun.spawn()` with `detached: true` to run server as background process (AC: #1)
+- [ ] Call `.unref()` on the child process handle immediately after spawn so the handler can exit without waiting for the server (AC: #1)
 - [ ] Redirect spawned server stdout/stderr to a log file (e.g., `~/.local/share/hookwatch/server.log`) (AC: #1)
 - [ ] Implement health probe: `GET /health` at 50ms intervals, max 2s (40 attempts) (AC: #2)
-- [ ] On health success, retry the original `POST /api/events` with the event payload (AC: #3)
+- [ ] On health success, read port from `~/.claude/hookwatch/hookwatch.port`, then retry the original `POST /api/events` with the event payload (AC: #3)
 - [ ] On health timeout (2s), exit 1 — non-blocking error, no retry loop (AC: #4)
 - [ ] Integrate spawn logic into `src/handler/index.ts` — trigger on `fetch()` connection refused (AC: #1, #3)
-- [ ] Handle port discovery after auto-increment: handler needs to know which port the server landed on (AC: #1, #3)
 - [ ] Create `tests/handler-server.test.ts` — integration test for full handler -> spawn -> health probe -> POST -> delivery cycle (AC: #1, #2, #3, #4)
 - [ ] Run Biome lint + `bun test` to verify (AC: #1, #2, #3, #4)
 
@@ -41,32 +41,34 @@ so that event capture works without manual setup.
 ### Spawn Mechanics
 
 - Use `Bun.spawn()` with `detached: true` — the server process must outlive the handler
+- Call `.unref()` on the returned child process handle immediately after spawn — this detaches the handler's event loop from the child so the handler process can exit without waiting for the server to terminate
 - Redirect stdout/stderr to `~/.local/share/hookwatch/server.log` (append mode)
 - The spawned command: `bun run src/server/index.ts`
-- The handler must `unref()` the child process so it does not block handler exit
 
 ### Health Probe Protocol
 
 ```text
 1. Handler catches connection refused on initial POST
-2. Spawn Bun server (detached)
+2. Spawn Bun server (detached), call .unref() on child handle
 3. Loop: GET http://127.0.0.1:6004/health
    - 200 OK -> break, proceed to retry POST
    - Connection refused / error -> wait 50ms, retry
    - Max 40 attempts (50ms * 40 = 2000ms)
 4. If loop exhausts -> exit 1
-5. If health OK -> POST /api/events with original payload
-6. If POST succeeds -> exit 0
-7. If POST fails -> exit 1
+5. If health OK -> read actual port from ~/.claude/hookwatch/hookwatch.port
+6. POST /api/events to the discovered port with original payload
+7. If POST succeeds -> exit 0
+8. If POST fails -> exit 1
 ```
 
 ### Port Discovery
 
-The server may auto-increment its port if 6004 is in use (Story 1.3). The handler needs to discover the actual port. Options for v0:
+The server may auto-increment its port if 6004 is in use (Story 1.3). Port discovery uses a port file:
 
-- Try port 6004 first; on connection refused after spawn, try 6005, 6006, etc.
-- Or: server writes its port to a known file (e.g., `~/.local/share/hookwatch/port`)
-- Decision: implement during development based on complexity. The port file approach is simpler and more reliable
+- On startup the server writes its actual bound port to `~/.claude/hookwatch/hookwatch.port`
+- The handler reads this file after the health probe succeeds to get the real port
+- The initial health probe always tries port 6004 (default); once health responds, the port file has the authoritative value
+- If the port file is absent or unreadable, the handler falls back to 6004
 
 ### Race Condition Risk
 

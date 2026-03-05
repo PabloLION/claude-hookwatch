@@ -28,12 +28,13 @@ so that events have a storage foundation to write to.
 
 - [ ] Run `bun init` to generate `package.json` and `tsconfig.json` (AC: #1)
 - [ ] Install runtime dependencies: `bun add zod citty smol-toml` (AC: #1)
-- [ ] Install dev dependency: `bun add -d @biomejs/biome` (AC: #1)
-- [ ] Configure `tsconfig.json` with path alias `@/` mapping to `./src/` (AC: #1)
+- [ ] Install dev dependencies: `bun add -d @biomejs/biome bun-types` (AC: #1)
+- [ ] Configure `tsconfig.json` with strict mode, path alias `@/` mapping to `./src/`, correct moduleResolution and target (AC: #1)
 - [ ] Create `biome.json` with lint + format configuration (AC: #1)
 - [ ] Create `.gitignore` with node_modules, *.db, .env, dist entries (AC: #1)
-- [ ] Create `AGENTS.md` with project rules including ch-lar (parameterized SQL) and ch-u88 (no innerHTML) (AC: #1)
-- [ ] Create `src/db/connection.ts` — open database, create parent directory, set 0600 permissions, enable WAL mode (AC: #2)
+- [ ] Create `AGENTS.md` with all project conventions: ch-lar (parameterized SQL only), ch-u88 (no innerHTML), snake_case DB/API fields, camelCase TS, kebab-case files, Biome linting (AC: #1)
+- [ ] Create `README.md` with one-liner description, install command, and dev commands (AC: #1)
+- [ ] Create `src/db/connection.ts` — open database, create parent directory, set 0600 permissions immediately after file creation, enable WAL mode (AC: #2)
 - [ ] Create `src/db/schema.ts` — CREATE TABLE events DDL, `PRAGMA user_version` migration check (AC: #2)
 - [ ] Create `src/db/queries.ts` — parameterized INSERT and SELECT helpers for the events table (AC: #2, #3)
 - [ ] Create `src/db/schema.test.ts` — test database creation, WAL mode, table existence, insert+retrieve round-trip, persistence after close+reopen (AC: #2, #3)
@@ -47,14 +48,39 @@ so that events have a storage foundation to write to.
 - Database: `bun:sqlite` built-in — zero external database dependencies
 - Linting: Biome (lint + format in one tool)
 - Testing: `bun test` built-in test runner discovers `*.test.ts` files
+- `bun-types` dev dependency provides TypeScript types for all Bun APIs (`Bun.serve()`, `bun:sqlite`, `Bun.file()`, etc.)
 
 ### Database Configuration
 
 - DB path: `~/.local/share/hookwatch/hookwatch.db` (XDG data directory)
 - Create parent directory (`~/.local/share/hookwatch/`) if it does not exist
-- File permissions: `0600` (owner read/write only) via `fs.chmodSync` or equivalent
-- WAL mode: `PRAGMA journal_mode=wal` — enables concurrent reads while handler writes
+- File permissions: call `fs.chmodSync(dbPath, 0o600)` immediately after `new Database(dbPath)` — before any other operations — so the file is locked down the moment it is created
+- WAL mode: enable via `db.exec("PRAGMA journal_mode=WAL")` right after chmod
 - Schema migrations: `PRAGMA user_version` tracks version, server checks on startup and runs sequential migrations
+
+### bun:sqlite Usage Pattern
+
+```ts
+import { Database } from "bun:sqlite";
+import { mkdirSync, chmodSync } from "node:fs";
+
+const dbDir = `${process.env.HOME}/.local/share/hookwatch`;
+mkdirSync(dbDir, { recursive: true });
+const dbPath = `${dbDir}/hookwatch.db`;
+
+const db = new Database(dbPath);          // creates file on first open
+chmodSync(dbPath, 0o600);                 // lock down immediately after creation
+db.exec("PRAGMA journal_mode=WAL");       // enable WAL mode
+
+// Prepared statement (parameterized — never string-concatenate values)
+const insert = db.prepare(
+  "INSERT INTO events (ts, event, session_id, cwd, tool_name, session_name, hook_duration_ms, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+);
+insert.run(Date.now(), "PreToolUse", sessionId, cwd, toolName, null, null, JSON.stringify(payload));
+
+// Query
+const rows = db.prepare("SELECT * FROM events WHERE session_id = ?").all(sessionId);
+```
 
 ### Events Table Schema
 
@@ -82,6 +108,29 @@ CREATE TABLE IF NOT EXISTS events (
 - `hook_duration_ms`: nullable — handler execution time
 - `payload`: full stdin JSON as TEXT (never parsed in SQL)
 
+### tsconfig.json Settings
+
+The `tsconfig.json` produced by `bun init` needs these additions before the codebase is usable:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "types": ["bun-types"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
+```
+
+- `"types": ["bun-types"]` — loads Bun global types (replaces `@types/node` for server-side code)
+- `"moduleResolution": "bundler"` — correct mode for Bun's resolver; do not use `"node"` or `"node16"`
+- `"paths"` — Bun resolves `@/` aliases natively at runtime; IDE tooling uses tsconfig
+
 ### Naming Conventions
 
 - snake_case for database columns and JSON API fields
@@ -92,6 +141,26 @@ CREATE TABLE IF NOT EXISTS events (
 
 - Parameterized SQL only — NEVER string-concatenate values into queries (AGENTS.md rule ch-lar)
 - All query helpers in `src/db/queries.ts` must use `?` placeholders
+- Never use `innerHTML` or `dangerouslySetInnerHTML` in UI code (AGENTS.md rule ch-u88)
+
+### AGENTS.md Required Content
+
+The `AGENTS.md` created in this story must include all mandatory project conventions so every subsequent AI agent session picks them up automatically. Minimum required rules:
+
+- **ch-lar**: Parameterized SQL only — never string-concatenate values into queries
+- **ch-u88**: Never use `innerHTML` or `dangerouslySetInnerHTML`
+- **Naming — DB/API**: snake_case for all database column names and JSON API fields (e.g., `session_id`, `hook_duration_ms`)
+- **Naming — TypeScript**: camelCase for TypeScript variables, functions, and schema names
+- **Naming — Files**: kebab-case for all source files (e.g., `event-list.ts`, `db-layer.ts`)
+- **Linting**: All code must pass `bun run biome check` before committing
+
+### README.md Required Content
+
+A minimal `README.md` at the repo root with:
+
+- One-line description of what hookwatch does
+- Install command: `npm install -g hookwatch`
+- Dev commands: `bun install`, `bun test`, `bun run biome check`
 
 ### Project Structure Notes
 

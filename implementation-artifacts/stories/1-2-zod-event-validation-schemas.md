@@ -49,33 +49,42 @@ Field,Type,Zod Type,Required
 session_id,string,z.string(),yes
 transcript_path,string,z.string(),yes
 cwd,string,z.string(),yes
-permission_mode,string,z.string(),yes
+permission_mode,z.enum(["default","plan","acceptEdits","dontAsk","bypassPermissions"]),z.enum([...]),yes
 hook_event_name,string,z.string(),yes
 ```
+
+Note: `permission_mode` has a documented fixed set of values — use `z.enum()` for type safety.
 
 ### 18 Event Types and Event-Specific Fields
 
 ```csv
-Event,Key Fields,Matcher Target
-SessionStart,"source, model, agent_type?",source
-SessionEnd,reason,reason
-UserPromptSubmit,prompt,none
-PreToolUse,"tool_name, tool_use_id, tool_input",tool_name
-PostToolUse,"tool_name, tool_use_id, tool_input, tool_response",tool_name
-PostToolUseFailure,"tool_name, tool_use_id, tool_input, error, is_interrupt?",tool_name
-PermissionRequest,"tool_name, tool_input, permission_suggestions?",tool_name
-Notification,"message, title?, notification_type",notification_type
-SubagentStart,"agent_id, agent_type",agent_type
-SubagentStop,"agent_id, agent_type, stop_hook_active, agent_transcript_path, last_assistant_message",agent_type
-Stop,"stop_hook_active, last_assistant_message",none
-PreCompact,"trigger, custom_instructions",trigger
-TeammateIdle,"teammate_name, team_name",none
-TaskCompleted,"task_id, task_subject, task_description?, teammate_name?, team_name?",none
-ConfigChange,"source, file_path?",source
-WorktreeCreate,name,none
-WorktreeRemove,worktree_path,none
-Setup,trigger,unknown
+Event,Key Fields,Matcher Target,Zod Notes
+SessionStart,"source, model, agent_type?",source,"source: z.enum(['startup','resume','clear','compact']); model: z.string() (free-form model identifier — do not enum)"
+SessionEnd,reason,reason,"reason: z.enum(['clear','logout','prompt_input_exit','bypass_permissions_disabled','other'])"
+UserPromptSubmit,prompt,none,
+PreToolUse,"tool_name, tool_use_id, tool_input",tool_name,"tool_input: z.record(z.unknown()) — arbitrary JSON object varying by tool"
+PostToolUse,"tool_name, tool_use_id, tool_input, tool_response",tool_name,"tool_input: z.record(z.unknown()); tool_response: z.record(z.unknown()) — tool-specific result"
+PostToolUseFailure,"tool_name, tool_use_id, tool_input, error, is_interrupt?",tool_name,"tool_input: z.record(z.unknown())"
+PermissionRequest,"tool_name, tool_input, permission_suggestions?",tool_name,"NO tool_use_id — absent by design (unlike PreToolUse/PostToolUse); tool_input: z.record(z.unknown())"
+Notification,"message, title?, notification_type",notification_type,"notification_type: z.enum(['permission_prompt','idle_prompt','auth_success','elicitation_dialog'])"
+SubagentStart,"agent_id, agent_type",agent_type,
+SubagentStop,"agent_id, agent_type, stop_hook_active, agent_transcript_path, last_assistant_message",agent_type,
+Stop,"stop_hook_active, last_assistant_message",none,
+PreCompact,"trigger, custom_instructions",trigger,"trigger: z.enum(['manual','auto'])"
+TeammateIdle,"teammate_name, team_name",none,
+TaskCompleted,"task_id, task_subject, task_description?, teammate_name?, team_name?",none,
+ConfigChange,"source, file_path?",source,"source: z.enum(['user_settings','project_settings','local_settings','policy_settings','skills'])"
+WorktreeCreate,name,none,
+WorktreeRemove,worktree_path,none,
+Setup,trigger,unknown,"trigger: z.enum(['init','maintenance']) — SDK-only event; matcher target undocumented"
 ```
+
+Key Zod type decisions:
+
+- Enum fields: use `z.enum([...])` for fields with a documented fixed set of values (source, reason, trigger, notification_type, permission_mode, ConfigChange source). Prefer `z.enum()` over `z.union(z.literal(...))` for readability.
+- `model` in SessionStart: use `z.string()` — it is a free-form model identifier (e.g., `"claude-sonnet-4-6"`), not a closed enum. New models ship without schema changes.
+- `tool_input` / `tool_response`: use `z.record(z.unknown())` — the object structure varies per tool. Do not attempt per-tool sub-schemas here; capture the raw shape and let callers narrow as needed.
+- `PermissionRequest.tool_use_id`: this field is **absent** from PermissionRequest (confirmed in `docs/hook-stdin-schema.md`). Do not add it, not even as `z.optional()` — it is structurally different from PreToolUse/PostToolUse.
 
 ### Naming Conventions
 
@@ -96,12 +105,23 @@ The parse function should:
 
 ### Project Structure Notes
 
+This story creates files under `src/schemas/`. The full project layout (for context) is:
+
 ```text
 src/
+  handler/           — hook entry point, spawn logic
+  server/            — Bun.serve(), ingest, query, SSE, health, static
+  db/                — schema, migrations, query helpers, connection
   schemas/
-    events.ts        — Zod schemas for all 18 event types (stdin)
-    events.test.ts   — co-located unit test
+    events.ts        — Zod schemas for all 18 event types (stdin)  ← this story
+    events.test.ts   — co-located unit test                        ← this story
+    output.ts        — Zod schemas for hook stdout (Epic 4)
+    query.ts         — Zod schema for POST /api/query filter (Story 1.3+)
+  ui/                — Preact + htm components
+  cli/               — citty subcommands (install, uninstall, open, wrap)
 ```
+
+Import alias: `@/` maps to `./src/` (tsconfig paths). Use `@/schemas/events` not relative paths.
 
 ### References
 

@@ -47,6 +47,25 @@ so that I can review what the agent did.
 - **NEVER** use `innerHTML` or `dangerouslySetInnerHTML` (AGENTS.md rule ch-u88)
 - htm auto-escapes all interpolated values — XSS prevention by design
 
+**Preact+htm browser import pattern** — no build step, no bundler. Use the
+standalone ESM bundle that ships htm, Preact, and Preact signals together:
+
+```ts
+import {
+  html,
+  render,
+  useState,
+  useEffect,
+  signal,
+} from 'https://esm.sh/htm/preact/standalone';
+```
+
+This import URL is resolved by the browser at runtime. Bun.Transpiler keeps
+the import URL as-is when it transpiles the `.ts` file to JS — the browser
+fetches the ESM bundle from esm.sh directly. Do not import from `'preact'` or
+`'htm'` bare specifiers (those are Node/Bun module names and won't resolve in
+the browser without a bundler).
+
 ### UI Delivery
 
 - `Bun.Transpiler` transpiles `.ts` to JS on-the-fly when the server receives a request for a `.ts` file
@@ -55,12 +74,73 @@ so that I can review what the agent did.
 - No `.js` files on disk, no build step, no service worker, no pre-built artifacts
 - ~15 UI files x sub-millisecond per file = <10ms cold start
 
+**Security — path traversal prevention (ch-u88 boundary)**: `src/server/static.ts`
+must validate every incoming path before reading from disk. Required checks:
+
+1. Reject any path containing `..` segments
+2. Resolve the requested path to an absolute path (`path.resolve(uiDir, requestedPath)`)
+3. Verify the resolved absolute path starts with `uiDir` (the `src/ui/` absolute path)
+4. Return `404` if the check fails — never serve files outside `src/ui/`
+
+Example guard:
+
+```ts
+const uiDir = path.resolve(import.meta.dir, '../ui');
+const resolved = path.resolve(uiDir, requestedFile);
+if (!resolved.startsWith(uiDir + '/') && resolved !== uiDir) {
+  return new Response('Not found', { status: 404 });
+}
+```
+
 ### Query Endpoint
 
 - `POST /api/query` with filter object — one route handles all query types
 - Filter schema defined in `src/schemas/query.ts` using Zod
 - All SQL queries in `src/db/queries.ts` must use parameterized `?` placeholders (ch-lar)
 - Error format: `{ "error": { "code": "INVALID_QUERY", "message": "..." } }`
+
+**Request schema** (all fields optional for this story; story 2.2 adds
+`session_id` filter):
+
+```json
+{
+  "filter": {
+    "session_id": "string | undefined",
+    "event_type": "string | undefined",
+    "limit": "number | undefined",
+    "offset": "number | undefined"
+  }
+}
+```
+
+- `session_id` — return only events matching this session (exact match)
+- `event_type` — return only events matching this event type (exact match)
+- `limit` — max rows to return (default: 200, max: 1000)
+- `offset` — rows to skip for pagination (default: 0)
+- Omit a field or set to `null`/`undefined` to skip that filter
+
+**Response schema** — JSON array of event rows, one object per row:
+
+```json
+[
+  {
+    "id": "number",
+    "ts": "number",
+    "event": "string",
+    "session_id": "string",
+    "cwd": "string",
+    "tool_name": "string | null",
+    "session_name": "string | null",
+    "hook_duration_ms": "number | null",
+    "payload": "object"
+  }
+]
+```
+
+- All field names are snake_case (matches database columns — no mapping layer)
+- `payload` is the full parsed stdin JSON object stored in the database
+- `ts` is Unix epoch milliseconds — format in the UI with `new Date(ts)`
+- Empty result returns `[]` (not null)
 
 ### Event List Component
 
@@ -93,6 +173,10 @@ src/
     events/
       event-list.ts  — chronological event list component
 ```
+
+Structure matches `./planning-artifacts/architecture.md` (Complete Project
+Directory Structure section). The AGENTS.md file structure is outdated — use
+the architecture.md layout above.
 
 - Path alias: `@/` maps to `./src/` via tsconfig.json `paths`
 - No server-side rendering — Preact mounts client-side

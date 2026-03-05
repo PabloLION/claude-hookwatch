@@ -28,8 +28,8 @@ so that I can view events even when the server timed out.
 ## Tasks / Subtasks
 
 - [ ] Create `src/cli/open.ts` — citty subcommand definition for `hookwatch open` with `--port` flag (number type, optional) (AC: #1, #3)
-- [ ] Implement server detection — attempt `GET /health` on the expected port to check if the server is already running (AC: #2)
-- [ ] Implement server start logic — if server not running, spawn Bun server as a detached background process, poll `GET /health` until ready (reuse spawn logic from `src/handler/spawn.ts` if available) (AC: #1)
+- [ ] Implement server detection — read port from `~/.claude/hookwatch/hookwatch.port`; if file exists, attempt `GET /health` on that port; if file absent or health check fails, server is not running (AC: #2)
+- [ ] Implement server start logic — if server not running, spawn Bun server as a detached background process using the `spawnServer` function from `src/handler/spawn.ts`, then poll `GET /health` until ready (AC: #1)
 - [ ] Implement port auto-increment — when no explicit `--port` flag, try default port 6004, then 6005, 6006, etc. until a free port is found (AC: #1)
 - [ ] Implement explicit port error — when `--port` is specified and the port is occupied (either by hookwatch or another process), display error "port {N} in use" and exit 1 (AC: #4)
 - [ ] Implement browser open — after server is confirmed running, open the web UI URL in the default browser using `Bun.spawn(["open", url])` on macOS and `xdg-open` on Linux (AC: #1, #2)
@@ -43,14 +43,19 @@ so that I can view events even when the server timed out.
 
 ### Server Detection
 
-- Before starting the server, check if one is already running
-- Try `GET http://localhost:{port}/health` with a short timeout (e.g., 500ms)
-- If 200 OK: server is running, skip to browser open
-- If connection refused or timeout: server is not running, proceed to start
+- Before starting the server, read `~/.claude/hookwatch/hookwatch.port` to
+  discover the port of an already-running server
+- If the file exists, read the port from it and attempt `GET http://localhost:{port}/health`
+  with a short timeout (e.g., 500ms)
+  - If 200 OK: server is running on that port, skip to browser open
+  - If connection refused or timeout: server is not running (stale port file),
+    proceed to start
+- If the file does not exist: server is not running, proceed to start
 
 ### Port Logic
 
-- Default port: 6004 (from architecture)
+- Port discovery for a running server: read `~/.claude/hookwatch/hookwatch.port`
+- Default port: 6004 (from architecture), used when starting a new server instance
 - **No explicit `--port`**: auto-increment if 6004 is occupied (try 6005, 6006...)
 - **Explicit `--port N`**: if port N is occupied, error "port N in use" — no auto-increment
 - This matches the server's own port behavior (Story 1.3) but adds the explicit-port guard
@@ -70,13 +75,13 @@ so that I can view events even when the server timed out.
 
 ### Reuse Patterns
 
-- Server spawn logic may be shared with `src/handler/spawn.ts` (Story 1.5) — extract to a shared utility if both stories need the same spawn + health-poll logic
+- Server spawn logic: call `spawnServer` from `src/handler/spawn.ts` (Story 1.5) directly — do not duplicate the spawn + health-poll logic in `open.ts`
 - Health check endpoint: `GET /health` returns 200 OK (Story 1.3)
 
 ### Dependencies
 
 - Story 1.3: Bun server — provides `GET /health` endpoint used for server detection, and `src/server/index.ts` to be spawned
-- Story 1.5: server auto-start spawn logic (`src/handler/spawn.ts`) — may be shared or extracted to a utility for reuse here
+- Story 1.5: server auto-start spawn logic (`src/handler/spawn.ts`) — `spawnServer` is called directly from `open.ts` for starting the server
 - Story 1.6: CLI framework (`src/cli/index.ts`) — the `open` subcommand stub registered there is implemented in this story
 
 ### Naming Conventions
@@ -92,7 +97,7 @@ src/
     index.ts    — register open subcommand
     open.ts     — hookwatch open implementation (new)
   handler/
-    spawn.ts    — shared spawn logic (may be extracted to shared utility)
+    spawn.ts    — server spawn + health-poll logic (called from open.ts)
 ```
 
 ### References

@@ -59,17 +59,21 @@ Context injection is opt-in. Controlled by:
 - Environment variable takes precedence over config file
 - Default: disabled (backward compatible — existing installations unaffected)
 
+Config file parsing uses `smol-toml` (listed in `package.json` dependencies alongside Zod and citty — see Story 1.1 AC). Bun does not have built-in TOML support.
+
 ### systemMessage Content
 
-Brief, structured summary:
+Brief, structured summary using the `hook_event_name` field from the common stdin fields (present on every event):
 
-- Format: `"hookwatch: captured {EventType} event for {detail}"`
+- Format: `"hookwatch: captured {hook_event_name} event for {detail}"`
 - Examples:
   - `"hookwatch: captured PreToolUse event for tool Bash"`
   - `"hookwatch: captured SessionStart event (source: startup)"`
   - `"hookwatch: captured UserPromptSubmit event"`
 
 The detail varies by event type — tool name for tool events, source/reason for session events, event type alone for events without a natural detail field.
+
+`systemMessage` is optional in the hook output schema (Zod: `z.optional(z.string())`). Not all hook invocations produce a `systemMessage` — when context injection is disabled or on failure, no `systemMessage` is present in stdout. The output JSON must still be structurally valid when `systemMessage` is omitted.
 
 ### Exit Code Contract
 
@@ -78,7 +82,10 @@ Scenario,Exit Code,Stdout,Behavior
 POST success + injection enabled,0,Valid JSON,Claude Code parses stdout
 POST success + injection disabled,0,None,Silent success
 POST failure (server unreachable),1,None,Non-blocking error
+Hook wants to block the action (PreToolUse / PreSubAgentStart),2,JSON with decision,Claude Code blocks the action
 ```
+
+Exit code 2 is reserved for blocking actions (PreToolUse and PreSubAgentStart hooks that support blocking). hookwatch does not use exit 2 in its standard capture path — it is listed here for completeness and to avoid confusion with exit 1. If a future story adds blocking support, exit 2 is the correct mechanism.
 
 ### Error Safety
 
@@ -101,9 +108,10 @@ tests/
   handler-server.test.ts  — integration test for stdout output format
 ```
 
-- Path alias: `@/` maps to `./src/`
+- Path alias: `@/` maps to `./src/` (tsconfig.json `paths`, Bun supports natively)
 - File naming: kebab-case
 - This story modifies existing files — no new files created except integration test additions
+- Note: AGENTS.md shows an older file layout (`hooks/handler.ts`, `src/db.ts`, `src/server.ts`). That structure is outdated. The authoritative layout is `planning-artifacts/architecture.md#Complete Project Directory Structure`. Use the paths in this story, not AGENTS.md file structure.
 
 ### Dependencies
 

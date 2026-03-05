@@ -44,6 +44,7 @@ so that captured events flow from handler to database.
 - Single `fetch` handler in `Bun.serve()` that routes by method + pathname
 - Route dispatch: `GET /health` -> health handler, `POST /api/events` -> ingest handler
 - All other routes return `404 Not Found`
+- `POST /api/query` is NOT part of this story — it is added in Story 2.1 when the web UI needs to fetch events
 
 ### Port Configuration
 
@@ -51,7 +52,7 @@ so that captured events flow from handler to database.
 - Auto-increment on `EADDRINUSE`: try 6004 -> 6005 -> 6006 -> ...
 - Maximum retry count: define a reasonable cap (e.g., 10 attempts)
 - When `--port` is specified explicitly via CLI (Story 1.6), auto-increment is disabled — error if port is in use
-- The final port must be discoverable by the handler for auto-start (Story 1.5)
+- The final port must be discoverable by the handler for auto-start (Story 1.5). After binding succeeds, write the port number to `~/.claude/hookwatch/hookwatch.port` (plain text, single line). The handler reads this file to know where to POST events. Create the directory if absent; overwrite any existing file on each server start.
 
 ### Error Format
 
@@ -80,11 +81,16 @@ INTERNAL,500,Unexpected server error
 
 1. Read request body as JSON
 2. Validate with Zod event schema (from `@/schemas/events`)
-3. Extract common fields (event, session_id, cwd, tool_name, ts)
-4. Insert into SQLite via `@/db/queries` (parameterized)
-5. Return `201 Created` with `{ "id": <inserted_id> }` or similar confirmation
-6. On validation failure: return `400` with `INVALID_QUERY` error
-7. On database error: return `503` with `DB_LOCKED` or `500` with `INTERNAL`
+3. Extract common fields: `session_id`, `cwd`, `tool_name` from the payload.
+   Map `hook_event_name` (the field Claude Code sends) to the `event` column in
+   the events table — these are the same value, just different names at the
+   boundary.
+4. Generate `ts` server-side using `Date.now()` — do NOT read a timestamp from
+   the hook payload (none is provided by Claude Code)
+5. Insert into SQLite via `@/db/queries` (parameterized)
+6. Return `201 Created` with `{ "ok": true, "id": <number> }` on success
+7. On validation failure: return `400` with `{ "error": { "code": "INVALID_QUERY", "message": "..." } }`
+8. On database error: return `503` with `DB_LOCKED` or `500` with `INTERNAL`
 
 ### Security
 

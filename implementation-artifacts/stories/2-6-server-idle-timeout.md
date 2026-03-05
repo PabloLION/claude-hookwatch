@@ -55,13 +55,6 @@ idle_timeout_minutes = 30
 - If config file does not exist or `idle_timeout_minutes` is not set, use the default (30 minutes)
 - Config is read once at server startup — changes require server restart
 
-### Graceful Shutdown Sequence
-
-1. Log shutdown reason: `[INFO] Server shutting down: idle timeout (30m)`
-2. Close all SSE client connections (iterate `src/server/stream.ts` client set, close each writer)
-3. Close SQLite database connection (`db.close()`)
-4. Call `process.exit(0)`
-
 ### SQLite Recovery
 
 - No special cleanup needed — SQLite WAL mode handles crash recovery
@@ -77,15 +70,71 @@ idle_timeout_minutes = 30
 
 ### Testing Strategy
 
-- For idle timeout tests, use a very short timeout (e.g., 500ms) to avoid slow tests
-- Use environment variable or test-specific config to override the default timeout
+- For idle timeout tests, use a very short timeout (e.g., 100ms) to avoid slow tests
+- Override the idle timeout via the `HOOKWATCH_IDLE_TIMEOUT_MS` environment variable —
+  the server reads this at startup and uses it instead of the config file value when
+  present. Production code checks `process.env.HOOKWATCH_IDLE_TIMEOUT_MS` before
+  falling back to the TOML config and then the 30-minute default. Tests set this env
+  var to `"100"` so the timer fires quickly without modifying production logic
 - Verify `process.exit` is called (mock or check process exit code)
+
+### Export Contracts
+
+This story depends on two exports from earlier stories. Both must be available
+before graceful shutdown can be wired up correctly.
+
+**`db.close()` — Story 1.1 contract**
+
+`src/db/connection.ts` must export a `close()` function that closes the
+`bun:sqlite` database handle cleanly:
+
+```ts
+// src/db/connection.ts
+export function close(): void {
+  db.close();
+}
+```
+
+The server calls `close()` as the second step of graceful shutdown. This is a
+cross-story contract: Story 1.1 owns the implementation, Story 2.6 is the
+consumer. If Story 1.1 did not export `close()`, add it now.
+
+**`closeAll()` — Story 2.4 contract**
+
+`src/server/stream.ts` must export a `closeAll()` function that iterates the
+active SSE client set and closes every writer:
+
+```ts
+// src/server/stream.ts
+export function closeAll(): void {
+  for (const writer of clients) {
+    try { writer.close(); } catch { /* already closed */ }
+  }
+  clients.clear();
+}
+```
+
+The server calls `closeAll()` as the first step of graceful shutdown (before
+closing the database). This is a cross-story contract: Story 2.4 owns the
+implementation, Story 2.6 is the consumer. If Story 2.4 did not export
+`closeAll()`, add it now.
+
+### Graceful Shutdown Order
+
+The shutdown sequence must follow this order to avoid writing to a closed DB
+while SSE clients are still connected:
+
+1. Log shutdown reason: `[INFO] Server shutting down: idle timeout (30m)`
+2. Call `closeAll()` from `@/server/stream.ts` — close all active SSE connections
+3. Call `close()` from `@/db/connection.ts` — close the SQLite handle
+4. Call `process.exit(0)`
 
 ### Dependencies
 
+- Story 1.1: SQLite database layer (`src/db/connection.ts`) — must export `close()`
 - Story 1.3: Bun server (`src/server/index.ts`) — idle timer and graceful shutdown added here
 - Story 1.5: server auto-start from handler (`src/handler/spawn.ts`) — required for AC #3 recovery path
-- Story 2.4: SSE live updates (`src/server/stream.ts`) — graceful shutdown must close all SSE connections from the stream client set
+- Story 2.4: SSE live updates (`src/server/stream.ts`) — must export `closeAll()`
 
 ### Naming Conventions
 

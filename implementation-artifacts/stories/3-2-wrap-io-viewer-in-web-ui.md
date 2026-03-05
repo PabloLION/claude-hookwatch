@@ -16,7 +16,8 @@ so that I can debug my hook's input/output behavior visually.
 
 2. **Given** a developer clicks on a wrap event, **when** the detail view
    expands, **then** stdout and stderr are displayed in separate panels,
-   and the original command and exit code are shown.
+   and the original command and exit code are shown. (stdin is NOT captured
+   — see Dev Notes.)
 
 3. **Given** the session filter is active, **when** wrap events are filtered,
    **then** they follow the same session filtering as hook events.
@@ -52,7 +53,7 @@ The wrap-viewer component renders the detail view for wrap events. It receives t
 - **Command header**: the original command array joined as a shell-like string
 - **Exit code badge**: color-coded inline element (green background for `0`, red for non-zero)
 - **Two collapsible I/O panels**: stdout and stderr — each in a `<details>` element with `<pre><code>` content
-- Note: stdin is not captured (piped through without buffering per Story 3.1) — no stdin panel
+- Note: stdin is NOT captured — only stdout and stderr are displayed. This is a deliberate architecture decision: stdin is piped through to the wrapped command without buffering (Story 3.1). Epic AC wording will be updated to reflect this. (See FR14 and Epic 3 description — the epic mentions "stdin/stdout/stderr" loosely; the correct scope for the viewer is stdout and stderr only.)
 
 Example component structure using htm:
 
@@ -97,12 +98,12 @@ html`
 
 ### Testing
 
-- Playwright browser tests in `tests/` directory
+- Playwright browser tests in `tests/` directory — test file: `tests/wrap-viewer.test.ts`
 - Test scenarios:
   - Load event list with mix of hook and wrap events — verify wrap events have visual indicator
   - Click wrap event — verify stdout and stderr panels render with correct content
   - Verify exit code 0 renders green, exit code 1 renders red
-  - Apply session filter — verify wrap events filter correctly
+  - Apply session filter — verify wrap events filter correctly by `session_id`
 - Unit tests not needed for pure Preact components — Playwright covers rendering behavior
 
 ### Project Structure Notes
@@ -117,7 +118,7 @@ src/
       event-detail.ts   — modify to delegate to wrap-viewer for Wrap events
     app.ts              — import wrap-viewer
 tests/
-  wrap-viewer.test.ts   — Playwright browser test
+  wrap-viewer.test.ts   — Playwright browser test (kebab-case, integration tests directory)
 ```
 
 - Path alias: `@/` maps to `./src/`
@@ -128,8 +129,8 @@ tests/
 ### Dependencies
 
 - Story 2.1: event list component (`src/ui/events/event-list.ts`) — this story adds wrap visual indicator to that component
-- Story 2.3: event detail component (`src/ui/events/event-detail.ts`) — modified to delegate to wrap-viewer for `"Wrap"` event type
-- Story 3.1: wrap command — defines the wrap event payload schema (`command`, `stdout`, `stderr`, `exit_code`) that this component renders
+- Story 2.3: event detail component (`src/ui/events/event-detail.ts`) — **must be complete first**. This story extends that component to handle wrap IO events: when event type is `"Wrap"`, `event-detail.ts` delegates rendering to `wrap-viewer.ts` instead of the standard payload view. Story 2.3 must be merged before this story starts
+- Story 3.1: wrap command — **must be complete first**. Story 3.1's wrap command sets the `session_id` on all wrap events it emits (same `session_id` as the Claude Code session that ran `hookwatch wrap`). The wrap-viewer filters by `session_id` via the existing `POST /api/query` session filter — no new filter logic is needed. Wrap events are stored in the same `events` table with a `session_id` column, so the existing session filter works without modification
 
 ### References
 
