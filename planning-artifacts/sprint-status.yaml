@@ -1,4 +1,4 @@
-# generated: 20260304T230000+01
+# generated: 20260305T120000+01
 # project: hookwatch
 # project_key: ch
 # tracking_system: beads
@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 20260304T230000+01
+generated: 20260305T120000+01
 project: hookwatch
 project_key: ch
 tracking_system: beads
@@ -41,33 +41,33 @@ story_location: implementation-artifacts/stories
 
 development_status:
   # Epic 1: Install & Capture Events
-  epic-1: backlog
-  1-1-project-initialization-sqlite-database-layer: backlog
-  1-2-zod-event-validation-schemas: backlog
-  1-3-bun-server-with-event-ingestion-endpoint: backlog
-  1-4-hook-handler-receive-validate-forward-events: backlog
-  1-5-server-auto-start-from-handler: backlog
-  1-6-plugin-manifest-cli-install-uninstall: backlog
+  epic-1: in-progress
+  1-1-project-initialization-sqlite-database-layer: ready-for-dev
+  1-2-zod-event-validation-schemas: ready-for-dev
+  1-3-bun-server-with-event-ingestion-endpoint: ready-for-dev
+  1-4-hook-handler-receive-validate-forward-events: ready-for-dev
+  1-5-server-auto-start-from-handler: ready-for-dev
+  1-6-plugin-manifest-cli-install-uninstall: ready-for-dev
   epic-1-retrospective: optional
 
   # Epic 2: Browse Events in Web UI
-  epic-2: backlog
-  2-1-serve-web-ui-event-list-page: backlog
-  2-2-session-filter: backlog
-  2-3-event-detail-tool-input-view: backlog
-  2-4-sse-live-updates: backlog
-  2-5-hookwatch-open-command: backlog
-  2-6-server-idle-timeout: backlog
+  epic-2: in-progress
+  2-1-serve-web-ui-event-list-page: ready-for-dev
+  2-2-session-filter: ready-for-dev
+  2-3-event-detail-tool-input-view: ready-for-dev
+  2-4-sse-live-updates: ready-for-dev
+  2-5-hookwatch-open-command: ready-for-dev
+  2-6-server-idle-timeout: ready-for-dev
   epic-2-retrospective: optional
 
   # Epic 3: Hook Debugging with Wrap
-  epic-3: backlog
-  3-1-wrap-command-capture-passthrough-io: backlog
-  3-2-wrap-io-viewer-in-web-ui: backlog
+  epic-3: in-progress
+  3-1-wrap-command-capture-passthrough-io: ready-for-dev
+  3-2-wrap-io-viewer-in-web-ui: ready-for-dev
   epic-3-retrospective: optional
 
   # Epic 4: Context Injection
-  epic-4: backlog
-  4-1-hook-stdout-validation-schemas: backlog
-  4-2-handler-context-injection-output: backlog
+  epic-4: in-progress
+  4-1-hook-stdout-validation-schemas: ready-for-dev
+  4-2-handler-context-injection-output: ready-for-dev
   epic-4-retrospective: optional
