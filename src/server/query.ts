@@ -15,7 +15,7 @@
 
 import { ZodError } from "zod";
 import { openDb } from "@/db/connection.ts";
-import { queryEvents } from "@/db/queries.ts";
+import { getDistinctSessions, queryEvents } from "@/db/queries.ts";
 import { queryFilterSchema } from "@/schemas/query.ts";
 import { errorResponse } from "@/server/errors.ts";
 
@@ -43,9 +43,13 @@ export async function handleQuery(req: Request): Promise<Response> {
     return errorResponse("INVALID_QUERY", "Payload validation failed", 400);
   }
 
-  // Query the database
+  // Query the database — route on queryType discriminator
   try {
     const db = openDb();
+    if (filter.queryType === "sessions") {
+      const sessions = getDistinctSessions(db);
+      return Response.json(sessions, { status: 200 });
+    }
     const events = queryEvents(db, filter);
     return Response.json(events, { status: 200 });
   } catch (err) {

@@ -24,6 +24,11 @@ import { z } from "zod";
 
 export const queryFilterSchema = z
   .object({
+    /**
+     * Discriminator field: "events" returns filtered event rows (default);
+     * "sessions" returns the list of distinct session IDs.
+     */
+    queryType: z.enum(["events", "sessions"]).optional().default("events"),
     session_id: z.string().optional(),
     hook_event_name: z.string().optional(),
     limit: z.number().int().positive().max(1000).optional().default(100),
