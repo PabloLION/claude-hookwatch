@@ -1,11 +1,14 @@
 /**
  * EventDetail component — renders the expanded detail view for a single event.
  *
- * Displays:
- *   - For tool-related events (PreToolUse, PostToolUse, PostToolUseFailure):
- *     a definition list showing tool_name and tool_input prominently above the
- *     raw stdin.
- *   - Full stdin as JSON.stringify(stdin, null, 2) inside <pre><code>.
+ * Routing logic (Story 3.2):
+ *   - Wrapped events (wrapped_command is non-null): delegates to WrapViewer
+ *     which displays stdout, stderr, exit_code, and the wrapped_command.
+ *   - Bare events (wrapped_command is null): renders the standard detail with
+ *     tool info header (for PreToolUse/PostToolUse/PostToolUseFailure) and the
+ *     full stdin as formatted JSON.
+ *
+ * Full stdin as JSON.stringify(parsed, null, 2) inside <pre><code>.
  *
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
@@ -13,6 +16,7 @@
 import htm from "htm";
 import { h } from "preact";
 import type { EventRow } from "../app.ts";
+import { WrapViewer } from "../wrap/wrap-viewer.ts";
 
 const html = htm.bind(h);
 
@@ -68,6 +72,12 @@ interface EventDetailProps {
 }
 
 export function EventDetail({ event }: EventDetailProps): ReturnType<typeof html> {
+  // Wrapped events: delegate entirely to WrapViewer
+  if (event.wrapped_command !== null && event.wrapped_command !== undefined) {
+    return html`<${WrapViewer} event=${event} />`;
+  }
+
+  // Bare event: standard detail view
   const parsed = parseStdin(event.stdin);
   const formattedStdin = parsed !== null ? JSON.stringify(parsed, null, 2) : event.stdin; // Fallback: display raw string if not valid JSON
 

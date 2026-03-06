@@ -20,6 +20,10 @@ export interface EventRow {
   session_id: string;
   event: string;
   stdin: string;
+  stdout: string | null;
+  stderr: string | null;
+  exit_code: number | null;
+  wrapped_command: string | null;
 }
 
 // Cross-component signal — owns the current event list

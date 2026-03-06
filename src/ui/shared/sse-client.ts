@@ -71,6 +71,8 @@ export function startSseClient(
 /**
  * Type guard for EventRow. Validates the minimal fields needed to display the
  * event in the list. Does not validate stdin contents.
+ * Optional fields (stdout, stderr, exit_code, wrapped_command) are allowed
+ * to be absent or null.
  */
 function isEventRow(value: unknown): value is EventRow {
   if (value === null || typeof value !== "object") return false;

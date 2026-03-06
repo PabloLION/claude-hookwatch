@@ -9,6 +9,10 @@
  * Each row is clickable — clicking toggles an expanded EventDetail view below
  * the row. Multiple rows can be expanded simultaneously.
  *
+ * Visual distinction (Story 3.2):
+ *   - Bare handler events (wrapped_command is null): outline/hollow badge style
+ *   - Wrapped events (wrapped_command is non-null): solid/filled badge style
+ *
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
@@ -61,6 +65,34 @@ function formatTimestamp(ts: number): string {
   }
 }
 
+/**
+ * Return inline style object for the event type cell.
+ * Wrapped events use solid/filled appearance; bare events use outline style.
+ */
+function eventTypeBadgeStyle(isWrapped: boolean): Record<string, string> {
+  if (isWrapped) {
+    return {
+      display: "inline-block",
+      padding: "0.1em 0.5em",
+      borderRadius: "0.25em",
+      background: "var(--pico-primary)",
+      color: "var(--pico-primary-inverse, #fff)",
+      fontWeight: "600",
+      fontSize: "0.85em",
+    };
+  }
+  return {
+    display: "inline-block",
+    padding: "0.1em 0.5em",
+    borderRadius: "0.25em",
+    background: "transparent",
+    color: "var(--pico-primary)",
+    border: "1px solid var(--pico-primary)",
+    fontWeight: "600",
+    fontSize: "0.85em",
+  };
+}
+
 export function EventList({ eventList, activeSession }: EventListProps) {
   // Track which row IDs are currently expanded. A Set allows multiple open rows.
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
@@ -107,6 +139,8 @@ export function EventList({ eventList, activeSession }: EventListProps) {
           <tbody>
             ${events.map((event) => {
               const expanded = expandedIds.has(event.id);
+              const isWrapped =
+                event.wrapped_command !== null && event.wrapped_command !== undefined;
               return html`
                 <tr
                   key=${event.id}
@@ -114,9 +148,16 @@ export function EventList({ eventList, activeSession }: EventListProps) {
                   style=${{ cursor: "pointer" }}
                   aria-expanded=${expanded}
                   data-event-id=${event.id}
+                  data-wrapped=${isWrapped ? "true" : "false"}
                 >
                   <td>${formatTimestamp(event.timestamp)}</td>
-                  <td>${event.event}</td>
+                  <td>
+                    <span
+                      class=${isWrapped ? "event-type-badge event-type-badge--wrapped" : "event-type-badge event-type-badge--bare"}
+                      style=${eventTypeBadgeStyle(isWrapped)}
+                      data-testid="event-type-badge"
+                    >${event.event}</span>
+                  </td>
                   <td>${event.session_id}</td>
                   <td>${extractToolName(event.stdin)}</td>
                 </tr>
