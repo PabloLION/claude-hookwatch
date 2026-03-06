@@ -18,6 +18,8 @@ import { portFilePath } from "@/paths.ts";
 import { errorResponse } from "@/server/errors.ts";
 import { handleHealth } from "@/server/health.ts";
 import { handleIngest } from "@/server/ingest.ts";
+import { handleQuery } from "@/server/query.ts";
+import { handleStatic } from "@/server/static.ts";
 
 const BASE_PORT = 6004;
 const MAX_PORT = 6064; // 60 retries before giving up
@@ -46,6 +48,13 @@ function removePortFile(): void {
 
 /**
  * Route a request to the correct handler.
+ *
+ * Route table:
+ *   GET  /health        — health check
+ *   POST /api/events    — event ingestion
+ *   POST /api/query     — event query
+ *   GET  /              — serve index.html
+ *   GET  /*             — serve UI assets (static or transpiled .ts)
  */
 function dispatch(req: Request): Response | Promise<Response> {
   const url = new URL(req.url);
@@ -56,6 +65,14 @@ function dispatch(req: Request): Response | Promise<Response> {
 
   if (req.method === "POST" && url.pathname === "/api/events") {
     return handleIngest(req);
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/query") {
+    return handleQuery(req);
+  }
+
+  if (req.method === "GET") {
+    return handleStatic(url.pathname);
   }
 
   return errorResponse("NOT_FOUND", `No route for ${req.method} ${url.pathname}`, 404);
