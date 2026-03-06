@@ -1,26 +1,103 @@
 /**
  * Hook handler entry point for hookwatch.
  *
- * Reads a Claude Code hook event from stdin, validates it with Zod, and POSTs
- * it to the local hookwatch server for storage.
+ * Reads a Claude Code hook event from stdin, validates it with Zod, POSTs
+ * it to the local hookwatch server for storage, and writes a hook output JSON
+ * to stdout so Claude Code injects a systemMessage into the agent's context.
  *
- * STDOUT SUPPRESSION: Claude Code interprets ANY stdout as hook output JSON.
- * All logging goes to stderr (console.error / process.stderr.write) — NEVER
- * console.log().
+ * STDOUT CONTRACT: Claude Code interprets ANY stdout as hook output JSON.
+ * The ONLY write to stdout is the structured hook output object after a
+ * successful POST. All other logging goes to stderr (console.error /
+ * process.stderr.write) — NEVER console.log().
  *
  * Exit codes:
- *   0 — success (event forwarded)
- *   1 — any error (validation failure, network error, etc.)
+ *   0 — success (event forwarded, hook output written to stdout)
+ *   1 — any error (validation failure, network error, etc.) — stdout EMPTY
  */
 
 import { readFileSync } from "node:fs";
 import { portFilePath } from "@/paths.ts";
+import type { HookEvent } from "@/schemas/events.ts";
 import { parseHookEvent } from "@/schemas/events.ts";
+import { hookOutputSchema } from "@/schemas/output.ts";
 import { spawnServer } from "./spawn.ts";
 
 const FALLBACK_PORT = 6004;
 const FETCH_TIMEOUT_MS = 5000;
 const SLOW_THRESHOLD_MS = 100;
+
+// ---------------------------------------------------------------------------
+// Context injection: build systemMessage for Claude Code
+// ---------------------------------------------------------------------------
+
+/**
+ * Extracts a subtype string from the event payload based on the event type.
+ * Returns null for event types that have no meaningful subtype.
+ */
+function getEventSubtype(event: HookEvent): string | null {
+  const name = event.hook_event_name;
+  switch (name) {
+    case "SessionStart":
+      return (event as { source: string }).source;
+    case "SessionEnd":
+      return (event as { reason: string }).reason;
+    case "PreToolUse":
+    case "PostToolUse":
+    case "PostToolUseFailure":
+    case "PermissionRequest":
+      return (event as { tool_name: string }).tool_name;
+    case "Notification":
+      return (event as { notification_type: string }).notification_type;
+    case "SubagentStart":
+    case "SubagentStop":
+      return (event as { agent_type: string }).agent_type;
+    case "PreCompact":
+      return (event as { trigger: string }).trigger;
+    case "ConfigChange":
+      return (event as { source: string }).source;
+    case "Setup":
+      return (event as { trigger: string }).trigger;
+    default:
+      // Stop, UserPromptSubmit, TeammateIdle, TaskCompleted, WorktreeCreate,
+      // WorktreeRemove — no subtype
+      return null;
+  }
+}
+
+/**
+ * Builds the systemMessage string injected into Claude Code's context after a
+ * successful event POST.
+ *
+ * Format: "Captured <EventType> (<subtype>)" when a subtype exists,
+ * or "Captured <EventType>" when there is no subtype.
+ *
+ * TODO: configurable via config.toml (ch-1ex5.1)
+ */
+function buildSystemMessage(event: HookEvent): string {
+  const subtype = getEventSubtype(event);
+  if (subtype !== null) {
+    return `Captured ${event.hook_event_name} (${subtype})`;
+  }
+  return `Captured ${event.hook_event_name}`;
+}
+
+/**
+ * Writes the hook output JSON to stdout so Claude Code injects the
+ * systemMessage into the agent's context.
+ *
+ * Context injection is always-on — no toggle.
+ * TODO: configurable via config.toml (ch-1ex5.1)
+ *
+ * IMPORTANT: This is the ONLY place stdout is written. All other output goes
+ * to stderr.
+ */
+function writeHookOutput(event: HookEvent): void {
+  const output = hookOutputSchema.parse({
+    continue: true,
+    systemMessage: buildSystemMessage(event),
+  });
+  process.stdout.write(JSON.stringify(output));
+}
 
 /**
  * Reads the server port from the port file written by the server on startup.
@@ -166,8 +243,14 @@ async function run(): Promise<void> {
   // POST to server, auto-starting it if not running
   const postResult = await postEvent(port, event);
   if (!postResult) {
+    // On failure: exit 1, stdout remains empty — Claude Code must not receive
+    // partial or malformed hook output JSON.
     process.exit(1);
   }
+
+  // Write hook output JSON to stdout for Claude Code context injection.
+  // This is the ONLY stdout write in the entire handler.
+  writeHookOutput(event);
 
   // Log slow handler execution to stderr (never stdout)
   const elapsedMs = Date.now() - startMs;

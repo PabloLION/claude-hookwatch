@@ -108,6 +108,7 @@ const HANDLER_PATH = new URL("./index.ts", import.meta.url).pathname;
 interface RunResult {
   exitCode: number | null;
   stderr: string;
+  stdout: string;
 }
 
 async function runHandler(
@@ -121,9 +122,13 @@ async function runHandler(
     env: { ...process.env, ...env },
   });
 
-  const [exitCode, stderrBuf] = await Promise.all([proc.exited, new Response(proc.stderr).text()]);
+  const [exitCode, stderrBuf, stdoutBuf] = await Promise.all([
+    proc.exited,
+    new Response(proc.stderr).text(),
+    new Response(proc.stdout).text(),
+  ]);
 
-  return { exitCode, stderr: stderrBuf };
+  return { exitCode, stderr: stderrBuf, stdout: stdoutBuf };
 }
 
 // ---------------------------------------------------------------------------
@@ -423,39 +428,126 @@ describe("server error handling", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Stdout suppression
+// Hook output (stdout) — context injection (Story 4.2)
 // ---------------------------------------------------------------------------
 
-describe("stdout suppression", () => {
-  test("handler produces no stdout on success", async () => {
-    const xdgHome = join(TMP_DIR, "stdout-check");
+describe("hook output (stdout)", () => {
+  test("successful POST writes valid JSON hook output to stdout", async () => {
+    const xdgHome = join(TMP_DIR, "stdout-success");
     writePortFile(xdgHome, server.port);
 
-    const proc = Bun.spawn(["bun", "--bun", HANDLER_PATH], {
-      stdin: new TextEncoder().encode(JSON.stringify(BASE_SESSION_START)),
-      stdout: "pipe",
-      stderr: "pipe",
-      env: { ...process.env, XDG_DATA_HOME: xdgHome },
+    const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      XDG_DATA_HOME: xdgHome,
     });
 
-    const [, stdoutBuf] = await Promise.all([proc.exited, new Response(proc.stdout).text()]);
-
-    expect(stdoutBuf).toBe("");
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.continue).toBe(true);
+    expect(typeof parsed.systemMessage).toBe("string");
+    expect(parsed.systemMessage.length).toBeGreaterThan(0);
   });
 
-  test("handler produces no stdout on error", async () => {
-    const xdgHome = join(TMP_DIR, "stdout-check-error");
+  test("systemMessage contains event type and subtype for SessionStart", async () => {
+    const xdgHome = join(TMP_DIR, "stdout-system-message-session-start");
     writePortFile(xdgHome, server.port);
 
-    const proc = Bun.spawn(["bun", "--bun", HANDLER_PATH], {
-      stdin: new TextEncoder().encode("not valid json at all"),
-      stdout: "pipe",
-      stderr: "pipe",
-      env: { ...process.env, XDG_DATA_HOME: xdgHome },
+    const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      XDG_DATA_HOME: xdgHome,
     });
 
-    const [, stdoutBuf] = await Promise.all([proc.exited, new Response(proc.stdout).text()]);
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.systemMessage).toBe("Captured SessionStart (startup)");
+  });
 
-    expect(stdoutBuf).toBe("");
+  test("systemMessage contains tool_name for PreToolUse", async () => {
+    const xdgHome = join(TMP_DIR, "stdout-pre-tool-use");
+    writePortFile(xdgHome, server.port);
+
+    const preToolUseEvent = {
+      session_id: "test-session-001",
+      transcript_path: "/tmp/transcript.jsonl",
+      cwd: "/home/user/project",
+      permission_mode: "default",
+      hook_event_name: "PreToolUse",
+      tool_name: "Bash",
+      tool_use_id: "toolu_01ABC123",
+      tool_input: { command: "ls" },
+    };
+
+    const result = await runHandler(JSON.stringify(preToolUseEvent), {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.systemMessage).toBe("Captured PreToolUse (Bash)");
+  });
+
+  test("systemMessage has no subtype for Stop", async () => {
+    const xdgHome = join(TMP_DIR, "stdout-stop");
+    writePortFile(xdgHome, server.port);
+
+    const stopEvent = {
+      session_id: "test-session-001",
+      transcript_path: "/tmp/transcript.jsonl",
+      cwd: "/home/user/project",
+      permission_mode: "default",
+      hook_event_name: "Stop",
+      stop_hook_active: false,
+      last_assistant_message: "Done.",
+    };
+
+    const result = await runHandler(JSON.stringify(stopEvent), {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.systemMessage).toBe("Captured Stop");
+  });
+
+  test("POST failure produces empty stdout", async () => {
+    const xdgHome = join(TMP_DIR, "stdout-post-failure");
+    writePortFile(xdgHome, server.port);
+
+    server.nextStatus = 500;
+
+    const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toBe("");
+  });
+
+  test("invalid JSON stdin produces empty stdout", async () => {
+    const xdgHome = join(TMP_DIR, "stdout-invalid-json");
+    writePortFile(xdgHome, server.port);
+
+    const result = await runHandler("not valid json at all", {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toBe("");
+  });
+
+  test("stdout output validates against hookOutputSchema", async () => {
+    const xdgHome = join(TMP_DIR, "stdout-schema-validate");
+    writePortFile(xdgHome, server.port);
+
+    const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    // hookOutputSchema fields: continue (bool), systemMessage (string), suppressOutput (bool)
+    // continue must be boolean true
+    expect(parsed.continue).toBe(true);
+    // systemMessage must be a non-empty string
+    expect(typeof parsed.systemMessage).toBe("string");
+    expect(parsed.systemMessage.length).toBeGreaterThan(0);
   });
 });
