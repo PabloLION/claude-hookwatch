@@ -29,10 +29,10 @@ tests/wrap-viewer.test.ts (Playwright)
 
 ## Key constraints
 
-- Import pattern: `import { html, render, useState, useEffect, signal } from 'https://esm.sh/htm/preact/standalone'`
-- NEVER use bare specifiers ('preact', 'htm') — browser can't resolve them
+- Import pattern: use bare specifiers (`import { html } from 'htm/preact'`) — resolved via `<script type="importmap">` in index.html pointing to local vendor files under src/ui/vendor/
+- Vendor setup: install preact, htm, @preact/signals via bun, copy browser ESM builds to src/ui/vendor/, add importmap entries in index.html
 - ch-u88: no innerHTML — all rendering via htm template literals
-- Pico CSS from CDN for styling — no custom CSS framework
+- Pico CSS: local npm dependency (@picocss/pico, pinned version) — copy pico.min.css to src/ui/pico.min.css. NOT CDN (offline-first)
 - Signal ownership: app.ts owns cross-component signals (activeSession, eventList), passes as props
 - Multiple sections can be open simultaneously (not exclusive accordion)
 - Payload included in list response — no separate fetch per event
@@ -45,4 +45,4 @@ tests/wrap-viewer.test.ts (Playwright)
 
 ## Workflow
 
-Make atomic commits per story. Run `bun test && bunx biome check` before each commit. Update your MEMORY.md after completing work. Do NOT push — the orchestrator handles merges.
+Make atomic commits per story. Run `bun run check` before each commit. Update your MEMORY.md after completing work. Do NOT push — the orchestrator handles merges.
