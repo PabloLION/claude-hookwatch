@@ -67,7 +67,7 @@ function getWrapArgs(): string[] | null {
 // ---------------------------------------------------------------------------
 
 /**
- * Extracts a subtype string from the event payload based on the event type.
+ * Extracts a subtype string from the event based on the event type.
  * Returns null for event types that have no meaningful subtype.
  */
 function getEventSubtype(event: HookEvent): string | null {
@@ -193,6 +193,12 @@ interface PostEventOptions {
   event: ReturnType<typeof parseHookEvent>;
   /** Command string to store in wrapped_command column; null for bare mode. */
   wrappedCommand: string | null;
+  /** Captured child stdout; null for bare mode. */
+  stdout: string | null;
+  /** Captured child stderr; null for bare mode. */
+  stderr: string | null;
+  /** Child exit code; null for bare mode. */
+  exitCode: number | null;
 }
 
 /**
@@ -207,6 +213,15 @@ async function postEvent(opts: PostEventOptions): Promise<boolean> {
   const body: Record<string, unknown> = { ...opts.event };
   if (opts.wrappedCommand !== null) {
     body.wrapped_command = opts.wrappedCommand;
+  }
+  if (opts.stdout !== null) {
+    body.stdout = opts.stdout;
+  }
+  if (opts.stderr !== null) {
+    body.stderr = opts.stderr;
+  }
+  if (opts.exitCode !== null) {
+    body.exit_code = opts.exitCode;
   }
   const payload = JSON.stringify(body);
 
@@ -307,7 +322,14 @@ async function runBare(): Promise<void> {
   const event = await readEvent();
   const port = readPort();
 
-  const postResult = await postEvent({ port, event, wrappedCommand: null });
+  const postResult = await postEvent({
+    port,
+    event,
+    wrappedCommand: null,
+    stdout: null,
+    stderr: null,
+    exitCode: null,
+  });
   if (!postResult) {
     // On failure: exit 1, stdout remains empty — Claude Code must not receive
     // partial or malformed hook output JSON.
@@ -345,7 +367,7 @@ async function runWrappedMode(wrapArgs: string[]): Promise<void> {
   // Parse the event from the buffered stdin content.
   let event: ReturnType<typeof parseHookEvent>;
   try {
-    const parsed = JSON.parse(wrapResult.stdinContent);
+    const parsed = JSON.parse(wrapResult.stdin);
     event = parseHookEvent(parsed);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -357,7 +379,14 @@ async function runWrappedMode(wrapArgs: string[]): Promise<void> {
   // POST the event with captured I/O — best-effort (don't fail wrapped command
   // if server is down).
   const port = readPort();
-  const postResult = await postEvent({ port, event, wrappedCommand });
+  const postResult = await postEvent({
+    port,
+    event,
+    wrappedCommand,
+    stdout: wrapResult.stdout,
+    stderr: wrapResult.stderr,
+    exitCode: wrapResult.exitCode,
+  });
   if (!postResult) {
     console.error("[hookwatch] Failed to POST wrapped event — continuing (best-effort)");
     // Don't exit here — still forward the child's exit code

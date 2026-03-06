@@ -7,16 +7,22 @@ import type { QueryFilter } from "@/schemas/query.ts";
  */
 export interface EventRow {
   id: number;
-  ts: number;
+  timestamp: number;
   event: string;
   session_id: string;
   cwd: string;
   tool_name: string | null;
   session_name: string | null;
   hook_duration_ms: number | null;
-  payload: string;
+  stdin: string;
   /** NULL = bare handler event; non-NULL = wrapped command string (Story 3.1) */
   wrapped_command: string | null;
+  /** NULL = bare handler event; non-NULL = captured child stdout (wrapped mode) */
+  stdout: string | null;
+  /** NULL = bare handler event; non-NULL = captured child stderr (wrapped mode) */
+  stderr: string | null;
+  /** NULL = bare handler event; non-NULL = child exit code (wrapped mode) */
+  exit_code: number | null;
 }
 
 /**
@@ -24,16 +30,22 @@ export interface EventRow {
  * All values must be explicitly provided — no defaults computed here.
  */
 export interface InsertEventParams {
-  ts: number;
+  timestamp: number;
   event: string;
   session_id: string;
   cwd: string;
   tool_name: string | null;
   session_name: string | null;
   hook_duration_ms: number | null;
-  payload: string;
+  stdin: string;
   /** NULL = bare handler event; non-NULL = wrapped command string (Story 3.1) */
   wrapped_command: string | null;
+  /** NULL = bare handler event; non-NULL = captured child stdout (wrapped mode) */
+  stdout: string | null;
+  /** NULL = bare handler event; non-NULL = captured child stderr (wrapped mode) */
+  stderr: string | null;
+  /** NULL = bare handler event; non-NULL = child exit code (wrapped mode) */
+  exit_code: number | null;
 }
 
 /**
@@ -44,20 +56,23 @@ export interface InsertEventParams {
 export function insertEvent(db: Database, params: InsertEventParams): number {
   const stmt = db.prepare(
     `INSERT INTO events
-       (ts, event, session_id, cwd, tool_name, session_name, hook_duration_ms, payload, wrapped_command)
+       (timestamp, event, session_id, cwd, tool_name, session_name, hook_duration_ms, stdin, wrapped_command, stdout, stderr, exit_code)
      VALUES
-       (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const result = stmt.run(
-    params.ts,
+    params.timestamp,
     params.event,
     params.session_id,
     params.cwd,
     params.tool_name,
     params.session_name,
     params.hook_duration_ms,
-    params.payload,
+    params.stdin,
     params.wrapped_command,
+    params.stdout,
+    params.stderr,
+    params.exit_code,
   );
   return Number(result.lastInsertRowid);
 }
@@ -72,11 +87,11 @@ export function getEventById(db: Database, id: number): EventRow | null {
 }
 
 /**
- * Retrieve all events, ordered by ts ascending.
+ * Retrieve all events, ordered by timestamp ascending.
  * For production use, callers should add LIMIT/OFFSET filters via selectEvents().
  */
 export function getAllEvents(db: Database): EventRow[] {
-  const stmt = db.prepare(`SELECT * FROM events ORDER BY ts ASC`);
+  const stmt = db.prepare(`SELECT * FROM events ORDER BY timestamp ASC`);
   return stmt.all() as EventRow[];
 }
 
@@ -84,7 +99,7 @@ export function getAllEvents(db: Database): EventRow[] {
  * Retrieve events filtered by session_id.
  */
 export function getEventsBySession(db: Database, sessionId: string): EventRow[] {
-  const stmt = db.prepare(`SELECT * FROM events WHERE session_id = ? ORDER BY ts ASC`);
+  const stmt = db.prepare(`SELECT * FROM events WHERE session_id = ? ORDER BY timestamp ASC`);
   return stmt.all(sessionId) as EventRow[];
 }
 
@@ -92,7 +107,7 @@ export function getEventsBySession(db: Database, sessionId: string): EventRow[] 
  * Retrieve events filtered by event type.
  */
 export function getEventsByType(db: Database, eventType: string): EventRow[] {
-  const stmt = db.prepare(`SELECT * FROM events WHERE event = ? ORDER BY ts ASC`);
+  const stmt = db.prepare(`SELECT * FROM events WHERE event = ? ORDER BY timestamp ASC`);
   return stmt.all(eventType) as EventRow[];
 }
 
@@ -102,12 +117,12 @@ export function getEventsByType(db: Database, eventType: string): EventRow[] {
  * ch-lar: no user input — static query, no parameterization needed.
  */
 export function getDistinctSessions(db: Database): string[] {
-  const stmt = db.prepare(`SELECT DISTINCT session_id FROM events ORDER BY ts DESC`);
+  const stmt = db.prepare(`SELECT DISTINCT session_id FROM events ORDER BY timestamp DESC`);
   return (stmt.all() as Array<{ session_id: string }>).map((r) => r.session_id);
 }
 
 /**
- * Retrieve events with optional filters, ordered by ts DESC (newest first).
+ * Retrieve events with optional filters, ordered by timestamp DESC (newest first).
  *
  * ch-lar: all filter values are passed as parameterized ? placeholders — no
  * string concatenation is performed on user-supplied values. The WHERE clause
@@ -131,7 +146,7 @@ export function queryEvents(db: Database, filter: QueryFilter): EventRow[] {
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   // LIMIT and OFFSET have Zod defaults (100 and 0), so they are always present.
-  const sql = `SELECT * FROM events ${where} ORDER BY ts DESC LIMIT ? OFFSET ?`;
+  const sql = `SELECT * FROM events ${where} ORDER BY timestamp DESC LIMIT ? OFFSET ?`;
   bindings.push(filter.limit, filter.offset);
 
   const stmt = db.prepare(sql);

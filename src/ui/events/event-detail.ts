@@ -4,8 +4,8 @@
  * Displays:
  *   - For tool-related events (PreToolUse, PostToolUse, PostToolUseFailure):
  *     a definition list showing tool_name and tool_input prominently above the
- *     raw payload.
- *   - Full payload as JSON.stringify(payload, null, 2) inside <pre><code>.
+ *     raw stdin.
+ *   - Full stdin as JSON.stringify(stdin, null, 2) inside <pre><code>.
  *
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
@@ -30,18 +30,18 @@ function isToolEvent(eventType: string): boolean {
 }
 
 /**
- * Parse a JSON payload string. Returns the parsed value or null on failure.
+ * Parse a JSON stdin string. Returns the parsed value or null on failure.
  */
-function parsePayload(payloadJson: string): unknown {
+function parseStdin(stdinJson: string): unknown {
   try {
-    return JSON.parse(payloadJson);
+    return JSON.parse(stdinJson);
   } catch {
     return null;
   }
 }
 
 /**
- * Extract a string field from a parsed payload object.
+ * Extract a string field from a parsed stdin object.
  * Returns null when the field is absent or not a string.
  */
 function extractStringField(parsed: unknown, field: string): string | null {
@@ -53,7 +53,7 @@ function extractStringField(parsed: unknown, field: string): string | null {
 }
 
 /**
- * Extract the tool_input field from a parsed payload object.
+ * Extract the tool_input field from a parsed stdin object.
  * Returns null when absent.
  */
 function extractToolInput(parsed: unknown): unknown {
@@ -68,8 +68,8 @@ interface EventDetailProps {
 }
 
 export function EventDetail({ event }: EventDetailProps): ReturnType<typeof html> {
-  const parsed = parsePayload(event.payload);
-  const formattedPayload = parsed !== null ? JSON.stringify(parsed, null, 2) : event.payload; // Fallback: display raw string if not valid JSON
+  const parsed = parseStdin(event.stdin);
+  const formattedStdin = parsed !== null ? JSON.stringify(parsed, null, 2) : event.stdin; // Fallback: display raw string if not valid JSON
 
   const showToolInfo = isToolEvent(event.event);
   const toolName = showToolInfo ? extractStringField(parsed, "tool_name") : null;
@@ -98,8 +98,8 @@ export function EventDetail({ event }: EventDetailProps): ReturnType<typeof html
       `
       }
       <details open>
-        <summary>Full payload</summary>
-        <pre><code>${formattedPayload}</code></pre>
+        <summary>Full stdin</summary>
+        <pre><code>${formattedStdin}</code></pre>
       </details>
     </div>
   `;

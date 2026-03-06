@@ -20,14 +20,18 @@ import { broadcast, closeAll, handleStream } from "@/server/stream.ts";
 function makeRow(overrides: Partial<EventRow> = {}): EventRow {
   return {
     id: 1,
-    ts: 1700000000000,
+    timestamp: 1700000000000,
     event: "SessionStart",
     session_id: "sess-test-001",
     cwd: "/tmp",
     tool_name: null,
     session_name: null,
     hook_duration_ms: null,
-    payload: "{}",
+    stdin: "{}",
+    wrapped_command: null,
+    stdout: null,
+    stderr: null,
+    exit_code: null,
     ...overrides,
   };
 }
