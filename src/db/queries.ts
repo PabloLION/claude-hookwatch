@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import type { QueryFilter } from "@/schemas/query.ts";
 
 /**
  * Represents a single row in the events table.
@@ -88,4 +89,36 @@ export function getEventsBySession(db: Database, sessionId: string): EventRow[] 
 export function getEventsByType(db: Database, eventType: string): EventRow[] {
   const stmt = db.prepare(`SELECT * FROM events WHERE event = ? ORDER BY ts ASC`);
   return stmt.all(eventType) as EventRow[];
+}
+
+/**
+ * Retrieve events with optional filters, ordered by ts DESC (newest first).
+ *
+ * ch-lar: all filter values are passed as parameterized ? placeholders — no
+ * string concatenation is performed on user-supplied values. The WHERE clause
+ * conditions are built statically from a fixed allowed set; only the bound
+ * values vary at runtime.
+ */
+export function queryEvents(db: Database, filter: QueryFilter): EventRow[] {
+  const conditions: string[] = [];
+  const bindings: (string | number)[] = [];
+
+  if (filter.session_id !== undefined) {
+    conditions.push("session_id = ?");
+    bindings.push(filter.session_id);
+  }
+
+  if (filter.hook_event_name !== undefined) {
+    conditions.push("event = ?");
+    bindings.push(filter.hook_event_name);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  // LIMIT and OFFSET have Zod defaults (100 and 0), so they are always present.
+  const sql = `SELECT * FROM events ${where} ORDER BY ts DESC LIMIT ? OFFSET ?`;
+  bindings.push(filter.limit, filter.offset);
+
+  const stmt = db.prepare(sql);
+  return stmt.all(...bindings) as EventRow[];
 }

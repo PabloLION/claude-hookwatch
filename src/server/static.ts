@@ -1,0 +1,128 @@
+/**
+ * Static file handler — serves files from src/ui/.
+ *
+ * Features:
+ *   - Path traversal prevention: resolved path must start with UI_DIR
+ *   - .ts files: transpiled on-the-fly via Bun.Transpiler, served as JS
+ *   - Transpiler cache: in-memory Map keyed by resolved path, invalidated
+ *     when the file's mtime changes
+ *   - Other files: served directly with appropriate Content-Type
+ *   - Missing files: 404 NOT_FOUND
+ *
+ * ch-u88: no innerHTML — this handler only returns file bytes or transpiled
+ * text, never interpolates path values into HTML.
+ */
+
+import { statSync } from "node:fs";
+import { resolve } from "node:path";
+import { errorResponse } from "@/server/errors.ts";
+
+// Resolve src/ui/ relative to this file's directory (src/server/ → ../ui/)
+const UI_DIR = resolve(import.meta.dir, "../ui");
+
+const CONTENT_TYPES: Record<string, string> = {
+  ".html": "text/html; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".js": "application/javascript; charset=utf-8",
+  ".ts": "application/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".ico": "image/x-icon",
+};
+
+interface CacheEntry {
+  mtime: number;
+  content: string;
+}
+
+// In-memory transpile cache — keyed by resolved file path
+const transpileCache = new Map<string, CacheEntry>();
+
+const transpiler = new Bun.Transpiler({ loader: "tsx" });
+
+/**
+ * Resolve the URL pathname to a file path inside UI_DIR.
+ * Returns null if the path escapes UI_DIR (traversal attack).
+ */
+function resolveUiPath(pathname: string): string | null {
+  // Strip leading slash so resolve() stays inside UI_DIR
+  const relative = pathname.replace(/^\//, "");
+  const resolved = resolve(UI_DIR, relative);
+
+  // Guard: resolved path must remain inside UI_DIR
+  if (!resolved.startsWith(`${UI_DIR}/`) && resolved !== UI_DIR) {
+    return null;
+  }
+
+  return resolved;
+}
+
+/**
+ * Derive the file extension from a path.
+ */
+function extname(filePath: string): string {
+  const dot = filePath.lastIndexOf(".");
+  if (dot === -1) return "";
+  return filePath.slice(dot);
+}
+
+/**
+ * Serve a single UI file.
+ * @param pathname — URL pathname, e.g. "/index.html" or "/app.ts"
+ */
+export async function handleStatic(pathname: string): Promise<Response> {
+  // Default / to index.html
+  const normalised = pathname === "/" ? "/index.html" : pathname;
+
+  const filePath = resolveUiPath(normalised);
+  if (filePath === null) {
+    return errorResponse("NOT_FOUND", "Path not allowed", 404);
+  }
+
+  // Check file existence
+  let stat: ReturnType<typeof statSync>;
+  try {
+    stat = statSync(filePath);
+  } catch {
+    return errorResponse("NOT_FOUND", `File not found: ${normalised}`, 404);
+  }
+
+  const mtime = stat.mtimeMs;
+  const ext = extname(filePath);
+
+  // TypeScript files — transpile and cache
+  if (ext === ".ts" || ext === ".tsx") {
+    const cached = transpileCache.get(filePath);
+    let content: string;
+
+    if (cached !== undefined && cached.mtime === mtime) {
+      content = cached.content;
+    } else {
+      const file = Bun.file(filePath);
+      const source = await file.text();
+      content = transpiler.transformSync(source);
+      transpileCache.set(filePath, { mtime, content });
+    }
+
+    return new Response(content, {
+      status: 200,
+      headers: { "Content-Type": "application/javascript; charset=utf-8" },
+    });
+  }
+
+  // All other files — serve directly
+  const contentType = CONTENT_TYPES[ext] ?? "application/octet-stream";
+  const file = Bun.file(filePath);
+  return new Response(file, {
+    status: 200,
+    headers: { "Content-Type": contentType },
+  });
+}
+
+/**
+ * Clear the transpile cache. Exposed for testing.
+ */
+export function clearTranspileCache(): void {
+  transpileCache.clear();
+}

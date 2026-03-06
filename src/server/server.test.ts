@@ -1,5 +1,5 @@
 /**
- * Tests for the Bun HTTP server (Story 1.3).
+ * Tests for the Bun HTTP server (Stories 1.3, 2.1a).
  *
  * Covers:
  *   - GET /health returns 200 with { status: "ok" }
@@ -8,6 +8,10 @@
  *   - POST /api/events with a payload that fails Zod validation returns 400
  *   - Port auto-increment: binding a second server finds the next free port
  *   - Unknown routes return 404 NOT_FOUND
+ *   - POST /api/query: valid filter, empty result, invalid filter (Story 2.1a)
+ *   - GET /: serves index.html (Story 2.1a)
+ *   - GET /app.ts: transpiles .ts file (Story 2.1a)
+ *   - GET /nonexistent.html: 404 for missing UI file (Story 2.1a)
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -172,5 +176,131 @@ describe("port auto-increment", () => {
       stop2?.();
       process.env.XDG_DATA_HOME = TMP_DATA_HOME;
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Query endpoint (Story 2.1a)
+// ---------------------------------------------------------------------------
+
+describe("POST /api/query", () => {
+  // Insert a known event before running query tests
+  beforeAll(async () => {
+    await fetch(url("/api/events"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(validSessionStart),
+    });
+  });
+
+  test("returns 200 with an array for empty filter (uses defaults)", async () => {
+    const res = await fetch(url("/api/query"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.length).toBeGreaterThan(0);
+  });
+
+  test("filters by session_id and returns matching events", async () => {
+    const res = await fetch(url("/api/query"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: validSessionStart.session_id }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.length).toBeGreaterThan(0);
+    for (const row of body) {
+      expect(row.session_id).toBe(validSessionStart.session_id);
+    }
+  });
+
+  test("returns empty array when no events match the filter", async () => {
+    const res = await fetch(url("/api/query"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: "no-such-session-xyz" }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.length).toBe(0);
+  });
+
+  test("returns 400 INVALID_QUERY when limit is not a number", async () => {
+    const res = await fetch(url("/api/query"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ limit: "not-a-number" }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error.code).toBe("INVALID_QUERY");
+  });
+
+  test("returns 400 INVALID_QUERY for malformed JSON body", async () => {
+    const res = await fetch(url("/api/query"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{ bad json",
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error.code).toBe("INVALID_QUERY");
+  });
+
+  test("filters by hook_event_name", async () => {
+    const res = await fetch(url("/api/query"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hook_event_name: "SessionStart" }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+    for (const row of body) {
+      expect(row.event).toBe("SessionStart");
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Static file handler (Story 2.1a)
+// ---------------------------------------------------------------------------
+
+describe("GET /", () => {
+  test("serves index.html with text/html content-type", async () => {
+    const res = await fetch(url("/"));
+    expect(res.status).toBe(200);
+    const ct = res.headers.get("content-type") ?? "";
+    expect(ct).toContain("text/html");
+    const body = await res.text();
+    expect(body).toContain("<!doctype html");
+  });
+});
+
+describe("GET /app.ts", () => {
+  test("transpiles .ts file and serves as application/javascript", async () => {
+    const res = await fetch(url("/app.ts"));
+    expect(res.status).toBe(200);
+    const ct = res.headers.get("content-type") ?? "";
+    expect(ct).toContain("application/javascript");
+    const body = await res.text();
+    // The transpiler output should not contain TypeScript-only syntax
+    expect(body).not.toContain("import type");
+  });
+});
+
+describe("GET missing UI file", () => {
+  test("returns 404 NOT_FOUND for non-existent asset", async () => {
+    const res = await fetch(url("/does-not-exist.html"));
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error.code).toBe("NOT_FOUND");
   });
 });
