@@ -48,11 +48,11 @@ function extractToolName(payloadJson: string): string {
  * Format an ISO timestamp string for display.
  * Returns the original string on parse failure.
  */
-function formatTimestamp(ts: string): string {
+function formatTimestamp(ts: number): string {
   try {
     return new Date(ts).toLocaleString();
   } catch {
-    return ts;
+    return String(ts);
   }
 }
 
@@ -88,7 +88,7 @@ export function EventList({ eventList }: EventListProps) {
               (event) => html`
                 <tr key=${event.id}>
                   <td>${formatTimestamp(event.ts)}</td>
-                  <td>${event.hook_event_name}</td>
+                  <td>${event.event}</td>
                   <td>${event.session_id}</td>
                   <td>${extractToolName(event.payload)}</td>
                 </tr>

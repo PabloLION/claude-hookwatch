@@ -18,9 +18,9 @@ export const eventList = signal<EventRow[]>([]);
 
 export interface EventRow {
   id: number;
-  ts: string;
+  ts: number;
   session_id: string;
-  hook_event_name: string;
+  event: string;
   payload: string;
 }
 
