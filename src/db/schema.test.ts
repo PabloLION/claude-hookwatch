@@ -86,6 +86,7 @@ describe("events table existence and structure", () => {
     expect(cols.session_name).toBeDefined();
     expect(cols.hook_duration_ms).toBeDefined();
     expect(cols.payload).toBeDefined();
+    expect(cols.wrapped_command).toBeDefined();
   });
 
   test("required columns are NOT NULL", () => {
@@ -116,6 +117,7 @@ describe("events table existence and structure", () => {
     expect(cols.tool_name?.notnull).toBe(0);
     expect(cols.session_name?.notnull).toBe(0);
     expect(cols.hook_duration_ms?.notnull).toBe(0);
+    expect(cols.wrapped_command?.notnull).toBe(0);
   });
 });
 
@@ -153,6 +155,7 @@ describe("insert and retrieve round-trip", () => {
       session_name: null,
       hook_duration_ms: 42,
       payload,
+      wrapped_command: null,
     });
 
     expect(id).toBeGreaterThan(0);
@@ -178,6 +181,7 @@ describe("insert and retrieve round-trip", () => {
       session_name: null,
       hook_duration_ms: null,
       payload: JSON.stringify({ hook_event_name: "SessionStart" }),
+      wrapped_command: null,
     });
 
     const row = getEventById(db, id);
@@ -185,6 +189,7 @@ describe("insert and retrieve round-trip", () => {
     expect(row?.tool_name).toBeNull();
     expect(row?.session_name).toBeNull();
     expect(row?.hook_duration_ms).toBeNull();
+    expect(row?.wrapped_command).toBeNull();
   });
 
   test("persists events after close and reopen", () => {
@@ -198,6 +203,7 @@ describe("insert and retrieve round-trip", () => {
       session_name: "my-session",
       hook_duration_ms: 10,
       payload: JSON.stringify({ hook_event_name: "SessionEnd" }),
+      wrapped_command: null,
     });
 
     // Close the connection
@@ -226,6 +232,7 @@ describe("insert and retrieve round-trip", () => {
       session_name: null,
       hook_duration_ms: null,
       payload: "{}",
+      wrapped_command: null,
     });
 
     insertEvent(db, {
@@ -237,6 +244,7 @@ describe("insert and retrieve round-trip", () => {
       session_name: null,
       hook_duration_ms: null,
       payload: "{}",
+      wrapped_command: null,
     });
 
     insertEvent(db, {
@@ -248,6 +256,7 @@ describe("insert and retrieve round-trip", () => {
       session_name: null,
       hook_duration_ms: null,
       payload: "{}",
+      wrapped_command: null,
     });
 
     const events = getAllEvents(db);

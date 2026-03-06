@@ -25,8 +25,15 @@ import { uninstallCommand } from "./uninstall.ts";
 
 /**
  * Builds the handler subcommand for a given event type.
- * When invoked as `hookwatch PreToolUse` (no positional args), reads stdin
- * and delegates to the handler.
+ *
+ * Modes:
+ *   - Bare:    `hookwatch PreToolUse`           — reads stdin, posts event
+ *   - Wrapped: `hookwatch PreToolUse ./hook.sh` — spawns ./hook.sh, tees I/O,
+ *               posts event with captured output (Story 3.1)
+ *
+ * Trailing args after the event type are passed to the handler via the
+ * HOOKWATCH_WRAP_ARGS environment variable (JSON-encoded string array).
+ * Using an env var avoids re-architecting the dynamic import boundary.
  */
 function makeEventCommand(eventType: EventType) {
   return defineCommand({
@@ -34,7 +41,13 @@ function makeEventCommand(eventType: EventType) {
       name: eventType,
       description: `Handle ${eventType} hook events from Claude Code (reads stdin)`,
     },
-    run() {
+    run(context) {
+      // rawArgs contains everything after the subcommand name.
+      // Any trailing args indicate wrapped mode.
+      const trailingArgs = context.rawArgs.filter((a) => !a.startsWith("-"));
+      if (trailingArgs.length > 0) {
+        process.env.HOOKWATCH_WRAP_ARGS = JSON.stringify(trailingArgs);
+      }
       // Dynamically import to keep startup fast for other subcommands
       return import("@/handler/index.ts" as string);
     },

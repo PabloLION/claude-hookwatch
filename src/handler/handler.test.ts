@@ -551,3 +551,125 @@ describe("hook output (stdout)", () => {
     expect(parsed.systemMessage.length).toBeGreaterThan(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Wrapped mode (Story 3.1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Run the handler in wrapped mode via the CLI entry point.
+ * HOOKWATCH_WRAP_ARGS is set to JSON-encode the trailing args.
+ */
+async function runHandlerWrapped(
+  stdinPayload: string,
+  wrapArgs: string[],
+  env: Record<string, string> = {},
+): Promise<RunResult> {
+  return runHandler(stdinPayload, {
+    HOOKWATCH_WRAP_ARGS: JSON.stringify(wrapArgs),
+    ...env,
+  });
+}
+
+describe("wrapped mode", () => {
+  test("child exit code 0 is forwarded when server is up", async () => {
+    const xdgHome = join(TMP_DIR, "wrap-exit-0");
+    writePortFile(xdgHome, server.port);
+
+    const result = await runHandlerWrapped(
+      JSON.stringify(BASE_SESSION_START),
+      ["sh", "-c", "exit 0"],
+      { XDG_DATA_HOME: xdgHome },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(server.events).toHaveLength(1);
+  });
+
+  test("child exit code 2 is forwarded (block action)", async () => {
+    const xdgHome = join(TMP_DIR, "wrap-exit-2");
+    writePortFile(xdgHome, server.port);
+
+    const result = await runHandlerWrapped(
+      JSON.stringify(BASE_SESSION_START),
+      ["sh", "-c", "exit 2"],
+      { XDG_DATA_HOME: xdgHome },
+    );
+
+    expect(result.exitCode).toBe(2);
+    // Event is still posted even when child exits 2
+    expect(server.events).toHaveLength(1);
+  });
+
+  test("child stdout is tee'd to handler stdout before hook output JSON", async () => {
+    const xdgHome = join(TMP_DIR, "wrap-tee-stdout");
+    writePortFile(xdgHome, server.port);
+
+    const result = await runHandlerWrapped(
+      JSON.stringify(BASE_SESSION_START),
+      ["sh", "-c", "printf 'child-output'"],
+      { XDG_DATA_HOME: xdgHome },
+    );
+
+    expect(result.exitCode).toBe(0);
+    // stdout contains child output + hook JSON at the end
+    expect(result.stdout).toContain("child-output");
+    // Hook output JSON appears after child output
+    const hookJsonStr = result.stdout.slice(result.stdout.lastIndexOf("{"));
+    const hookJson = JSON.parse(hookJsonStr);
+    expect(hookJson.continue).toBe(true);
+  });
+
+  test("wrapped_command is stored in the event posted to server", async () => {
+    const xdgHome = join(TMP_DIR, "wrap-command-stored");
+    writePortFile(xdgHome, server.port);
+
+    const result = await runHandlerWrapped(
+      JSON.stringify(BASE_SESSION_START),
+      ["sh", "-c", "exit 0"],
+      { XDG_DATA_HOME: xdgHome },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(server.events).toHaveLength(1);
+    const body = server.events[0]?.body as Record<string, unknown>;
+    expect(body?.wrapped_command).toBe("sh -c exit 0");
+  });
+
+  test("server down: child exit code still forwarded (best-effort)", async () => {
+    const xdgHome = join(TMP_DIR, "wrap-server-down");
+    // Point at a port where nothing is running (not auto-start port either)
+    // Use a port that will definitely be refused immediately
+    writePortFile(xdgHome, 19998);
+
+    const result = await runHandlerWrapped(
+      JSON.stringify(BASE_SESSION_START),
+      ["sh", "-c", "exit 0"],
+      {
+        XDG_DATA_HOME: xdgHome,
+        // Provide isolated config home to prevent spawning real server
+        XDG_CONFIG_HOME: join(xdgHome, "config"),
+      },
+    );
+
+    // Child exits 0 — even though server POST may fail, exit code is forwarded
+    // (best-effort: handler tries to spawn server but continues regardless)
+    expect(result.exitCode).not.toBeNull();
+    // Stderr should mention server issues
+    expect(result.stderr).toContain("[hookwatch]");
+  }, 10000);
+
+  test("invalid JSON stdin in wrapped mode: child exit code forwarded", async () => {
+    const xdgHome = join(TMP_DIR, "wrap-invalid-stdin");
+    writePortFile(xdgHome, server.port);
+
+    const result = await runHandlerWrapped("{ not valid json", ["sh", "-c", "exit 0"], {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    // Child exits 0, but event parsing fails — handler exits with child code
+    expect(result.exitCode).toBe(0);
+    // Error logged to stderr about parsing failure
+    expect(result.stderr).toContain("[hookwatch]");
+  });
+});

@@ -1,18 +1,30 @@
 /**
  * Hook handler entry point for hookwatch.
  *
- * Reads a Claude Code hook event from stdin, validates it with Zod, POSTs
- * it to the local hookwatch server for storage, and writes a hook output JSON
- * to stdout so Claude Code injects a systemMessage into the agent's context.
+ * Two modes (detected via HOOKWATCH_WRAP_ARGS environment variable):
+ *
+ * Bare mode (no trailing args):
+ *   Reads a Claude Code hook event from stdin, validates it with Zod, POSTs
+ *   it to the local hookwatch server for storage, and writes a hook output JSON
+ *   to stdout so Claude Code injects a systemMessage into the agent's context.
+ *
+ * Wrapped mode (HOOKWATCH_WRAP_ARGS set):
+ *   Reads stdin concurrently, spawns the wrapped command, tees its stdout/stderr
+ *   to both terminal and capture buffers, waits for it to exit, then POSTs the
+ *   event with captured I/O to the server. Always passes the child exit code
+ *   through. If the server is unreachable, still passes through I/O.
  *
  * STDOUT CONTRACT: Claude Code interprets ANY stdout as hook output JSON.
- * The ONLY write to stdout is the structured hook output object after a
- * successful POST. All other logging goes to stderr (console.error /
+ * In bare mode, the ONLY write to stdout is the structured hook output object
+ * after a successful POST. All other logging goes to stderr (console.error /
  * process.stderr.write) — NEVER console.log().
+ * In wrapped mode, the child's stdout is passed through first, then the hook
+ * output JSON is appended.
  *
  * Exit codes:
  *   0 — success (event forwarded, hook output written to stdout)
- *   1 — any error (validation failure, network error, etc.) — stdout EMPTY
+ *   1 — any error (validation failure, network error, etc.) — hook JSON absent
+ *   In wrapped mode: child exit code is forwarded (best-effort server POST)
  */
 
 import { readFileSync } from "node:fs";
@@ -21,10 +33,34 @@ import type { HookEvent } from "@/schemas/events.ts";
 import { parseHookEvent } from "@/schemas/events.ts";
 import { hookOutputSchema } from "@/schemas/output.ts";
 import { spawnServer } from "./spawn.ts";
+import { runWrapped } from "./wrap.ts";
 
 const FALLBACK_PORT = 6004;
 const FETCH_TIMEOUT_MS = 5000;
 const SLOW_THRESHOLD_MS = 100;
+
+// ---------------------------------------------------------------------------
+// Wrap args detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the trailing command args for wrapped mode, or null for bare mode.
+ * HOOKWATCH_WRAP_ARGS is set by cli/index.ts when trailing args are present.
+ */
+function getWrapArgs(): string[] | null {
+  const raw = process.env.HOOKWATCH_WRAP_ARGS;
+  if (raw === undefined || raw === "") return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0 && parsed.every((x) => typeof x === "string")) {
+      return parsed as string[];
+    }
+  } catch {
+    console.error(`[hookwatch] Failed to parse HOOKWATCH_WRAP_ARGS: ${raw}`);
+  }
+  return null;
+}
 
 // ---------------------------------------------------------------------------
 // Context injection: build systemMessage for Claude Code
@@ -88,8 +124,8 @@ function buildSystemMessage(event: HookEvent): string {
  * Context injection is always-on — no toggle.
  * TODO: configurable via config.toml (ch-1ex5.1)
  *
- * IMPORTANT: This is the ONLY place stdout is written. All other output goes
- * to stderr.
+ * IMPORTANT: In bare mode this is the ONLY place stdout is written.
+ * In wrapped mode, child stdout precedes this write.
  */
 function writeHookOutput(event: HookEvent): void {
   const output = hookOutputSchema.parse({
@@ -98,6 +134,10 @@ function writeHookOutput(event: HookEvent): void {
   });
   process.stdout.write(JSON.stringify(output));
 }
+
+// ---------------------------------------------------------------------------
+// Port resolution
+// ---------------------------------------------------------------------------
 
 /**
  * Reads the server port from the port file written by the server on startup.
@@ -119,6 +159,10 @@ function readPort(): number {
     return FALLBACK_PORT;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Server communication
+// ---------------------------------------------------------------------------
 
 /**
  * Returns true if the error indicates the server is not reachable (connection
@@ -143,6 +187,14 @@ function isConnectionError(err: unknown): boolean {
   );
 }
 
+/** Options for postEvent — extends the base event with optional wrap metadata. */
+interface PostEventOptions {
+  port: number;
+  event: ReturnType<typeof parseHookEvent>;
+  /** Command string to store in wrapped_command column; null for bare mode. */
+  wrappedCommand: string | null;
+}
+
 /**
  * POSTs the event to the server at the given port.
  *
@@ -151,12 +203,16 @@ function isConnectionError(err: unknown): boolean {
  *
  * Returns true on success, false on any unrecoverable error.
  */
-async function postEvent(port: number, event: ReturnType<typeof parseHookEvent>): Promise<boolean> {
-  const payload = JSON.stringify(event);
+async function postEvent(opts: PostEventOptions): Promise<boolean> {
+  const body: Record<string, unknown> = { ...opts.event };
+  if (opts.wrappedCommand !== null) {
+    body.wrapped_command = opts.wrappedCommand;
+  }
+  const payload = JSON.stringify(body);
 
   // First attempt
   try {
-    const res = await fetch(`http://127.0.0.1:${port}/api/events`, {
+    const res = await fetch(`http://127.0.0.1:${opts.port}/api/events`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: payload,
@@ -164,8 +220,8 @@ async function postEvent(port: number, event: ReturnType<typeof parseHookEvent>)
     });
 
     if (!res.ok) {
-      const body = await res.text().catch(() => "(unreadable)");
-      console.error(`[hookwatch] Server returned ${res.status}: ${body}`);
+      const text = await res.text().catch(() => "(unreadable)");
+      console.error(`[hookwatch] Server returned ${res.status}: ${text}`);
       return false;
     }
 
@@ -198,8 +254,8 @@ async function postEvent(port: number, event: ReturnType<typeof parseHookEvent>)
     });
 
     if (!res.ok) {
-      const body = await res.text().catch(() => "(unreadable)");
-      console.error(`[hookwatch] Server returned ${res.status} on retry: ${body}`);
+      const text = await res.text().catch(() => "(unreadable)");
+      console.error(`[hookwatch] Server returned ${res.status} on retry: ${text}`);
       return false;
     }
 
@@ -211,13 +267,14 @@ async function postEvent(port: number, event: ReturnType<typeof parseHookEvent>)
   }
 }
 
-async function run(): Promise<void> {
-  const startMs = Date.now();
+// ---------------------------------------------------------------------------
+// Stdin parsing (shared by both modes)
+// ---------------------------------------------------------------------------
 
-  // Read entire stdin (Claude Code pipes the event JSON here)
+/** Reads and validates stdin; returns the parsed event or exits on error. */
+async function readEvent(): Promise<ReturnType<typeof parseHookEvent>> {
   const raw = await Bun.stdin.text();
 
-  // Parse JSON
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -227,21 +284,30 @@ async function run(): Promise<void> {
     process.exit(1);
   }
 
-  // Validate with Zod (discriminated by hook_event_name)
-  let event: ReturnType<typeof parseHookEvent>;
   try {
-    event = parseHookEvent(parsed);
+    return parseHookEvent(parsed);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[hookwatch] Zod validation failed: ${msg}`);
     process.exit(1);
   }
+}
 
-  // Resolve server port
+// ---------------------------------------------------------------------------
+// Main execution paths
+// ---------------------------------------------------------------------------
+
+/**
+ * Bare mode: read stdin → validate → POST → write hook output.
+ * Exits 0 on success, 1 on any error.
+ */
+async function runBare(): Promise<void> {
+  const startMs = Date.now();
+
+  const event = await readEvent();
   const port = readPort();
 
-  // POST to server, auto-starting it if not running
-  const postResult = await postEvent(port, event);
+  const postResult = await postEvent({ port, event, wrappedCommand: null });
   if (!postResult) {
     // On failure: exit 1, stdout remains empty — Claude Code must not receive
     // partial or malformed hook output JSON.
@@ -249,7 +315,7 @@ async function run(): Promise<void> {
   }
 
   // Write hook output JSON to stdout for Claude Code context injection.
-  // This is the ONLY stdout write in the entire handler.
+  // This is the ONLY stdout write in bare mode.
   writeHookOutput(event);
 
   // Log slow handler execution to stderr (never stdout)
@@ -259,8 +325,71 @@ async function run(): Promise<void> {
   }
 }
 
-run().catch((err) => {
-  const msg = err instanceof Error ? err.message : String(err);
-  console.error(`[hookwatch] Unexpected error: ${msg}`);
-  process.exit(1);
-});
+/**
+ * Wrapped mode: read stdin concurrently with child execution, tee child I/O,
+ * POST event with captured output, write hook output, forward child exit code.
+ *
+ * Best-effort: if the server is unreachable even after auto-start, the child's
+ * I/O is still passed through and its exit code is forwarded.
+ *
+ * Stdin handling: runWrapped() reads stdin into a buffer, pipes it to the child
+ * so the child receives the Claude Code event JSON, and returns the raw string
+ * for us to parse as the event.
+ */
+async function runWrappedMode(wrapArgs: string[]): Promise<void> {
+  const wrappedCommand = wrapArgs.join(" ");
+
+  // runWrapped reads stdin, tees child stdout/stderr, and returns everything.
+  const wrapResult = await runWrapped(wrapArgs);
+
+  // Parse the event from the buffered stdin content.
+  let event: ReturnType<typeof parseHookEvent>;
+  try {
+    const parsed = JSON.parse(wrapResult.stdinContent);
+    event = parseHookEvent(parsed);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[hookwatch] Failed to parse event from wrapped stdin: ${msg}`);
+    // Still forward child exit code even if event parsing fails
+    process.exit(wrapResult.exitCode);
+  }
+
+  // POST the event with captured I/O — best-effort (don't fail wrapped command
+  // if server is down).
+  const port = readPort();
+  const postResult = await postEvent({ port, event, wrappedCommand });
+  if (!postResult) {
+    console.error("[hookwatch] Failed to POST wrapped event — continuing (best-effort)");
+    // Don't exit here — still forward the child's exit code
+  }
+
+  // Write hook output JSON for Claude Code context injection.
+  // In wrapped mode the child's stdout was already written by teeStream.
+  // The hook JSON is appended after it.
+  if (postResult) {
+    writeHookOutput(event);
+  }
+
+  // Forward child exit code — this is the primary purpose of wrapped mode.
+  process.exit(wrapResult.exitCode);
+}
+
+// ---------------------------------------------------------------------------
+// Entry point
+// ---------------------------------------------------------------------------
+
+const wrapArgs = getWrapArgs();
+
+if (wrapArgs !== null) {
+  runWrappedMode(wrapArgs).catch((err) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[hookwatch] Unexpected error in wrapped mode: ${msg}`);
+    process.exit(1);
+  });
+} else {
+  runBare().catch((err) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[hookwatch] Unexpected error: ${msg}`);
+    process.exit(1);
+  });
+}

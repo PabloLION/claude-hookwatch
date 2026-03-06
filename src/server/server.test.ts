@@ -143,6 +143,23 @@ describe("POST /api/events", () => {
     });
     expect(res.status).toBe(201);
   });
+
+  test("accepts wrapped_command field and returns 201 (Story 3.1)", async () => {
+    // When the handler runs in wrapped mode, it POSTs the event with an
+    // additional wrapped_command field. The server should accept it.
+    const res = await fetch(url("/api/events"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...validSessionStart,
+        session_id: "wrap-test-session",
+        wrapped_command: "./my-hook.sh arg1",
+      }),
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(typeof body.id).toBe("number");
+  });
 });
 
 // ---------------------------------------------------------------------------

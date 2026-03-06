@@ -27,6 +27,7 @@ function makeEvent(sessionId: string, ts: number) {
     session_name: null,
     hook_duration_ms: null,
     payload: "{}",
+    wrapped_command: null,
   };
 }
 

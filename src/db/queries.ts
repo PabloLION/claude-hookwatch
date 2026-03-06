@@ -15,6 +15,8 @@ export interface EventRow {
   session_name: string | null;
   hook_duration_ms: number | null;
   payload: string;
+  /** NULL = bare handler event; non-NULL = wrapped command string (Story 3.1) */
+  wrapped_command: string | null;
 }
 
 /**
@@ -30,6 +32,8 @@ export interface InsertEventParams {
   session_name: string | null;
   hook_duration_ms: number | null;
   payload: string;
+  /** NULL = bare handler event; non-NULL = wrapped command string (Story 3.1) */
+  wrapped_command: string | null;
 }
 
 /**
@@ -40,9 +44,9 @@ export interface InsertEventParams {
 export function insertEvent(db: Database, params: InsertEventParams): number {
   const stmt = db.prepare(
     `INSERT INTO events
-       (ts, event, session_id, cwd, tool_name, session_name, hook_duration_ms, payload)
+       (ts, event, session_id, cwd, tool_name, session_name, hook_duration_ms, payload, wrapped_command)
      VALUES
-       (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const result = stmt.run(
     params.ts,
@@ -53,6 +57,7 @@ export function insertEvent(db: Database, params: InsertEventParams): number {
     params.session_name,
     params.hook_duration_ms,
     params.payload,
+    params.wrapped_command,
   );
   return Number(result.lastInsertRowid);
 }

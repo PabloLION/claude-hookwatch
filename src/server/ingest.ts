@@ -4,6 +4,9 @@
  * Accepts a JSON body with a Claude Code hook event payload, validates it with
  * the Zod discriminated-union schema, inserts into SQLite, and returns 201.
  *
+ * The request body may include an optional top-level `wrapped_command` string
+ * field (Story 3.1). When present it is stored in the DB column; NULL otherwise.
+ *
  * Error handling:
  *   - 400 INVALID_QUERY  — malformed JSON or failed Zod validation
  *   - 503 DB_LOCKED      — SQLite SQLITE_BUSY (WAL writer conflict)
@@ -27,6 +30,17 @@ export async function handleIngest(req: Request): Promise<Response> {
   } catch {
     return errorResponse("INVALID_QUERY", "Request body is not valid JSON", 400);
   }
+
+  // Extract optional wrapped_command from the top-level body object before
+  // handing raw to parseHookEvent (which uses .passthrough() so it won't strip
+  // it, but we extract it explicitly here for DB storage).
+  const wrappedCommand: string | null =
+    raw !== null &&
+    typeof raw === "object" &&
+    "wrapped_command" in raw &&
+    typeof (raw as Record<string, unknown>).wrapped_command === "string"
+      ? ((raw as Record<string, unknown>).wrapped_command as string)
+      : null;
 
   // Validate with Zod
   let event: ReturnType<typeof parseHookEvent>;
@@ -56,6 +70,7 @@ export async function handleIngest(req: Request): Promise<Response> {
       session_name: null,
       hook_duration_ms: null,
       payload: JSON.stringify(event),
+      wrapped_command: wrappedCommand,
     });
 
     // Broadcast the saved row to all connected SSE clients.
