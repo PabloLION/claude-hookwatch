@@ -14,9 +14,10 @@
 
 import { ZodError } from "zod";
 import { openDb } from "@/db/connection.ts";
-import { insertEvent } from "@/db/queries.ts";
+import { getEventById, insertEvent } from "@/db/queries.ts";
 import { parseHookEvent } from "@/schemas/events.ts";
 import { errorResponse } from "@/server/errors.ts";
+import { broadcast } from "@/server/stream.ts";
 
 export async function handleIngest(req: Request): Promise<Response> {
   // Parse JSON body
@@ -42,7 +43,7 @@ export async function handleIngest(req: Request): Promise<Response> {
     return errorResponse("INVALID_QUERY", "Payload validation failed", 400);
   }
 
-  // Insert into DB
+  // Insert into DB and broadcast to SSE clients
   try {
     const db = openDb();
     const id = insertEvent(db, {
@@ -56,6 +57,15 @@ export async function handleIngest(req: Request): Promise<Response> {
       hook_duration_ms: null,
       payload: JSON.stringify(event),
     });
+
+    // Broadcast the saved row to all connected SSE clients.
+    // Fetch the row so broadcast carries the canonical DB representation
+    // (with id, ts, and all columns) — never broadcast raw input.
+    const row = getEventById(db, id);
+    if (row !== null) {
+      broadcast(row);
+    }
+
     return Response.json({ id }, { status: 201 });
   } catch (err) {
     // Detect SQLite BUSY / LOCKED errors
