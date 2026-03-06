@@ -1,72 +1,105 @@
-# AGENTS.md — claude-hookwatch
-
-## Project Overview
+# AGENTS.md — hookwatch
 
 Claude Code plugin that captures all 18 hook event types, stores them in a
 local SQLite database, and serves a web UI for browsing and querying events.
 Install with `claude plugin install`, uninstall cleanly with `claude plugin
-remove`.
+uninstall`.
 
-## File Structure
+## Mandatory Rules
 
-```text
-.claude-plugin/
-  plugin.json              — Plugin manifest (name, version, author)
-hooks/
-  hooks.json               — Hook registration (all 18 event types, ".*" matchers)
-  handler.ts               — Single entry point for all events
-src/
-  schemas/                 — Zod schemas for each event type
-  db.ts                    — SQLite database operations (bun:sqlite)
-  server.ts                — Local web UI server
-  ui/                      — Web UI frontend
-docs/
-  design.md                — Design document (goals, non-goals, FRs, NFRs)
-  hook-stdin-schema.md     — Complete stdin schema for all 18 events
+These rules MUST NOT be violated by any agent. They are enforced by code review.
+
+**ch-lar — Parameterized SQL only.** Never concatenate user data into SQL
+strings. All values passed to SQLite must use `?` placeholders via
+`bun:sqlite` parameterized queries. Violating this rule creates SQL injection
+vulnerabilities.
+
+**ch-u88 — No innerHTML.** Never use `innerHTML`, `outerHTML`, or
+`dangerouslySetInnerHTML`. SSE data is JSON-stringified and never interpolated
+into HTML. htm tagged template literals auto-escape all interpolated values
+— use them for all UI rendering.
+
+## Naming Conventions
+
+```csv
+Context,Convention,Example
+Database columns,snake_case,"session_id, hook_duration_ms"
+JSON API fields,snake_case,"session_id, hook_duration_ms"
+TypeScript identifiers,camelCase,"sessionId, hookDurationMs"
+File names,kebab-case,"event-list.ts, db-connection.ts"
+Zod schemas,camelCase + Schema suffix,"sessionStartSchema, toolUseSchema"
+Zod inferred types,PascalCase,"SessionStart, ToolUse"
+Preact signals,camelCase,"eventList, activeSession"
 ```
 
-## Code Conventions
+## File Layout
 
-- **Bun/TypeScript** — Bun runs `.ts` natively, no transpilation or bundling
-- **bun:sqlite** — built-in SQLite module, WAL mode, zero external dependencies
-- **Zod** — runtime validation of stdin payloads (only runtime dependency)
-- **Single handler** — one `handler.ts` handles all event types; event routing
-  via `hook_event_name` field from stdin JSON
-- **Localhost only** — web UI binds to `127.0.0.1`, no external network calls
-- **Append-only** — events are never modified after insertion
+```text
+hookwatch/
+├── package.json
+├── tsconfig.json
+├── biome.json
+├── AGENTS.md
+├── README.md
+├── .gitignore
+├── plugin.json              — generated, checked in for `claude plugin install`
+├── hooks.json               — generated, registered event types
+│
+├── src/
+│   ├── handler/             — hook entry point (stdin → validate → POST)
+│   ├── server/              — Bun.serve() HTTP server, routes, SSE
+│   ├── db/                  — bun:sqlite: schema, migrations, query helpers
+│   ├── schemas/             — Zod schemas for all 18 event types
+│   ├── ui/                  — Preact + htm web UI components
+│   └── cli/                 — citty subcommands (install, uninstall, open, wrap)
+│
+├── tests/                   — integration tests only
+└── planning-artifacts/      — BMAD workflow outputs (not shipped)
+```
 
-## Reference Docs
+## Tech Stack
 
-- Hook events (18 types), SQLite schema, querying → `./README.md`
-- Full stdin payload schema per event type → `./docs/hook-stdin-schema.md`
-- Design decisions, FRs, NFRs, versioning → `./docs/design.md`
+```csv
+Concern,Technology,Notes
+Runtime,Bun,Runs .ts natively — no transpilation or build step
+Database,bun:sqlite (built-in),"WAL mode, zero external deps"
+Validation,Zod,Only runtime dependency — validates stdin payloads
+CLI,citty,"~10KB, 4 subcommands: install uninstall open wrap"
+Web UI,Preact + htm,Tagged template literals — no JSX transform needed
+State,Preact signals,~1KB — automatic reactivity without prop drilling
+Styling,Pico CSS + CSS-in-JS,Pico for base styles; custom via style objects
+Linting,Biome,Lint + format in one tool
+Testing,bun test,Built-in test runner
+Config,smol-toml,~/.config/hookwatch/config.toml (optional)
+```
+
+## Database
+
+- Path: `$XDG_DATA_HOME/hookwatch/hookwatch.db` (default: `~/.local/share/hookwatch/hookwatch.db`)
+- Permissions: `0600` — set immediately after file creation
+- WAL mode: `PRAGMA journal_mode=wal` on every connection open
+- Schema version: `PRAGMA user_version` for sequential migrations
+
+## API
+
+- `POST /api/events` — handler → server event ingestion
+- `POST /api/query` — flexible filter-based queries (web UI → server)
+- `GET /api/events/stream` — SSE stream for live updates
+- `GET /health` — health check (used by handler spawn probe)
+- Error format: `{ "error": { "code": "DB_LOCKED", "message": "..." } }`
+- Error codes: `DB_LOCKED`, `NOT_FOUND`, `INVALID_QUERY`, `INTERNAL`
 
 ## Testing Approach
 
-- Unit tests: mock stdin with sample payloads, verify SQLite rows
-- Integration: install plugin in a scratch project, trigger events, verify DB
+- Unit tests co-located with source (`src/db/schema.test.ts` next to `src/db/schema.ts`)
+- Integration tests in `tests/` directory
 - All 18 event types must have at least one test case
 - Zod schema validation tests against known payloads
-- Web UI: Playwright for browser testing
 
-## Commit Conventions
+## Process Rules
 
-```text
-<type>[scope]: <description>
-```
-
-Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
-
-Atomic commits — one logical change per commit.
-
-## Session Close Protocol
-
-When ending a work session, complete ALL steps:
-
-1. **File issues** — create beads issues for remaining work
-2. **Quality gates** (if code changed) — tests, linters, type checks
-3. **Update issues** — close finished work, update in-progress items
-4. **Sync issues** — `bd sync --flush-only` (local export to JSONL)
-5. **Commit** — all changes committed
-6. **Push** (if remote configured) — `git push` with `git status` verification
-7. **Hand off** — provide context for next session
+- **Handler errors:** Exit 1 on failure (non-blocking) — never crash Claude Code
+- **Server errors:** Structured JSON `{ "error": { "code": "...", "message": "..." } }`
+- **UI errors:** Display server errors — never swallow silently
+- **Imports:** Use `@/` path alias (maps to `./src/`) — no relative `../` chains
+- **No build step:** Bun runs `.ts` directly. `Bun.Transpiler` handles UI delivery on-the-fly
