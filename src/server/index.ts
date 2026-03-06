@@ -7,6 +7,7 @@
  *   - Port auto-increment: start at 6004, retry on EADDRINUSE — AC #4
  *   - Write chosen port to XDG port file after successful bind — Story 1.3 decision
  *   - Graceful shutdown: remove port file, close DB
+ *   - Idle timeout: self-terminate after 1 hour of no HTTP requests — Story 2.6
  *
  * Error codes used in responses: DB_LOCKED, NOT_FOUND, INVALID_QUERY, INTERNAL
  */
@@ -25,6 +26,53 @@ import { closeAll as closeSseClients, handleStream } from "@/server/stream.ts";
 const BASE_PORT = 6004;
 const MAX_PORT = 6064; // 60 retries before giving up
 const HOSTNAME = "127.0.0.1";
+
+// ---------------------------------------------------------------------------
+// Idle timeout
+// ---------------------------------------------------------------------------
+
+/** Duration of inactivity before the server self-terminates.
+ * TODO: configurable via config.toml (ch-1ex5.1)
+ */
+const IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
+
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
+let shutdownCallback: (() => void) | null = null;
+
+/**
+ * (Re)start the idle timer. Every incoming HTTP request must call this.
+ * When the timer fires, the server shuts down gracefully.
+ * Exported so tests can exercise timer behavior directly.
+ */
+export function resetIdleTimer(): void {
+  if (idleTimer !== null) clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    process.stderr.write("[hookwatch] Idle timeout reached — shutting down server\n");
+    if (shutdownCallback !== null) shutdownCallback();
+    closeSseClients();
+    closeDb();
+    removePortFile();
+    process.exit(0);
+  }, IDLE_TIMEOUT_MS);
+  // Allow the process to exit even while the timer is pending.
+  // Without this, Node/Bun keeps the event loop alive indefinitely.
+  // .unref() is a Bun/Node extension that prevents the timer from keeping the
+  // process alive. It may not be present when setTimeout is mocked in tests.
+  if (typeof (idleTimer as { unref?: () => void }).unref === "function") {
+    (idleTimer as { unref: () => void }).unref();
+  }
+}
+
+/**
+ * Cancel the idle timer. Called during explicit (non-timeout) shutdown so the
+ * timer does not fire after the server is already stopped.
+ */
+function cancelIdleTimer(): void {
+  if (idleTimer !== null) {
+    clearTimeout(idleTimer);
+    idleTimer = null;
+  }
+}
 
 /**
  * Write the active port to the port file so the hook handler can discover it.
@@ -49,6 +97,8 @@ function removePortFile(): void {
 
 /**
  * Route a request to the correct handler.
+ * Resets the idle timer on every request so inactivity is measured from the
+ * last real HTTP activity on any endpoint.
  *
  * Route table:
  *   GET  /health              — health check
@@ -59,6 +109,7 @@ function removePortFile(): void {
  *   GET  /*                   — serve UI assets (static or transpiled .ts)
  */
 function dispatch(req: Request): Response | Promise<Response> {
+  resetIdleTimer();
   const url = new URL(req.url);
 
   if (req.method === "GET" && url.pathname === "/health") {
@@ -100,11 +151,19 @@ export async function startServer(): Promise<{ port: number; stop: () => void }>
       writePortFile(port);
 
       const stop = (): void => {
+        cancelIdleTimer();
+        shutdownCallback = null;
         removePortFile();
         closeSseClients();
         closeDb();
         server.stop(true);
       };
+
+      // Register the stop callback so the idle timeout handler can invoke it
+      shutdownCallback = stop;
+
+      // Start the initial idle timer now that the server is bound
+      resetIdleTimer();
 
       return { port, stop };
     } catch (err) {
