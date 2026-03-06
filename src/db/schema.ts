@@ -11,6 +11,9 @@ const _CURRENT_VERSION = 1;
  * All Claude Code hook event types are stored in a single table.
  * Common fields are extracted as indexed columns; the full stdin JSON
  * is preserved in the `payload` column for forward compatibility.
+ *
+ * wrapped_command (nullable): NULL = bare handler event; non-NULL = the
+ * wrapped command string (Story 3.1). Pre-release — no migration needed.
  */
 const CREATE_EVENTS_TABLE = `
   CREATE TABLE IF NOT EXISTS events (
@@ -22,7 +25,8 @@ const CREATE_EVENTS_TABLE = `
     tool_name        TEXT,
     session_name     TEXT,
     hook_duration_ms INTEGER,
-    payload          TEXT    NOT NULL
+    payload          TEXT    NOT NULL,
+    wrapped_command  TEXT
   );
 `;
 
