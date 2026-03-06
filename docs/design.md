@@ -156,7 +156,7 @@ Events are stored in a local SQLite database using `bun:sqlite` (built-in, zero
 dependencies). WAL mode for concurrent read/write.
 
 ```text
-~/.claude/hookwatch/hookwatch.db
+~/.local/share/hookwatch/hookwatch.db    ($XDG_DATA_HOME/hookwatch/hookwatch.db)
 ```
 
 Key columns are indexed for fast querying:
@@ -218,7 +218,8 @@ hooks/
 ### FR-4: Web UI (v0: basic, v1: polished)
 
 hookwatch serves a local web UI for browsing and querying events. Built with
-**Svelte** — small bundle size, compiles to vanilla JS, no virtual DOM overhead.
+**Preact + htm** — tagged template literals (no JSX transform), ~4KB runtime,
+no build step required (Bun runs `.ts` directly).
 
 **v0 features:**
 
@@ -306,12 +307,12 @@ session. Each SessionStart increments a run counter for that session_id.
 Minimal configuration via a single TOML file:
 
 ```text
-~/.claude/hookwatch/config.toml
+~/.config/hookwatch/config.toml    ($XDG_CONFIG_HOME/hookwatch/config.toml)
 ```
 
 ```toml
-# Database location (default: ~/.claude/hookwatch/hookwatch.db)
-db_path = "~/.claude/hookwatch/hookwatch.db"
+# Database location (default: ~/.local/share/hookwatch/hookwatch.db)
+db_path = "~/.local/share/hookwatch/hookwatch.db"
 
 [notifications]
 desktop = false  # v1: native OS notifications
@@ -376,6 +377,13 @@ Configurable data cleanup using a high-water / low-water mark pattern.
   filter payload content. Sensitive data filtering is Claude Code's
   responsibility.
 - No secrets stored — no API keys, no tokens, no credentials
+- **Parameterized SQL only** — never concatenate user data into SQL strings.
+  All values passed to SQLite must use `?` placeholders via `bun:sqlite`
+  parameterized queries. Prevents SQL injection.
+- **No innerHTML** — never use `innerHTML`, `outerHTML`, or
+  `dangerouslySetInnerHTML`. htm tagged template literals auto-escape all
+  interpolated values. Enforced by Biome rule `noDangerouslySetInnerHtml:
+  error`. Prevents XSS.
 
 ### NFR-3: Compatibility
 
@@ -417,7 +425,7 @@ Single handler,"One handler.ts for all events. Simpler than 18 separate scripts 
 Zod validation,"Runtime validation of stdin payloads. Detects upstream schema changes. Only runtime dependency (justified by correctness guarantees).","Hand-written validators, no validation (trust stdin)"
 Bun runtime (not standalone),"Users already need Bun for bun:sqlite. Small TS files over ~80MB binary. Plugin updates are file changes, no recompilation. Easy to switch later via bun build --compile.","Standalone binary (eliminates runtime dep but large)"
 TOML config,"Supports comments (JSON does not). Human-readable. May need smol-toml (~15KB) if Bun lacks native TOML imports.","JSON (no comments), YAML (verbose)"
-Svelte for web UI,"Small bundle, compiles to vanilla JS, no virtual DOM overhead. Fits lightweight local UI goal.","Vanilla HTML/JS (zero deps but harder to maintain), React/Preact (heavier)"
+Preact + htm for web UI,"Tagged template literals — no JSX transform or build step. ~4KB runtime. Fits Bun-native no-transpilation goal.","Svelte (requires build step — conflicts with NFR-5), Vanilla HTML/JS (harder to maintain), React (heavier)"
 Log retention (v1),"High/low water mark pattern. Checked at SessionStart (once per session). Both age and size limits active. Margin prevents re-triggering.","No retention (user responsibility), PreCompact trigger (adds latency during active work)"
 ```
 
