@@ -6,14 +6,18 @@
  * columns: timestamp, event type, session ID, tool name. Shows an empty-state
  * message when no events exist.
  *
+ * Each row is clickable — clicking toggles an expanded EventDetail view below
+ * the row. Multiple rows can be expanded simultaneously.
+ *
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
 import type { Signal } from "@preact/signals";
 import htm from "htm";
 import { h } from "preact";
-import { useEffect } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import type { EventRow } from "../app.ts";
+import { EventDetail } from "./event-detail.ts";
 
 const html = htm.bind(h);
 
@@ -58,10 +62,25 @@ function formatTimestamp(ts: number): string {
 }
 
 export function EventList({ eventList, activeSession }: EventListProps) {
+  // Track which row IDs are currently expanded. A Set allows multiple open rows.
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+
   // Re-fetch whenever activeSession changes
   useEffect(() => {
     void fetchEvents(eventList, activeSession.value);
   }, [activeSession.value]);
+
+  function toggleRow(id: number): void {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   const events = eventList.value;
 
@@ -86,16 +105,33 @@ export function EventList({ eventList, activeSession }: EventListProps) {
             </tr>
           </thead>
           <tbody>
-            ${events.map(
-              (event) => html`
-                <tr key=${event.id}>
+            ${events.map((event) => {
+              const expanded = expandedIds.has(event.id);
+              return html`
+                <tr
+                  key=${event.id}
+                  onClick=${() => toggleRow(event.id)}
+                  style=${{ cursor: "pointer" }}
+                  aria-expanded=${expanded}
+                  data-event-id=${event.id}
+                >
                   <td>${formatTimestamp(event.ts)}</td>
                   <td>${event.event}</td>
                   <td>${event.session_id}</td>
                   <td>${extractToolName(event.payload)}</td>
                 </tr>
-              `,
-            )}
+                ${
+                  expanded &&
+                  html`
+                  <tr key=${`detail-${event.id}`} data-detail-for=${event.id}>
+                    <td colspan="4">
+                      <${EventDetail} event=${event} />
+                    </td>
+                  </tr>
+                `
+                }
+              `;
+            })}
           </tbody>
         </table>
       </div>
