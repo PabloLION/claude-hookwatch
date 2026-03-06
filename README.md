@@ -12,6 +12,20 @@ local SQLite database, and serves a web UI for browsing and querying events.
 - Zod validation of all stdin payloads
 - Fully offline — no network calls, localhost-only web UI
 
+## Install
+
+```sh
+bun install
+```
+
+## Dev Commands
+
+```sh
+bun run dev      # start server with --watch (auto-reload on file changes)
+bun test         # run test suite
+bun run lint     # lint and format check (Biome)
+```
+
 ## Installation
 
 ```sh
@@ -29,8 +43,11 @@ claude plugin remove claude-hookwatch
 Events are stored in a SQLite database:
 
 ```text
-~/.claude/hookwatch/hookwatch.db
+~/.local/share/hookwatch/hookwatch.db
 ```
+
+The path respects `$XDG_DATA_HOME` if set:
+`$XDG_DATA_HOME/hookwatch/hookwatch.db`
 
 ```csv
 Column,Type,Description
@@ -85,22 +102,22 @@ SQL queries against the SQLite database:
 
 ```sh
 # All events from a session
-sqlite3 ~/.claude/hookwatch/hookwatch.db \
+sqlite3 ~/.local/share/hookwatch/hookwatch.db \
   "SELECT ts, event, tool_name FROM events WHERE session_id = 'abc123'"
 
 # Count events by type
-sqlite3 ~/.claude/hookwatch/hookwatch.db \
+sqlite3 ~/.local/share/hookwatch/hookwatch.db \
   "SELECT event, COUNT(*) FROM events GROUP BY event ORDER BY COUNT(*) DESC"
 
 # Tool usage in the last hour
-sqlite3 ~/.claude/hookwatch/hookwatch.db \
+sqlite3 ~/.local/share/hookwatch/hookwatch.db \
   "SELECT tool_name, COUNT(*) FROM events
    WHERE event = 'PreToolUse'
      AND ts > datetime('now', '-1 hour')
    GROUP BY tool_name"
 
 # Hook performance (slow hooks)
-sqlite3 ~/.claude/hookwatch/hookwatch.db \
+sqlite3 ~/.local/share/hookwatch/hookwatch.db \
   "SELECT event, AVG(hook_duration_ms), MAX(hook_duration_ms)
    FROM events GROUP BY event ORDER BY AVG(hook_duration_ms) DESC"
 ```
