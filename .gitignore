@@ -31,3 +31,7 @@ Thumbs.db
 
 # Private store
 .git-ignored/
+
+# Playwright output directories
+test-results/
+playwright-report/
