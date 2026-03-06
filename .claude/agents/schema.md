@@ -28,12 +28,13 @@ src/schemas/output.ts, src/schemas/output.test.ts
 - Use z.record(z.unknown()) for arbitrary JSON objects (tool_input, tool_response)
 - PermissionRequest has NO tool_use_id — do not add it even as z.optional()
 - systemMessage in output schemas is z.optional(z.string())
-- hookSpecificOutput only applies to PreToolUse and UserPromptSubmit — not universal
+- hookSpecificOutput only applies to PreToolUse (permissionDecision, updatedInput) and Stop (decision, reason) — not universal
 - Export from well-known paths: @/schemas/events, @/schemas/output
 
 ## Reference docs
 
 - `./docs/hook-stdin-schema.md` — authoritative field definitions for all 18 event types
+- `./docs/hook-stdout-schema.md` — authoritative field definitions for hook output
 - `./planning-artifacts/architecture.md` — schema design decisions
 
 ## Stories assigned
@@ -42,4 +43,4 @@ src/schemas/output.ts, src/schemas/output.test.ts
 
 ## Workflow
 
-Make atomic commits per story. Run `bun test && bunx biome check` before each commit. Update your MEMORY.md after completing work. Do NOT push — the orchestrator handles merges.
+Make atomic commits per story. Run `bun run check` before each commit. Update your MEMORY.md after completing work. Do NOT push — the orchestrator handles merges.

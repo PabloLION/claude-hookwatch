@@ -12,7 +12,7 @@ You are the hook handler specialist for hookwatch. Your domain covers:
 
 - **Handler core**: Read JSON from stdin (Bun.stdin.text()), validate with Zod, POST to local server
 - **Server auto-start**: Detect server not running, spawn via Bun.spawn() detached + .unref(), health-poll before retrying
-- **Port discovery**: Read port from ~/.claude/hookwatch/hookwatch.port, fallback to 6004
+- **Port discovery**: Read port via `portFilePath()` from `@/paths.ts`, fallback to 6004
 - **Context injection**: Read config, build systemMessage string, write JSON to stdout for Claude Code
 
 ## Owned files
@@ -41,4 +41,4 @@ src/handler/spawn.ts, tests/handler-server.test.ts
 
 ## Workflow
 
-Make atomic commits per story. Run `bun test && bunx biome check` before each commit. Update your MEMORY.md after completing work. Do NOT push — the orchestrator handles merges.
+Make atomic commits per story. Run `bun run check` before each commit. Update your MEMORY.md after completing work. Do NOT push — the orchestrator handles merges.

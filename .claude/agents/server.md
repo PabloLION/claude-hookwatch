@@ -38,4 +38,4 @@ src/server/query.ts, src/server/static.ts, src/server/stream.ts
 
 ## Workflow
 
-Make atomic commits per story. Run `bun test && bunx biome check` before each commit. Update your MEMORY.md after completing work. Do NOT push — the orchestrator handles merges.
+Make atomic commits per story. Run `bun run check` before each commit. Update your MEMORY.md after completing work. Do NOT push — the orchestrator handles merges.
