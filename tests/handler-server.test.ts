@@ -184,7 +184,10 @@ describe("server already running", () => {
       });
 
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toBe(""); // stdout must be empty
+      // stdout must be valid hook output JSON (context injection — Story 4.2)
+      const parsed = JSON.parse(result.stdout);
+      expect(parsed.continue).toBe(true);
+      expect(parsed.systemMessage).toBe("Captured SessionStart (startup)");
       expect(receivedBodies).toHaveLength(1);
       const body = receivedBodies[0] as Record<string, unknown>;
       expect(body?.hook_event_name).toBe("SessionStart");
@@ -214,6 +217,7 @@ describe("server already running", () => {
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("500");
+      // On failure, stdout must remain empty — no partial hook output JSON
       expect(result.stdout).toBe("");
     } finally {
       testServer.stop(true);
@@ -247,7 +251,10 @@ describe("auto-start", () => {
 
     // The server should have been spawned and the event delivered successfully
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toBe(""); // stdout must always be empty
+    // stdout must contain valid hook output JSON (context injection — Story 4.2)
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.continue).toBe(true);
+    expect(typeof parsed.systemMessage).toBe("string");
 
     // The server should have written a port file
     const port = readPortFile(xdgHome);
@@ -314,8 +321,10 @@ describe("auto-start", () => {
 
     // Either the handler succeeds (if a real server started and answered on a
     // different port than 9 — unlikely since 9 is in the port file), or it
-    // fails with exit 1. We primarily assert stdout is always empty.
-    expect(result.stdout).toBe("");
+    // fails with exit 1. On failure, stdout must be empty.
+    if (result.exitCode !== 0) {
+      expect(result.stdout).toBe("");
+    }
 
     // Read the new port if the server started
     const port = readPortFile(xdgHome);
@@ -326,11 +335,11 @@ describe("auto-start", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Stdout suppression
+// Hook output during auto-start (Story 4.2)
 // ---------------------------------------------------------------------------
 
-describe("stdout suppression during auto-start", () => {
-  test("no stdout emitted when auto-starting server", async () => {
+describe("hook output during auto-start", () => {
+  test("valid JSON hook output written to stdout after auto-start success", async () => {
     const xdgHome = join(TMP_DIR, "auto-start-stdout");
     mkdirSync(xdgHome, { recursive: true });
 
@@ -343,12 +352,19 @@ describe("stdout suppression during auto-start", () => {
       10000,
     );
 
-    // CRITICAL: stdout must be empty regardless of outcome
-    expect(result.stdout).toBe("");
-
     const port = readPortFile(xdgHome);
     if (port !== null) {
       usedPorts.push(port);
+    }
+
+    if (result.exitCode === 0) {
+      // Success path: stdout must contain valid hook output JSON
+      const parsed = JSON.parse(result.stdout);
+      expect(parsed.continue).toBe(true);
+      expect(typeof parsed.systemMessage).toBe("string");
+    } else {
+      // Failure path (e.g. spawn failed): stdout must be empty
+      expect(result.stdout).toBe("");
     }
   }, 15000);
 });
