@@ -304,3 +304,70 @@ describe("GET missing UI file", () => {
     expect(body.error.code).toBe("NOT_FOUND");
   });
 });
+
+// ---------------------------------------------------------------------------
+// SSE stream endpoint (Story 2.4a)
+// ---------------------------------------------------------------------------
+
+describe("GET /api/events/stream", () => {
+  test("returns SSE response with correct headers and delivers broadcast event", async () => {
+    const decoder = new TextDecoder();
+    const abort = new AbortController();
+
+    // Start the SSE fetch. Do NOT await — the response headers arrive
+    // immediately but the body stream stays open until we cancel.
+    const ssePromise = fetch(url("/api/events/stream"), { signal: abort.signal });
+
+    // Give the server a moment to accept the connection and register the client
+    await Bun.sleep(50);
+
+    // Post a new event — this should trigger broadcast to our SSE client
+    const payload = {
+      session_id: "sse-integration-test",
+      transcript_path: "/tmp/sse.json",
+      cwd: "/home/sse",
+      permission_mode: "default",
+      hook_event_name: "SessionStart",
+      source: "startup",
+      model: "claude-opus-4-5",
+    };
+
+    await fetch(url("/api/events"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    // Now await the SSE response headers — they should already be available
+    const sseRes = await ssePromise;
+    expect(sseRes.status).toBe(200);
+    const ct = sseRes.headers.get("content-type") ?? "";
+    expect(ct).toContain("text/event-stream");
+
+    // Read the broadcasted chunk.
+    // sseRes.body is always present for a streaming SSE response.
+    if (sseRes.body === null) throw new Error("SSE response has no body");
+    const reader = sseRes.body.getReader();
+    const chunkPromise = reader.read();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("SSE chunk timeout — broadcast not received")), 2000),
+    );
+
+    const { value, done } = await Promise.race([chunkPromise, timeoutPromise]);
+
+    expect(done).toBe(false);
+    const text = decoder.decode(value);
+    expect(text.startsWith("data: ")).toBe(true);
+    expect(text.endsWith("\n\n")).toBe(true);
+
+    const json = text.slice("data: ".length, -2);
+    const row = JSON.parse(json);
+    expect(row.event).toBe("SessionStart");
+    expect(row.session_id).toBe("sse-integration-test");
+    expect(typeof row.id).toBe("number");
+
+    // Clean up — cancel both the reader and the SSE connection
+    await reader.cancel();
+    abort.abort();
+  });
+});

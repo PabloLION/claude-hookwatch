@@ -20,6 +20,7 @@ import { handleHealth } from "@/server/health.ts";
 import { handleIngest } from "@/server/ingest.ts";
 import { handleQuery } from "@/server/query.ts";
 import { handleStatic } from "@/server/static.ts";
+import { closeAll as closeSseClients, handleStream } from "@/server/stream.ts";
 
 const BASE_PORT = 6004;
 const MAX_PORT = 6064; // 60 retries before giving up
@@ -50,11 +51,12 @@ function removePortFile(): void {
  * Route a request to the correct handler.
  *
  * Route table:
- *   GET  /health        — health check
- *   POST /api/events    — event ingestion
- *   POST /api/query     — event query
- *   GET  /              — serve index.html
- *   GET  /*             — serve UI assets (static or transpiled .ts)
+ *   GET  /health              — health check
+ *   POST /api/events          — event ingestion
+ *   POST /api/query           — event query
+ *   GET  /api/events/stream   — SSE live event stream
+ *   GET  /                    — serve index.html
+ *   GET  /*                   — serve UI assets (static or transpiled .ts)
  */
 function dispatch(req: Request): Response | Promise<Response> {
   const url = new URL(req.url);
@@ -69,6 +71,10 @@ function dispatch(req: Request): Response | Promise<Response> {
 
   if (req.method === "POST" && url.pathname === "/api/query") {
     return handleQuery(req);
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/events/stream") {
+    return handleStream(req);
   }
 
   if (req.method === "GET") {
@@ -95,6 +101,7 @@ export async function startServer(): Promise<{ port: number; stop: () => void }>
 
       const stop = (): void => {
         removePortFile();
+        closeSseClients();
         closeDb();
         server.stop(true);
       };
