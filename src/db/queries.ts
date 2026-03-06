@@ -92,6 +92,16 @@ export function getEventsByType(db: Database, eventType: string): EventRow[] {
 }
 
 /**
+ * Retrieve distinct session IDs ordered by most recent activity first.
+ * Used to populate the session filter dropdown in the web UI.
+ * ch-lar: no user input — static query, no parameterization needed.
+ */
+export function getDistinctSessions(db: Database): string[] {
+  const stmt = db.prepare(`SELECT DISTINCT session_id FROM events ORDER BY ts DESC`);
+  return (stmt.all() as Array<{ session_id: string }>).map((r) => r.session_id);
+}
+
+/**
  * Retrieve events with optional filters, ordered by ts DESC (newest first).
  *
  * ch-lar: all filter values are passed as parameterized ? placeholders — no

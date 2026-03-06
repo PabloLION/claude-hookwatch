@@ -1,11 +1,15 @@
 /**
- * Playwright E2E tests for the hookwatch Event List UI (Story 2.1d).
+ * Playwright E2E tests for the hookwatch Event List and Session Filter UI
+ * (Stories 2.1d and 2.2).
  *
  * Covers:
  *   - index.html loads with Pico CSS applied
  *   - Empty state renders "No events captured yet" when DB is empty
  *   - Event list renders seeded events in reverse chronological order
  *     with correct columns: timestamp, event type, session ID, tool name
+ *   - Session filter dropdown populates with distinct session IDs
+ *   - Selecting a session filters the event list to that session only
+ *   - Selecting "All sessions" restores all events
  *
  * Test setup pattern:
  *   1. Spawn hookwatch server as a subprocess with an isolated XDG_DATA_HOME
@@ -314,6 +318,58 @@ test(
       await expect(secondRow.locator("td").nth(2)).toHaveText("e2e-test-session-001");
       // SessionStart has no tool_name — EventList renders em-dash (U+2014)
       await expect(secondRow.locator("td").nth(3)).toHaveText("\u2014");
+    } finally {
+      await context.close();
+      server.stop();
+    }
+  },
+  { timeout: 30000 },
+);
+
+// ---------------------------------------------------------------------------
+// Test 4: Session filter dropdown populates and filtering works (Story 2.2)
+// ---------------------------------------------------------------------------
+
+test(
+  "session filter dropdown populates, filtering works, clearing restores all",
+  async () => {
+    const server = await startServer(tmpRoot, "session-filter-test");
+    const { context, page } = await freshPage();
+
+    try {
+      // Seed two events from different sessions
+      await seedEvent(server.baseUrl, BASE_SESSION_START); // session-001
+      await new Promise<void>((resolve) => setTimeout(resolve, 50));
+      await seedEvent(server.baseUrl, PRE_TOOL_USE_BASH); // session-002
+
+      await page.goto(server.baseUrl);
+
+      // Wait for the table to appear (both events loaded)
+      const table = page.locator("table");
+      await expect(table).toBeVisible({ timeout: 10000 });
+      await expect(page.locator("tbody tr")).toHaveCount(2, { timeout: 10000 });
+
+      // The session filter dropdown must be present and enabled
+      const select = page.locator("select#session-filter");
+      await expect(select).toBeVisible({ timeout: 10000 });
+      await expect(select).not.toBeDisabled();
+
+      // Dropdown must have "All sessions" plus one option per distinct session
+      // (2 sessions seeded → 3 options total)
+      const options = select.locator("option");
+      await expect(options).toHaveCount(3, { timeout: 10000 });
+      await expect(options.nth(0)).toHaveText("All sessions");
+
+      // Select session-001 — only that session's events should appear
+      await select.selectOption({ value: "e2e-test-session-001" });
+      await expect(page.locator("tbody tr")).toHaveCount(1, { timeout: 10000 });
+      const filteredRow = page.locator("tbody tr").nth(0);
+      await expect(filteredRow.locator("td").nth(1)).toHaveText("SessionStart");
+      await expect(filteredRow.locator("td").nth(2)).toHaveText("e2e-test-session-001");
+
+      // Select "All sessions" (empty value) — both events should be restored
+      await select.selectOption({ value: "" });
+      await expect(page.locator("tbody tr")).toHaveCount(2, { timeout: 10000 });
     } finally {
       await context.close();
       server.stop();

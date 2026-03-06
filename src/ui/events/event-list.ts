@@ -1,9 +1,10 @@
 /**
  * EventList component — displays a paginated table of hook events.
  *
- * On mount, fetches events via POST /api/query and updates the eventList
- * signal. Renders a table with columns: timestamp, event type, session ID,
- * tool name. Shows an empty-state message when no events exist.
+ * On mount and whenever activeSession changes, fetches events via
+ * POST /api/query and updates the eventList signal. Renders a table with
+ * columns: timestamp, event type, session ID, tool name. Shows an empty-state
+ * message when no events exist.
  *
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
@@ -21,6 +22,7 @@ const DEFAULT_QUERY_LIMIT = 100;
 
 interface EventListProps {
   eventList: Signal<EventRow[]>;
+  activeSession: Signal<string | null>;
 }
 
 /**
@@ -45,8 +47,7 @@ function extractToolName(payloadJson: string): string {
 }
 
 /**
- * Format an ISO timestamp string for display.
- * Returns the original string on parse failure.
+ * Format a numeric epoch-millisecond timestamp for display.
  */
 function formatTimestamp(ts: number): string {
   try {
@@ -56,10 +57,11 @@ function formatTimestamp(ts: number): string {
   }
 }
 
-export function EventList({ eventList }: EventListProps) {
+export function EventList({ eventList, activeSession }: EventListProps) {
+  // Re-fetch whenever activeSession changes
   useEffect(() => {
-    void fetchEvents(eventList);
-  }, []);
+    void fetchEvents(eventList, activeSession.value);
+  }, [activeSession.value]);
 
   const events = eventList.value;
 
@@ -101,12 +103,17 @@ export function EventList({ eventList }: EventListProps) {
   `;
 }
 
-async function fetchEvents(eventList: Signal<EventRow[]>): Promise<void> {
+async function fetchEvents(eventList: Signal<EventRow[]>, sessionId: string | null): Promise<void> {
   try {
+    const body: Record<string, unknown> = { limit: DEFAULT_QUERY_LIMIT };
+    if (sessionId !== null) {
+      body.session_id = sessionId;
+    }
+
     const res = await fetch("/api/query", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ limit: DEFAULT_QUERY_LIMIT }),
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) {
