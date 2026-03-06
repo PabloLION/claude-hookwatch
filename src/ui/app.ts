@@ -10,8 +10,17 @@ import htm from "htm";
 import { h, render } from "preact";
 import { EventList } from "./events/event-list.ts";
 import { SessionFilter } from "./sessions/session-filter.ts";
+import { startSseClient } from "./shared/sse-client.ts";
 
 const html = htm.bind(h);
+
+export interface EventRow {
+  id: number;
+  ts: number;
+  session_id: string;
+  event: string;
+  payload: string;
+}
 
 // Cross-component signal — owns the current event list
 // TODO: configurable via config.toml (ch-1ex5.1) — default query limit
@@ -21,13 +30,9 @@ export const eventList = signal<EventRow[]>([]);
 // to that specific session ID.
 export const activeSession = signal<string | null>(null);
 
-export interface EventRow {
-  id: number;
-  ts: number;
-  session_id: string;
-  event: string;
-  payload: string;
-}
+// Start the SSE client immediately on page load.
+// It runs for the lifetime of the page — no teardown needed.
+startSseClient(eventList, activeSession);
 
 function App() {
   return html`
