@@ -1,0 +1,8 @@
+{
+  "name": "hookwatch",
+  "version": "0.1.0",
+  "description": "Claude Code plugin that logs all hook events to SQLite and serves a local web UI",
+  "author": {
+    "name": "PabloLION"
+  }
+}
