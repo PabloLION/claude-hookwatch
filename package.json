@@ -8,13 +8,15 @@
   },
   "type": "module",
   "scripts": {
+    "postinstall": "bun link",
+    "generate": "bun scripts/generate-plugin.ts",
+    "check": "bun test src/ tests/handler-server.test.ts && biome check .",
     "dev": "bun --watch src/server/index.ts",
+    "format": "biome format --write .",
+    "lint": "biome check .",
     "start": "bun src/server/index.ts",
     "test": "bun test src/ tests/handler-server.test.ts",
-    "test:e2e": "playwright test tests/ui-e2e.test.ts",
-    "lint": "biome check .",
-    "format": "biome format --write .",
-    "check": "bun test src/ tests/handler-server.test.ts && biome check ."
+    "test:e2e": "playwright test tests/ui-e2e.test.ts"
   },
   "dependencies": {
     "@picocss/pico": "^2.1.1",
