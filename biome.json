@@ -38,7 +38,9 @@
       "!dist",
       "!*.db",
       "!.git-ignored",
-      "!.claude/worktrees"
+      "!.claude/worktrees",
+      "!test-results",
+      "!playwright-report"
     ]
   }
 }

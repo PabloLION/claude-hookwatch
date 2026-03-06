@@ -1,0 +1,3 @@
+# Bun project configuration
+# Playwright E2E tests (tests/ui-e2e.test.ts) use a separate runner.
+# Run them with: bun run test:e2e
