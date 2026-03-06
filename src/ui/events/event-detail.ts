@@ -1,0 +1,106 @@
+/**
+ * EventDetail component — renders the expanded detail view for a single event.
+ *
+ * Displays:
+ *   - For tool-related events (PreToolUse, PostToolUse, PostToolUseFailure):
+ *     a definition list showing tool_name and tool_input prominently above the
+ *     raw payload.
+ *   - Full payload as JSON.stringify(payload, null, 2) inside <pre><code>.
+ *
+ * ch-u88: all rendering via htm template literals — no innerHTML.
+ */
+
+import htm from "htm";
+import { h } from "preact";
+import type { EventRow } from "../app.ts";
+
+const html = htm.bind(h);
+
+/**
+ * Event types that carry tool information and warrant the tool info header.
+ * PermissionRequest is NOT included — it is not a tool-use event.
+ */
+const TOOL_EVENT_TYPES = new Set(["PreToolUse", "PostToolUse", "PostToolUseFailure"]);
+
+/**
+ * Check whether an event type is a tool-related event.
+ */
+function isToolEvent(eventType: string): boolean {
+  return TOOL_EVENT_TYPES.has(eventType);
+}
+
+/**
+ * Parse a JSON payload string. Returns the parsed value or null on failure.
+ */
+function parsePayload(payloadJson: string): unknown {
+  try {
+    return JSON.parse(payloadJson);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract a string field from a parsed payload object.
+ * Returns null when the field is absent or not a string.
+ */
+function extractStringField(parsed: unknown, field: string): string | null {
+  if (parsed !== null && typeof parsed === "object" && field in parsed) {
+    const value = (parsed as Record<string, unknown>)[field];
+    if (typeof value === "string") return value;
+  }
+  return null;
+}
+
+/**
+ * Extract the tool_input field from a parsed payload object.
+ * Returns null when absent.
+ */
+function extractToolInput(parsed: unknown): unknown {
+  if (parsed !== null && typeof parsed === "object" && "tool_input" in parsed) {
+    return (parsed as Record<string, unknown>).tool_input;
+  }
+  return null;
+}
+
+interface EventDetailProps {
+  event: EventRow;
+}
+
+export function EventDetail({ event }: EventDetailProps): ReturnType<typeof html> {
+  const parsed = parsePayload(event.payload);
+  const formattedPayload = parsed !== null ? JSON.stringify(parsed, null, 2) : event.payload; // Fallback: display raw string if not valid JSON
+
+  const showToolInfo = isToolEvent(event.event);
+  const toolName = showToolInfo ? extractStringField(parsed, "tool_name") : null;
+  const toolInput = showToolInfo ? extractToolInput(parsed) : null;
+  const formattedToolInput =
+    toolInput !== null && toolInput !== undefined ? JSON.stringify(toolInput, null, 2) : null;
+
+  return html`
+    <div class="event-detail">
+      ${
+        showToolInfo &&
+        html`
+        <dl>
+          <dt>Tool name</dt>
+          <dd>${toolName ?? "\u2014"}</dd>
+          ${
+            formattedToolInput !== null &&
+            html`
+            <dt>Tool input</dt>
+            <dd>
+              <pre><code>${formattedToolInput}</code></pre>
+            </dd>
+          `
+          }
+        </dl>
+      `
+      }
+      <details open>
+        <summary>Full payload</summary>
+        <pre><code>${formattedPayload}</code></pre>
+      </details>
+    </div>
+  `;
+}
