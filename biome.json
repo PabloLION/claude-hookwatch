@@ -31,6 +31,14 @@
     }
   },
   "files": {
-    "includes": ["**/*.ts", "**/*.json", "!node_modules", "!dist", "!*.db"]
+    "includes": [
+      "**/*.ts",
+      "**/*.json",
+      "!node_modules",
+      "!dist",
+      "!*.db",
+      "!.git-ignored",
+      "!.claude/worktrees"
+    ]
   }
 }

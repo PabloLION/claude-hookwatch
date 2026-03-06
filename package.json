@@ -11,8 +11,9 @@
     "dev": "bun --watch src/server/index.ts",
     "start": "bun src/server/index.ts",
     "test": "bun test",
-    "lint": "bunx biome check .",
-    "format": "bunx biome format --write ."
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "check": "bun test && biome check ."
   },
   "dependencies": {
     "citty": "^0.2.1",

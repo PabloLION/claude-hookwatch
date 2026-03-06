@@ -96,6 +96,20 @@ Config,smol-toml,~/.config/hookwatch/config.toml (optional)
 - All 18 event types must have at least one test case
 - Zod schema validation tests against known payloads
 
+## Scripts
+
+Use `package.json` scripts for all tooling — never call `bunx biome` directly.
+
+```csv
+Command,Script,What it runs
+bun run test,test,bun test
+bun run lint,lint,biome check .
+bun run format,format,biome format --write .
+bun run check,check,bun test && biome check .
+```
+
+Agents must run `bun run check` before each commit.
+
 ## Process Rules
 
 - **Handler errors:** Exit 1 on failure (non-blocking) — never crash Claude Code

@@ -13,7 +13,7 @@ You are the server and database specialist for hookwatch. Your domain covers:
 - **Database**: bun:sqlite, WAL mode, schema DDL, parameterized queries, connection lifecycle
 - **HTTP server**: Bun.serve(), route dispatch, POST /api/events ingestion, POST /api/query, static file serving
 - **SSE**: Server-Sent Events via ReadableStream, broadcast to connected clients, closeAll() export
-- **Server lifecycle**: port binding, port file (~/.claude/hookwatch/hookwatch.port), idle timeout, graceful shutdown (SSE → DB → exit)
+- **Server lifecycle**: port binding, port file (~/.local/share/hookwatch/hookwatch.port, respects $XDG_DATA_HOME), idle timeout, graceful shutdown (SSE → DB → exit)
 
 ## Owned files
 
