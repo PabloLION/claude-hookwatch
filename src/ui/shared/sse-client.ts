@@ -70,16 +70,16 @@ export function startSseClient(
 
 /**
  * Type guard for EventRow. Validates the minimal fields needed to display the
- * event in the list. Does not validate payload contents.
+ * event in the list. Does not validate stdin contents.
  */
 function isEventRow(value: unknown): value is EventRow {
   if (value === null || typeof value !== "object") return false;
   const obj = value as Record<string, unknown>;
   return (
     typeof obj.id === "number" &&
-    typeof obj.ts === "number" &&
+    typeof obj.timestamp === "number" &&
     typeof obj.session_id === "string" &&
     typeof obj.event === "string" &&
-    typeof obj.payload === "string"
+    typeof obj.stdin === "string"
   );
 }

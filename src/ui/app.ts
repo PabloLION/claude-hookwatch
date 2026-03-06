@@ -16,10 +16,10 @@ const html = htm.bind(h);
 
 export interface EventRow {
   id: number;
-  ts: number;
+  timestamp: number;
   session_id: string;
   event: string;
-  payload: string;
+  stdin: string;
 }
 
 // Cross-component signal — owns the current event list

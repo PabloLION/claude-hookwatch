@@ -19,15 +19,18 @@ import { getDistinctSessions, insertEvent } from "./queries.ts";
 
 function makeEvent(sessionId: string, ts: number) {
   return {
-    ts,
+    timestamp: ts,
     event: "SessionStart",
     session_id: sessionId,
     cwd: "/tmp",
     tool_name: null,
     session_name: null,
     hook_duration_ms: null,
-    payload: "{}",
+    stdin: "{}",
     wrapped_command: null,
+    stdout: null,
+    stderr: null,
+    exit_code: null,
   };
 }
 

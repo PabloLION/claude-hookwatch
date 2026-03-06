@@ -8,9 +8,9 @@
  *   2. Spawns the child command (Bun.spawn), piping the buffered stdin to it.
  *   3. Tees child stdout → process.stdout AND a capture buffer.
  *   4. Tees child stderr → process.stderr AND a capture buffer.
- *   5. Returns { exitCode, stdinContent, capturedStdout, capturedStderr }.
+ *   5. Returns { exitCode, stdin, stdout, stderr }.
  *
- * The caller (index.ts) validates the stdinContent as an event, then POSTs
+ * The caller (index.ts) validates the stdin as an event, then POSTs
  * the event with captured I/O to the server.
  *
  * STDOUT CONTRACT: The tee writes to process.stdout directly (for the child's
@@ -28,9 +28,9 @@
 export interface WrapResult {
   exitCode: number;
   /** Raw stdin content (the Claude Code event JSON) — for the caller to parse. */
-  stdinContent: string;
-  capturedStdout: string;
-  capturedStderr: string;
+  stdin: string;
+  stdout: string;
+  stderr: string;
 }
 
 /**
@@ -45,7 +45,7 @@ export interface WrapResult {
 export async function runWrapped(cmd: string[]): Promise<WrapResult> {
   if (cmd.length === 0) {
     console.error("[hookwatch] runWrapped called with empty command");
-    return { exitCode: 1, stdinContent: "", capturedStdout: "", capturedStderr: "" };
+    return { exitCode: 1, stdin: "", stdout: "", stderr: "" };
   }
 
   // Read stdin into a buffer so we can both pass it to the child AND parse it
@@ -58,7 +58,7 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[hookwatch] Failed to read stdin: ${msg}`);
-    return { exitCode: 1, stdinContent: "", capturedStdout: "", capturedStderr: "" };
+    return { exitCode: 1, stdin: "", stdout: "", stderr: "" };
   }
 
   let child: ReturnType<typeof Bun.spawn>;
@@ -72,7 +72,7 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[hookwatch] Failed to spawn wrapped command: ${msg}`);
-    return { exitCode: 1, stdinContent, capturedStdout: "", capturedStderr: "" };
+    return { exitCode: 1, stdin: stdinContent, stdout: "", stderr: "" };
   }
 
   // Tee stdout and stderr concurrently while waiting for the child to exit.
@@ -84,9 +84,9 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
 
   return {
     exitCode: exitCode ?? 1,
-    stdinContent,
-    capturedStdout,
-    capturedStderr,
+    stdin: stdinContent,
+    stdout: capturedStdout,
+    stderr: capturedStderr,
   };
 }
 

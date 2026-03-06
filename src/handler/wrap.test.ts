@@ -2,7 +2,7 @@
  * Tests for src/handler/wrap.ts
  *
  * Coverage:
- * - runWrapped: stdin is passed to child and returned as stdinContent
+ * - runWrapped: stdin is passed to child and returned as stdin
  * - runWrapped: child stdout/stderr are teed to process streams and captured
  * - runWrapped: child exit code is forwarded correctly (0, 1, 2, 3)
  * - runWrapped: non-existent command returns exit 1 with empty capture
@@ -24,9 +24,9 @@ const WRAP_RUNNER_PATH = join(import.meta.dir, "wrap-runner.fixture.ts");
 
 interface WrapResult {
   exitCode: number;
-  stdinContent: string;
-  capturedStdout: string;
-  capturedStderr: string;
+  stdin: string;
+  stdout: string;
+  stderr: string;
 }
 
 interface RunnerOutput {
@@ -91,7 +91,7 @@ describe("runWrapped — tee and capture", () => {
     const result = await runWrapRunner(["sh", "-c", "echo hello"], "event-json");
 
     expect(result.wrapResult).not.toBeNull();
-    expect(result.wrapResult?.capturedStdout.trim()).toBe("hello");
+    expect(result.wrapResult?.stdout.trim()).toBe("hello");
     // Tee: the child's stdout also appears as the runner's own stdout
     expect(result.runnerStdout.trim()).toBe("hello");
   });
@@ -100,20 +100,20 @@ describe("runWrapped — tee and capture", () => {
     const result = await runWrapRunner(["sh", "-c", "echo error-msg >&2"], "event-json");
 
     expect(result.wrapResult).not.toBeNull();
-    expect(result.wrapResult?.capturedStderr.trim()).toBe("error-msg");
+    expect(result.wrapResult?.stderr.trim()).toBe("error-msg");
     // Tee: child stderr appears in the runner's stderr output
     expect(result.runnerStderr).toContain("error-msg");
   });
 
-  test("stdin input is read into stdinContent and forwarded to child", async () => {
+  test("stdin input is read into stdin and forwarded to child", async () => {
     const stdinInput = '{"hook_event_name":"SessionStart"}';
     const result = await runWrapRunner(["sh", "-c", "cat"], stdinInput);
 
     expect(result.wrapResult).not.toBeNull();
-    // stdinContent should match what we sent
-    expect(result.wrapResult?.stdinContent).toBe(stdinInput);
+    // stdin should match what we sent
+    expect(result.wrapResult?.stdin).toBe(stdinInput);
     // The child (cat) echoes stdin to stdout — captured and tee'd
-    expect(result.wrapResult?.capturedStdout).toBe(stdinInput);
+    expect(result.wrapResult?.stdout).toBe(stdinInput);
     expect(result.runnerStdout).toBe(stdinInput);
   });
 
@@ -123,8 +123,8 @@ describe("runWrapped — tee and capture", () => {
       "stdin-data",
     );
 
-    expect(result.wrapResult?.capturedStdout.trim()).toBe("out-line");
-    expect(result.wrapResult?.capturedStderr.trim()).toBe("err-line");
+    expect(result.wrapResult?.stdout.trim()).toBe("out-line");
+    expect(result.wrapResult?.stderr.trim()).toBe("err-line");
   });
 });
 
@@ -172,7 +172,7 @@ describe("runWrapped — error handling", () => {
 
     // runWrapped catches spawn failure and returns exitCode 1
     expect(result.wrapResult?.exitCode).toBe(1);
-    expect(result.wrapResult?.capturedStdout).toBe("");
-    expect(result.wrapResult?.capturedStderr).toBe("");
+    expect(result.wrapResult?.stdout).toBe("");
+    expect(result.wrapResult?.stderr).toBe("");
   });
 });

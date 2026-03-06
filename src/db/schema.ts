@@ -10,34 +10,39 @@ const _CURRENT_VERSION = 1;
  * DDL for the events table.
  * All Claude Code hook event types are stored in a single table.
  * Common fields are extracted as indexed columns; the full stdin JSON
- * is preserved in the `payload` column for forward compatibility.
+ * is preserved in the `stdin` column for forward compatibility.
  *
  * wrapped_command (nullable): NULL = bare handler event; non-NULL = the
  * wrapped command string (Story 3.1). Pre-release — no migration needed.
+ *
+ * stdout, stderr, exit_code (nullable): only populated for wrapped events.
  */
 const CREATE_EVENTS_TABLE = `
   CREATE TABLE IF NOT EXISTS events (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts               INTEGER NOT NULL,
+    timestamp        INTEGER NOT NULL,
     event            TEXT    NOT NULL,
     session_id       TEXT    NOT NULL,
     cwd              TEXT    NOT NULL,
     tool_name        TEXT,
     session_name     TEXT,
     hook_duration_ms INTEGER,
-    payload          TEXT    NOT NULL,
-    wrapped_command  TEXT
+    stdin            TEXT    NOT NULL,
+    wrapped_command  TEXT,
+    stdout           TEXT,
+    stderr           TEXT,
+    exit_code        INTEGER
   );
 `;
 
 /**
  * Indexes for common query patterns.
- * event, session_id, ts, and tool_name are the most frequently filtered columns.
+ * event, session_id, timestamp, and tool_name are the most frequently filtered columns.
  */
 const CREATE_INDEXES = `
   CREATE INDEX IF NOT EXISTS idx_events_event      ON events(event);
   CREATE INDEX IF NOT EXISTS idx_events_session_id ON events(session_id);
-  CREATE INDEX IF NOT EXISTS idx_events_ts         ON events(ts);
+  CREATE INDEX IF NOT EXISTS idx_events_timestamp   ON events(timestamp);
   CREATE INDEX IF NOT EXISTS idx_events_tool_name  ON events(tool_name);
 `;
 

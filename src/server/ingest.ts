@@ -4,8 +4,9 @@
  * Accepts a JSON body with a Claude Code hook event payload, validates it with
  * the Zod discriminated-union schema, inserts into SQLite, and returns 201.
  *
- * The request body may include an optional top-level `wrapped_command` string
- * field (Story 3.1). When present it is stored in the DB column; NULL otherwise.
+ * The request body may include optional top-level fields for wrapped events
+ * (Story 3.1): `wrapped_command` (string), `stdout` (string), `stderr` (string),
+ * `exit_code` (number). When present they are stored in DB columns; NULL otherwise.
  *
  * Error handling:
  *   - 400 INVALID_QUERY  — malformed JSON or failed Zod validation
@@ -31,16 +32,16 @@ export async function handleIngest(req: Request): Promise<Response> {
     return errorResponse("INVALID_QUERY", "Request body is not valid JSON", 400);
   }
 
-  // Extract optional wrapped_command from the top-level body object before
+  // Extract optional wrap fields from the top-level body object before
   // handing raw to parseHookEvent (which uses .passthrough() so it won't strip
-  // it, but we extract it explicitly here for DB storage).
+  // them, but we extract them explicitly here for DB storage).
+  const bodyObj = raw !== null && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const wrappedCommand: string | null =
-    raw !== null &&
-    typeof raw === "object" &&
-    "wrapped_command" in raw &&
-    typeof (raw as Record<string, unknown>).wrapped_command === "string"
-      ? ((raw as Record<string, unknown>).wrapped_command as string)
-      : null;
+    typeof bodyObj.wrapped_command === "string" ? bodyObj.wrapped_command : null;
+  const wrappedStdout: string | null = typeof bodyObj.stdout === "string" ? bodyObj.stdout : null;
+  const wrappedStderr: string | null = typeof bodyObj.stderr === "string" ? bodyObj.stderr : null;
+  const wrappedExitCode: number | null =
+    typeof bodyObj.exit_code === "number" ? bodyObj.exit_code : null;
 
   // Validate with Zod
   let event: ReturnType<typeof parseHookEvent>;
@@ -61,7 +62,7 @@ export async function handleIngest(req: Request): Promise<Response> {
   try {
     const db = openDb();
     const id = insertEvent(db, {
-      ts: Date.now(),
+      timestamp: Date.now(),
       event: event.hook_event_name,
       session_id: event.session_id,
       cwd: event.cwd,
@@ -69,13 +70,16 @@ export async function handleIngest(req: Request): Promise<Response> {
         "tool_name" in event && typeof event.tool_name === "string" ? event.tool_name : null,
       session_name: null,
       hook_duration_ms: null,
-      payload: JSON.stringify(event),
+      stdin: JSON.stringify(event),
       wrapped_command: wrappedCommand,
+      stdout: wrappedStdout,
+      stderr: wrappedStderr,
+      exit_code: wrappedExitCode,
     });
 
     // Broadcast the saved row to all connected SSE clients.
     // Fetch the row so broadcast carries the canonical DB representation
-    // (with id, ts, and all columns) — never broadcast raw input.
+    // (with id, timestamp, and all columns) — never broadcast raw input.
     const row = getEventById(db, id);
     if (row !== null) {
       broadcast(row);

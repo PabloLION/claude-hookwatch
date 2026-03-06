@@ -30,12 +30,12 @@ interface EventListProps {
 }
 
 /**
- * Extract tool name from a JSON payload string.
+ * Extract tool name from a JSON stdin string.
  * Returns "—" when the field is absent or parsing fails.
  */
-function extractToolName(payloadJson: string): string {
+function extractToolName(stdinJson: string): string {
   try {
-    const parsed: unknown = JSON.parse(payloadJson);
+    const parsed: unknown = JSON.parse(stdinJson);
     if (
       parsed !== null &&
       typeof parsed === "object" &&
@@ -45,7 +45,7 @@ function extractToolName(payloadJson: string): string {
       return (parsed as Record<string, unknown>).tool_name as string;
     }
   } catch {
-    // Payload is not valid JSON — return placeholder
+    // stdin is not valid JSON — return placeholder
   }
   return "\u2014";
 }
@@ -115,10 +115,10 @@ export function EventList({ eventList, activeSession }: EventListProps) {
                   aria-expanded=${expanded}
                   data-event-id=${event.id}
                 >
-                  <td>${formatTimestamp(event.ts)}</td>
+                  <td>${formatTimestamp(event.timestamp)}</td>
                   <td>${event.event}</td>
                   <td>${event.session_id}</td>
-                  <td>${extractToolName(event.payload)}</td>
+                  <td>${extractToolName(event.stdin)}</td>
                 </tr>
                 ${
                   expanded &&

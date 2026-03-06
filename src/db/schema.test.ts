@@ -78,15 +78,18 @@ describe("events table existence and structure", () => {
     const cols = Object.fromEntries(rows.map((r) => [r.name, r]));
 
     expect(cols.id).toBeDefined();
-    expect(cols.ts).toBeDefined();
+    expect(cols.timestamp).toBeDefined();
     expect(cols.event).toBeDefined();
     expect(cols.session_id).toBeDefined();
     expect(cols.cwd).toBeDefined();
     expect(cols.tool_name).toBeDefined();
     expect(cols.session_name).toBeDefined();
     expect(cols.hook_duration_ms).toBeDefined();
-    expect(cols.payload).toBeDefined();
+    expect(cols.stdin).toBeDefined();
     expect(cols.wrapped_command).toBeDefined();
+    expect(cols.stdout).toBeDefined();
+    expect(cols.stderr).toBeDefined();
+    expect(cols.exit_code).toBeDefined();
   });
 
   test("required columns are NOT NULL", () => {
@@ -98,11 +101,11 @@ describe("events table existence and structure", () => {
 
     const cols = Object.fromEntries(rows.map((r) => [r.name, r]));
 
-    expect(cols.ts?.notnull).toBe(1);
+    expect(cols.timestamp?.notnull).toBe(1);
     expect(cols.event?.notnull).toBe(1);
     expect(cols.session_id?.notnull).toBe(1);
     expect(cols.cwd?.notnull).toBe(1);
-    expect(cols.payload?.notnull).toBe(1);
+    expect(cols.stdin?.notnull).toBe(1);
   });
 
   test("nullable columns allow NULL", () => {
@@ -118,6 +121,9 @@ describe("events table existence and structure", () => {
     expect(cols.session_name?.notnull).toBe(0);
     expect(cols.hook_duration_ms?.notnull).toBe(0);
     expect(cols.wrapped_command?.notnull).toBe(0);
+    expect(cols.stdout?.notnull).toBe(0);
+    expect(cols.stderr?.notnull).toBe(0);
+    expect(cols.exit_code?.notnull).toBe(0);
   });
 });
 
@@ -147,15 +153,18 @@ describe("insert and retrieve round-trip", () => {
     });
 
     const id = insertEvent(db, {
-      ts: Date.now(),
+      timestamp: Date.now(),
       event: "PreToolUse",
       session_id: "sess-001",
       cwd: "/tmp/project",
       tool_name: "Bash",
       session_name: null,
       hook_duration_ms: 42,
-      payload,
+      stdin: payload,
       wrapped_command: null,
+      stdout: null,
+      stderr: null,
+      exit_code: null,
     });
 
     expect(id).toBeGreaterThan(0);
@@ -167,21 +176,24 @@ describe("insert and retrieve round-trip", () => {
     expect(row?.cwd).toBe("/tmp/project");
     expect(row?.tool_name).toBe("Bash");
     expect(row?.hook_duration_ms).toBe(42);
-    expect(row?.payload).toBe(payload);
+    expect(row?.stdin).toBe(payload);
   });
 
   test("inserts event with null optional fields", () => {
     const db = openDb(dbPath);
     const id = insertEvent(db, {
-      ts: Date.now(),
+      timestamp: Date.now(),
       event: "SessionStart",
       session_id: "sess-002",
       cwd: "/tmp",
       tool_name: null,
       session_name: null,
       hook_duration_ms: null,
-      payload: JSON.stringify({ hook_event_name: "SessionStart" }),
+      stdin: JSON.stringify({ hook_event_name: "SessionStart" }),
       wrapped_command: null,
+      stdout: null,
+      stderr: null,
+      exit_code: null,
     });
 
     const row = getEventById(db, id);
@@ -190,20 +202,26 @@ describe("insert and retrieve round-trip", () => {
     expect(row?.session_name).toBeNull();
     expect(row?.hook_duration_ms).toBeNull();
     expect(row?.wrapped_command).toBeNull();
+    expect(row?.stdout).toBeNull();
+    expect(row?.stderr).toBeNull();
+    expect(row?.exit_code).toBeNull();
   });
 
   test("persists events after close and reopen", () => {
     const db = openDb(dbPath);
     const id = insertEvent(db, {
-      ts: 1000000,
+      timestamp: 1000000,
       event: "SessionEnd",
       session_id: "sess-persist",
       cwd: "/home/user",
       tool_name: null,
       session_name: "my-session",
       hook_duration_ms: 10,
-      payload: JSON.stringify({ hook_event_name: "SessionEnd" }),
+      stdin: JSON.stringify({ hook_event_name: "SessionEnd" }),
       wrapped_command: null,
+      stdout: null,
+      stderr: null,
+      exit_code: null,
     });
 
     // Close the connection
@@ -214,7 +232,7 @@ describe("insert and retrieve round-trip", () => {
     const row = getEventById(db2, id);
 
     expect(row).not.toBeNull();
-    expect(row?.ts).toBe(1000000);
+    expect(row?.timestamp).toBe(1000000);
     expect(row?.event).toBe("SessionEnd");
     expect(row?.session_id).toBe("sess-persist");
     expect(row?.session_name).toBe("my-session");
@@ -224,46 +242,55 @@ describe("insert and retrieve round-trip", () => {
     const db = openDb(dbPath);
 
     insertEvent(db, {
-      ts: 3000,
+      timestamp: 3000,
       event: "PostToolUse",
       session_id: "s1",
       cwd: "/",
       tool_name: "Read",
       session_name: null,
       hook_duration_ms: null,
-      payload: "{}",
+      stdin: "{}",
       wrapped_command: null,
+      stdout: null,
+      stderr: null,
+      exit_code: null,
     });
 
     insertEvent(db, {
-      ts: 1000,
+      timestamp: 1000,
       event: "PreToolUse",
       session_id: "s1",
       cwd: "/",
       tool_name: "Bash",
       session_name: null,
       hook_duration_ms: null,
-      payload: "{}",
+      stdin: "{}",
       wrapped_command: null,
+      stdout: null,
+      stderr: null,
+      exit_code: null,
     });
 
     insertEvent(db, {
-      ts: 2000,
+      timestamp: 2000,
       event: "SessionStart",
       session_id: "s1",
       cwd: "/",
       tool_name: null,
       session_name: null,
       hook_duration_ms: null,
-      payload: "{}",
+      stdin: "{}",
       wrapped_command: null,
+      stdout: null,
+      stderr: null,
+      exit_code: null,
     });
 
     const events = getAllEvents(db);
     expect(events.length).toBe(3);
-    expect(events[0]?.ts).toBe(1000);
-    expect(events[1]?.ts).toBe(2000);
-    expect(events[2]?.ts).toBe(3000);
+    expect(events[0]?.timestamp).toBe(1000);
+    expect(events[1]?.timestamp).toBe(2000);
+    expect(events[2]?.timestamp).toBe(3000);
   });
 });
 
