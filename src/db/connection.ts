@@ -1,17 +1,8 @@
 import { Database } from "bun:sqlite";
 import { chmodSync, existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { dbPath as resolveDbPath } from "@/paths.ts";
 import { applySchema } from "./schema.ts";
-
-/**
- * Resolve the database file path.
- * Respects $XDG_DATA_HOME if set; falls back to ~/.local/share/hookwatch/hookwatch.db.
- */
-function resolveDbPath(): string {
-  const xdgDataHome = process.env.XDG_DATA_HOME;
-  const base = xdgDataHome ?? `${process.env.HOME}/.local/share`;
-  return `${base}/hookwatch/hookwatch.db`;
-}
 
 let db: Database | null = null;
 

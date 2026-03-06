@@ -14,6 +14,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { close as closeDb } from "@/db/connection.ts";
+import { portFilePath } from "@/paths.ts";
 import { errorResponse } from "@/server/errors.ts";
 import { handleHealth } from "@/server/health.ts";
 import { handleIngest } from "@/server/ingest.ts";
@@ -23,20 +24,10 @@ const MAX_PORT = 6064; // 60 retries before giving up
 const HOSTNAME = "127.0.0.1";
 
 /**
- * Resolve the port file path.
- * Respects $XDG_DATA_HOME; falls back to ~/.local/share/hookwatch/hookwatch.port.
- */
-function resolvePortFilePath(): string {
-  const xdgDataHome = process.env.XDG_DATA_HOME;
-  const base = xdgDataHome ?? `${process.env.HOME}/.local/share`;
-  return `${base}/hookwatch/hookwatch.port`;
-}
-
-/**
  * Write the active port to the port file so the hook handler can discover it.
  */
 function writePortFile(port: number): void {
-  const portFile = resolvePortFilePath();
+  const portFile = portFilePath();
   mkdirSync(dirname(portFile), { recursive: true });
   writeFileSync(portFile, String(port), { encoding: "utf8" });
 }
@@ -45,7 +36,7 @@ function writePortFile(port: number): void {
  * Delete the port file on graceful shutdown.
  */
 function removePortFile(): void {
-  const portFile = resolvePortFilePath();
+  const portFile = portFilePath();
   try {
     rmSync(portFile);
   } catch {
