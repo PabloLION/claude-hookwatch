@@ -16,7 +16,11 @@
     "check": "bun test && biome check ."
   },
   "dependencies": {
+    "@picocss/pico": "^2.1.1",
+    "@preact/signals": "^2.8.1",
     "citty": "^0.2.1",
+    "htm": "^3.1.1",
+    "preact": "^10.28.4",
     "smol-toml": "^1.6.0",
     "zod": "^4.3.6"
   },
