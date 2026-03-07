@@ -322,13 +322,20 @@ async function runBare(): Promise<void> {
   const event = await readEvent();
   const port = readPort();
 
+  // Build hook output JSON before POSTing so we can store it as stdout.
+  const hookOutput = hookOutputSchema.parse({
+    continue: true,
+    systemMessage: buildSystemMessage(event),
+  });
+  const hookOutputJson = JSON.stringify(hookOutput);
+
   const postResult = await postEvent({
     port,
     event,
     wrappedCommand: null,
-    stdout: null,
+    stdout: hookOutputJson,
     stderr: null,
-    exitCode: null,
+    exitCode: 0,
   });
   if (!postResult) {
     // On failure: exit 1, stdout remains empty — Claude Code must not receive
@@ -338,7 +345,7 @@ async function runBare(): Promise<void> {
 
   // Write hook output JSON to stdout for Claude Code context injection.
   // This is the ONLY stdout write in bare mode.
-  writeHookOutput(event);
+  process.stdout.write(hookOutputJson);
 
   // Log slow handler execution to stderr (never stdout)
   const elapsedMs = Date.now() - startMs;
