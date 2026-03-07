@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>hookwatch</title>
     <link rel="stylesheet" href="/pico.min.css" />
+    <style>
+      /* Prevent long pre blocks from overflowing the event detail container */
+      .event-detail pre {
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+    </style>
     <script type="importmap">
     {
       "imports": {
