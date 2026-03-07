@@ -1,9 +1,9 @@
 #!/bin/sh
-# probe-posix.sh — POSIX sh control group
-# Uses only POSIX syntax — should work in any shell
-# Writes to /tmp/hookwatch-probe-posix.txt on execution
+# probe-sh.sh — sh control group
+# Uses only sh syntax — should work in any shell
+# Writes to /tmp/hookwatch-probe-sh.txt on execution
 
-OUT=/tmp/hookwatch-probe-posix.txt
+OUT=/tmp/hookwatch-probe-sh.txt
 
 echo "SHELL=$SHELL" > "$OUT"
 echo "BASH_VERSION=${BASH_VERSION:-unset}" >> "$OUT"
@@ -22,4 +22,4 @@ echo "USER=$USER" >> "$OUT"
 echo "PWD=$PWD" >> "$OUT"
 # Capture all CLAUDE_ env vars
 env | grep '^CLAUDE_' >> "$OUT" 2>/dev/null || true
-echo "probe-posix:done" >> "$OUT"
+echo "probe-sh:done" >> "$OUT"
