@@ -331,11 +331,11 @@ describe("parseHookEvent — WorktreeRemove", () => {
   });
 });
 
-describe("parseHookEvent — Setup", () => {
+describe("parseHookEvent — InstructionsLoaded", () => {
   test("valid payload parses successfully", () => {
     const result = parseHookEvent({
       ...base,
-      hook_event_name: "Setup",
+      hook_event_name: "InstructionsLoaded",
       trigger: "init",
     });
     expect((result as { trigger: string }).trigger).toBe("init");

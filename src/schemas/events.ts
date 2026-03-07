@@ -312,21 +312,22 @@ export const worktreeRemoveSchema = z
 export type WorktreeRemove = z.infer<typeof worktreeRemoveSchema>;
 
 /**
- * Setup event — present in Agent SDK types but not yet in the hooks reference.
+ * InstructionsLoaded event — fired when Claude Code loads instructions (e.g. CLAUDE.md,
+ * rules files). Present in the Agent SDK types as InstructionsLoadedHookInput.
  * trigger values are documented as "init" | "maintenance" in the SDK.
  */
-export const setupSchema = z
+export const instructionsLoadedSchema = z
   .object({
     session_id: z.string(),
     transcript_path: z.string(),
     cwd: z.string(),
     permission_mode: z.string(),
-    hook_event_name: z.literal("Setup"),
+    hook_event_name: z.literal("InstructionsLoaded"),
     trigger: z.enum(["init", "maintenance"]),
   })
   .passthrough();
 
-export type Setup = z.infer<typeof setupSchema>;
+export type InstructionsLoaded = z.infer<typeof instructionsLoadedSchema>;
 
 // ---------------------------------------------------------------------------
 // Fallback schema for unknown / future event types
@@ -362,7 +363,7 @@ export type HookEvent =
   | ConfigChange
   | WorktreeCreate
   | WorktreeRemove
-  | Setup
+  | InstructionsLoaded
   | UnknownEvent;
 
 // ---------------------------------------------------------------------------
@@ -415,8 +416,8 @@ export function parseHookEvent(raw: unknown): HookEvent {
       return worktreeCreateSchema.parse(raw);
     case "WorktreeRemove":
       return worktreeRemoveSchema.parse(raw);
-    case "Setup":
-      return setupSchema.parse(raw);
+    case "InstructionsLoaded":
+      return instructionsLoadedSchema.parse(raw);
     default:
       // Unknown event type — validate common fields only, preserve everything else.
       return unknownEventSchema.parse(raw);
