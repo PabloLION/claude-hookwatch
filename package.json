@@ -10,14 +10,16 @@
   "scripts": {
     "postinstall": "bun link",
     "generate": "bun scripts/generate-plugin.ts",
-    "check": "bun test src/ tests/handler-server.test.ts && biome check .",
+    "check": "bun test src/ tests/handler-server.test.ts tests/smoke-http.test.ts && biome check .",
     "dev": "bun --watch src/server/index.ts",
     "format": "biome format --write .",
     "lint": "biome check .",
     "start": "bun src/server/index.ts",
-    "test": "bun test src/ tests/handler-server.test.ts",
+    "test": "bun test src/ tests/handler-server.test.ts tests/smoke-http.test.ts",
     "test:e2e": "playwright test tests/ui-e2e.test.ts",
-    "test:sse-e2e": "playwright test tests/sse-e2e.test.ts"
+    "test:sse-e2e": "playwright test tests/sse-e2e.test.ts",
+    "test:smoke-http": "bun test tests/smoke-http.test.ts",
+    "test:smoke-browser": "playwright test tests/smoke-browser.test.ts"
   },
   "dependencies": {
     "@picocss/pico": "^2.1.1",
