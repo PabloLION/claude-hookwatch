@@ -19,7 +19,8 @@
     "test:e2e": "playwright test tests/ui-e2e.test.ts",
     "test:sse-e2e": "playwright test tests/sse-e2e.test.ts",
     "test:smoke-http": "bun test tests/smoke-http.test.ts",
-    "test:smoke-browser": "playwright test tests/smoke-browser.test.ts"
+    "test:smoke-browser": "playwright test tests/smoke-browser.test.ts",
+    "probe:launcher": "bun scripts/claude-code-probes/probe-launcher.ts"
   },
   "dependencies": {
     "@picocss/pico": "^2.1.1",
