@@ -199,6 +199,8 @@ interface PostEventOptions {
   stderr: string | null;
   /** Child exit code; null for bare mode. */
   exitCode: number | null;
+  /** Hookwatch processing overhead in ms (excludes child process wall time). */
+  hookDurationMs: number | null;
 }
 
 /**
@@ -222,6 +224,9 @@ async function postEvent(opts: PostEventOptions): Promise<boolean> {
   }
   if (opts.exitCode !== null) {
     body.exit_code = opts.exitCode;
+  }
+  if (opts.hookDurationMs !== null) {
+    body.hook_duration_ms = opts.hookDurationMs;
   }
   const payload = JSON.stringify(body);
 
@@ -329,6 +334,7 @@ async function runBare(): Promise<void> {
   });
   const hookOutputJson = JSON.stringify(hookOutput);
 
+  const elapsedMs = Date.now() - startMs;
   const postResult = await postEvent({
     port,
     event,
@@ -336,6 +342,7 @@ async function runBare(): Promise<void> {
     stdout: hookOutputJson,
     stderr: null,
     exitCode: 0,
+    hookDurationMs: elapsedMs,
   });
   if (!postResult) {
     // On failure: exit 1, stdout remains empty — Claude Code must not receive
@@ -348,7 +355,6 @@ async function runBare(): Promise<void> {
   process.stdout.write(hookOutputJson);
 
   // Log slow handler execution to stderr (never stdout)
-  const elapsedMs = Date.now() - startMs;
   if (elapsedMs > SLOW_THRESHOLD_MS) {
     console.error(`[hookwatch] Handler took ${elapsedMs}ms (threshold: ${SLOW_THRESHOLD_MS}ms)`);
   }
@@ -383,6 +389,10 @@ async function runWrappedMode(wrapArgs: string[]): Promise<void> {
     process.exit(wrapResult.exitCode);
   }
 
+  // Measure hookwatch overhead starting here — child process wall time is
+  // excluded intentionally; we only report our own processing cost.
+  const hookStartMs = Date.now();
+
   // POST the event with captured I/O — best-effort (don't fail wrapped command
   // if server is down).
   const port = readPort();
@@ -393,6 +403,7 @@ async function runWrappedMode(wrapArgs: string[]): Promise<void> {
     stdout: wrapResult.stdout,
     stderr: wrapResult.stderr,
     exitCode: wrapResult.exitCode,
+    hookDurationMs: Date.now() - hookStartMs,
   });
   if (!postResult) {
     console.error("[hookwatch] Failed to POST wrapped event — continuing (best-effort)");

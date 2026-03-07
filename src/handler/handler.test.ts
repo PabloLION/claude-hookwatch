@@ -533,6 +533,21 @@ describe("hook output (stdout)", () => {
     expect(result.stdout).toBe("");
   });
 
+  test("bare mode includes hook_duration_ms as a non-negative number in POST body", async () => {
+    const xdgHome = join(TMP_DIR, "stdout-duration-bare");
+    writePortFile(xdgHome, server.port);
+
+    const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(server.events).toHaveLength(1);
+    const body = server.events[0]?.body as Record<string, unknown>;
+    expect(typeof body?.hook_duration_ms).toBe("number");
+    expect(body?.hook_duration_ms as number).toBeGreaterThanOrEqual(0);
+  });
+
   test("stdout output validates against hookOutputSchema", async () => {
     const xdgHome = join(TMP_DIR, "stdout-schema-validate");
     writePortFile(xdgHome, server.port);
@@ -634,6 +649,25 @@ describe("wrapped mode", () => {
     expect(server.events).toHaveLength(1);
     const body = server.events[0]?.body as Record<string, unknown>;
     expect(body?.wrapped_command).toBe("sh -c exit 0");
+  });
+
+  test("wrapped mode includes hook_duration_ms as a non-negative number in POST body", async () => {
+    const xdgHome = join(TMP_DIR, "wrap-duration-ms");
+    writePortFile(xdgHome, server.port);
+
+    const result = await runHandlerWrapped(
+      JSON.stringify(BASE_SESSION_START),
+      ["sh", "-c", "exit 0"],
+      { XDG_DATA_HOME: xdgHome },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(server.events).toHaveLength(1);
+    const body = server.events[0]?.body as Record<string, unknown>;
+    expect(typeof body?.hook_duration_ms).toBe("number");
+    // Wrapped mode measures hookwatch overhead only (not child wall time),
+    // so the value should be a small non-negative integer.
+    expect(body?.hook_duration_ms as number).toBeGreaterThanOrEqual(0);
   });
 
   test("server down: child exit code still forwarded (best-effort)", async () => {
