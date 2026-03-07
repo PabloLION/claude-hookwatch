@@ -32,6 +32,7 @@ function makeRow(overrides: Partial<EventRow> = {}): EventRow {
     stdout: null,
     stderr: null,
     exit_code: null,
+    hookwatch_error: null,
     ...overrides,
   };
 }

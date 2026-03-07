@@ -23,6 +23,8 @@ export interface EventRow {
   stderr: string | null;
   /** NULL = bare handler event; non-NULL = child exit code (wrapped mode) */
   exit_code: number | null;
+  /** Hookwatch's own error messages, NULL = no error */
+  hookwatch_error: string | null;
 }
 
 /**
@@ -46,6 +48,8 @@ export interface InsertEventParams {
   stderr: string | null;
   /** NULL = bare handler event; non-NULL = child exit code (wrapped mode) */
   exit_code: number | null;
+  /** Hookwatch's own error messages, NULL = no error */
+  hookwatch_error: string | null;
 }
 
 /**
@@ -56,9 +60,9 @@ export interface InsertEventParams {
 export function insertEvent(db: Database, params: InsertEventParams): number {
   const stmt = db.prepare(
     `INSERT INTO events
-       (timestamp, event, session_id, cwd, tool_name, session_name, hook_duration_ms, stdin, wrapped_command, stdout, stderr, exit_code)
+       (timestamp, event, session_id, cwd, tool_name, session_name, hook_duration_ms, stdin, wrapped_command, stdout, stderr, exit_code, hookwatch_error)
      VALUES
-       (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const result = stmt.run(
     params.timestamp,
@@ -73,6 +77,7 @@ export function insertEvent(db: Database, params: InsertEventParams): number {
     params.stdout,
     params.stderr,
     params.exit_code,
+    params.hookwatch_error,
   );
   return Number(result.lastInsertRowid);
 }

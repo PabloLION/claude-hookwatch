@@ -24,6 +24,7 @@ export interface EventRow {
   stderr: string | null;
   exit_code: number | null;
   wrapped_command: string | null;
+  hookwatch_error: string | null;
 }
 
 // Cross-component signal — owns the current event list

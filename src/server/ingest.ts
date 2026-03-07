@@ -44,6 +44,8 @@ export async function handleIngest(req: Request): Promise<Response> {
     typeof bodyObj.exit_code === "number" ? bodyObj.exit_code : null;
   const hookDurationMs: number | null =
     typeof bodyObj.hook_duration_ms === "number" ? bodyObj.hook_duration_ms : null;
+  const hookwatchError: string | null =
+    typeof bodyObj.hookwatch_error === "string" ? bodyObj.hookwatch_error : null;
 
   // Validate with Zod
   let event: ReturnType<typeof parseHookEvent>;
@@ -77,6 +79,7 @@ export async function handleIngest(req: Request): Promise<Response> {
       stdout: wrappedStdout,
       stderr: wrappedStderr,
       exit_code: wrappedExitCode,
+      hookwatch_error: hookwatchError,
     });
 
     // Broadcast the saved row to all connected SSE clients.

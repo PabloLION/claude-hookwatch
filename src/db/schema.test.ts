@@ -48,7 +48,7 @@ describe("database creation and WAL mode", () => {
     const db = openDb(dbPath);
 
     const row = db.query("PRAGMA user_version;").get() as { user_version: number };
-    expect(row.user_version).toBe(1);
+    expect(row.user_version).toBe(2);
   });
 });
 
@@ -90,6 +90,7 @@ describe("events table existence and structure", () => {
     expect(cols.stdout).toBeDefined();
     expect(cols.stderr).toBeDefined();
     expect(cols.exit_code).toBeDefined();
+    expect(cols.hookwatch_error).toBeDefined();
   });
 
   test("required columns are NOT NULL", () => {
@@ -124,6 +125,7 @@ describe("events table existence and structure", () => {
     expect(cols.stdout?.notnull).toBe(0);
     expect(cols.stderr?.notnull).toBe(0);
     expect(cols.exit_code?.notnull).toBe(0);
+    expect(cols.hookwatch_error?.notnull).toBe(0);
   });
 });
 
@@ -165,6 +167,7 @@ describe("insert and retrieve round-trip", () => {
       stdout: null,
       stderr: null,
       exit_code: null,
+      hookwatch_error: null,
     });
 
     expect(id).toBeGreaterThan(0);
@@ -194,6 +197,7 @@ describe("insert and retrieve round-trip", () => {
       stdout: null,
       stderr: null,
       exit_code: null,
+      hookwatch_error: null,
     });
 
     const row = getEventById(db, id);
@@ -205,6 +209,7 @@ describe("insert and retrieve round-trip", () => {
     expect(row?.stdout).toBeNull();
     expect(row?.stderr).toBeNull();
     expect(row?.exit_code).toBeNull();
+    expect(row?.hookwatch_error).toBeNull();
   });
 
   test("persists events after close and reopen", () => {
@@ -222,6 +227,7 @@ describe("insert and retrieve round-trip", () => {
       stdout: null,
       stderr: null,
       exit_code: null,
+      hookwatch_error: null,
     });
 
     // Close the connection
@@ -254,6 +260,7 @@ describe("insert and retrieve round-trip", () => {
       stdout: null,
       stderr: null,
       exit_code: null,
+      hookwatch_error: null,
     });
 
     insertEvent(db, {
@@ -269,6 +276,7 @@ describe("insert and retrieve round-trip", () => {
       stdout: null,
       stderr: null,
       exit_code: null,
+      hookwatch_error: null,
     });
 
     insertEvent(db, {
@@ -284,6 +292,7 @@ describe("insert and retrieve round-trip", () => {
       stdout: null,
       stderr: null,
       exit_code: null,
+      hookwatch_error: null,
     });
 
     const events = getAllEvents(db);
@@ -321,6 +330,6 @@ describe("schema idempotency", () => {
 
     const db = openDb(dbPath);
     const row = db.query("PRAGMA user_version;").get() as { user_version: number };
-    expect(row.user_version).toBe(1);
+    expect(row.user_version).toBe(2);
   });
 });

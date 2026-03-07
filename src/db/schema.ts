@@ -4,7 +4,7 @@ import type { Database } from "bun:sqlite";
  * Current schema version. Increment when making breaking schema changes.
  * user_version starts at 0 on a brand-new database.
  */
-const _CURRENT_VERSION = 1;
+const _CURRENT_VERSION = 2;
 
 /**
  * DDL for the events table.
@@ -31,7 +31,8 @@ const CREATE_EVENTS_TABLE = `
     wrapped_command  TEXT,
     stdout           TEXT,
     stderr           TEXT,
-    exit_code        INTEGER
+    exit_code        INTEGER,
+    hookwatch_error  TEXT
   );
 `;
 
@@ -63,9 +64,11 @@ export function applySchema(db: Database): void {
   if (version < 1) {
     db.exec(CREATE_EVENTS_TABLE);
     db.exec(CREATE_INDEXES);
-    db.exec(`PRAGMA user_version = 1;`);
+    // Skip straight to current version — table already has hookwatch_error
+    db.exec(`PRAGMA user_version = 2;`);
+  } else if (version < 2) {
+    // Existing v1 databases need the new column added
+    db.exec(`ALTER TABLE events ADD COLUMN hookwatch_error TEXT;`);
+    db.exec(`PRAGMA user_version = 2;`);
   }
-
-  // Future migrations:
-  // if (version < 2) { db.exec(...); db.exec("PRAGMA user_version = 2;"); }
 }
