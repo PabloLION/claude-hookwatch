@@ -457,7 +457,7 @@ describe("hook output (stdout)", () => {
 
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout);
-    expect(parsed.systemMessage).toBe("Captured SessionStart (startup)");
+    expect(parsed.systemMessage).toBe("hookwatch captured SessionStart (startup)");
   });
 
   test("systemMessage contains tool_name for PreToolUse", async () => {
@@ -481,7 +481,7 @@ describe("hook output (stdout)", () => {
 
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout);
-    expect(parsed.systemMessage).toBe("Captured PreToolUse (Bash)");
+    expect(parsed.systemMessage).toBe("hookwatch captured PreToolUse (Bash)");
   });
 
   test("systemMessage has no subtype for Stop", async () => {
@@ -504,7 +504,7 @@ describe("hook output (stdout)", () => {
 
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout);
-    expect(parsed.systemMessage).toBe("Captured Stop");
+    expect(parsed.systemMessage).toBe("hookwatch captured Stop");
   });
 
   test("POST failure produces empty stdout", async () => {

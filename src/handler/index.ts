@@ -104,17 +104,17 @@ function getEventSubtype(event: HookEvent): string | null {
  * Builds the systemMessage string injected into Claude Code's context after a
  * successful event POST.
  *
- * Format: "Captured <EventType> (<subtype>)" when a subtype exists,
- * or "Captured <EventType>" when there is no subtype.
+ * Format: "hookwatch captured <EventType> (<subtype>)" when a subtype exists,
+ * or "hookwatch captured <EventType>" when there is no subtype.
  *
  * TODO: configurable via config.toml (ch-1ex5.1)
  */
 function buildSystemMessage(event: HookEvent): string {
   const subtype = getEventSubtype(event);
   if (subtype !== null) {
-    return `Captured ${event.hook_event_name} (${subtype})`;
+    return `hookwatch captured ${event.hook_event_name} (${subtype})`;
   }
-  return `Captured ${event.hook_event_name}`;
+  return `hookwatch captured ${event.hook_event_name}`;
 }
 
 /**

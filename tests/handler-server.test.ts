@@ -187,7 +187,7 @@ describe("server already running", () => {
       // stdout must be valid hook output JSON (context injection — Story 4.2)
       const parsed = JSON.parse(result.stdout);
       expect(parsed.continue).toBe(true);
-      expect(parsed.systemMessage).toBe("Captured SessionStart (startup)");
+      expect(parsed.systemMessage).toBe("hookwatch captured SessionStart (startup)");
       expect(receivedBodies).toHaveLength(1);
       const body = receivedBodies[0] as Record<string, unknown>;
       expect(body?.hook_event_name).toBe("SessionStart");
