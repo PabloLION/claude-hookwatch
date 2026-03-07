@@ -93,6 +93,38 @@ Non-fatal errors (P2) are stored in the `hookwatch_error TEXT` column in the
 events table. Multiple errors during a single handler run are accumulated via a
 string builder and written as one value. NULL means no error.
 
+## Hook Stdout Output Schema Strictness
+
+**Question:** Does Claude Code reject hook stdout JSON that contains extra fields
+beyond the documented schema?
+
+**Answer:** No. Claude Code ignores unknown fields in hook stdout. Extra fields
+pass through silently.
+
+**Empirical finding** (Claude Code 2.1.71, macOS, tested 20260307):
+
+A SessionStart hook returned this JSON with two extra fields:
+
+```json
+{
+  "continue": true,
+  "suppressOutput": true,
+  "hookwatch_version": "0.1.0",
+  "debug": true
+}
+```
+
+Claude Code exited 0 and ran the session normally. The extra fields
+(`hookwatch_version`, `debug`) were silently ignored — no error, no warning.
+
+**Implication for hookwatch:** `.passthrough()` on all output Zod schemas is
+empirically confirmed safe. If Claude Code adds new output fields in future
+versions, hooks returning those fields will not break existing hookwatch
+versions. The leniency is symmetric: Claude Code is lenient both on what it
+reads from hook stdin and what it accepts from hook stdout.
+
+**Probe:** `./scripts/claude-code-probes/probe-output-strictness.ts`
+
 ## Environment Variables
 
 Variables available to hooks, inherited from the Claude Code session:
@@ -133,6 +165,7 @@ control).
 Probe type,Location,What it tests
 Shebang probes (3 scripts),./docs/agents/qa/research-output/shell-probes/,Which interpreter runs script-file hooks
 Inline command probe launcher,./scripts/claude-code-probes/probe-launcher.ts,Which interpreter runs inline hook commands
+Output schema strictness,./scripts/claude-code-probes/probe-output-strictness.ts,Whether Claude Code rejects hook stdout with extra JSON fields
 ```
 
 ### Running probes
