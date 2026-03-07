@@ -42,6 +42,8 @@ export async function handleIngest(req: Request): Promise<Response> {
   const wrappedStderr: string | null = typeof bodyObj.stderr === "string" ? bodyObj.stderr : null;
   const wrappedExitCode: number | null =
     typeof bodyObj.exit_code === "number" ? bodyObj.exit_code : null;
+  const hookDurationMs: number | null =
+    typeof bodyObj.hook_duration_ms === "number" ? bodyObj.hook_duration_ms : null;
 
   // Validate with Zod
   let event: ReturnType<typeof parseHookEvent>;
@@ -69,7 +71,7 @@ export async function handleIngest(req: Request): Promise<Response> {
       tool_name:
         "tool_name" in event && typeof event.tool_name === "string" ? event.tool_name : null,
       session_name: null,
-      hook_duration_ms: null,
+      hook_duration_ms: hookDurationMs,
       stdin: JSON.stringify(event),
       wrapped_command: wrappedCommand,
       stdout: wrappedStdout,
