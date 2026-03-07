@@ -164,17 +164,21 @@ Key columns are indexed for fast querying:
 ```csv
 Column,Type,Description
 id,INTEGER PRIMARY KEY,Auto-incrementing event ID
-ts,TEXT,ISO 8601 timestamp (generated at write time)
+timestamp,INTEGER,Unix epoch milliseconds (generated at write time)
 event,TEXT,Hook event type (e.g. PreToolUse)
 session_id,TEXT,From hook stdin
 cwd,TEXT,Working directory at time of event
 tool_name,TEXT,"Tool name for tool events, NULL otherwise"
 session_name,TEXT,Human-readable session name
-payload,TEXT,Full event JSON from stdin
-hook_duration_ms,INTEGER,hookwatch handler execution time in milliseconds (always NULL — not yet populated by ingest.ts; see ch-95ia)
+stdin,TEXT,Full event JSON from stdin
+hook_duration_ms,INTEGER,hookwatch handler execution time in milliseconds
+wrapped_command,TEXT,"NULL = bare handler; non-NULL = user command being wrapped"
+stdout,TEXT,Captured stdout from wrapped command (NULL for bare handler)
+stderr,TEXT,Captured stderr from wrapped command (NULL for bare handler)
+exit_code,INTEGER,Exit code from wrapped command (NULL for bare handler)
 ```
 
-Indexed on: `event`, `session_id`, `ts`, `tool_name`.
+Indexed on: `event`, `session_id`, `timestamp`, `tool_name`.
 
 ### FR-3: Plugin System
 
@@ -182,10 +186,13 @@ hookwatch ships as a Claude Code plugin with this structure:
 
 ```text
 .claude-plugin/
-  plugin.json          — plugin manifest
+  plugin.json          — plugin manifest (generated, checked in for claude plugin install)
 hooks/
-  hooks.json           — hook registration (all event types)
-  handler.ts           — single entry point for all events
+  hooks.json           — hook registration (all 18 event types)
+  handler.ts           — thin entry point; re-imports src/handler/index.ts
+src/
+  handler/
+    index.ts           — actual handler logic (stdin → validate → POST)
 ```
 
 **plugin.json** follows the format established by DazzleML/claude-session-logger:
@@ -194,21 +201,20 @@ hooks/
 {
   "name": "hookwatch",
   "version": "0.1.0",
-  "description": "Hook event logger for Claude Code",
-  "author": { "name": "PabloLION" },
-  "repository": "https://github.com/PabloLION/claude-hookwatch",
-  "license": "MIT"
+  "description": "Claude Code plugin that logs all hook events to SQLite and serves a local web UI",
+  "author": { "name": "PabloLION" }
 }
 ```
 
-**hooks.json** registers a single handler command for every event type using
-`${CLAUDE_PLUGIN_ROOT}` for portable paths:
+**hooks.json** registers a `hookwatch <EventType>` CLI command for every event
+type. Non-tool events have no `matcher` field:
 
 ```json
 {
   "hooks": {
-    "PreToolUse": [{ "matcher": ".*", "hooks": [{ "type": "command", "command": "bun run ${CLAUDE_PLUGIN_ROOT}/hooks/handler.ts" }] }],
-    "PostToolUse": [{ "matcher": ".*", "hooks": [{ "type": "command", "command": "bun run ${CLAUDE_PLUGIN_ROOT}/hooks/handler.ts" }] }]
+    "SessionStart": [{ "hooks": [{ "type": "command", "command": "hookwatch SessionStart" }] }],
+    "PreToolUse":   [{ "hooks": [{ "type": "command", "command": "hookwatch PreToolUse" }] }],
+    "PostToolUse":  [{ "hooks": [{ "type": "command", "command": "hookwatch PostToolUse" }] }]
   }
 }
 ```
