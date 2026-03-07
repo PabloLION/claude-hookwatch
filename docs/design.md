@@ -171,7 +171,7 @@ cwd,TEXT,Working directory at time of event
 tool_name,TEXT,"Tool name for tool events, NULL otherwise"
 session_name,TEXT,Human-readable session name
 payload,TEXT,Full event JSON from stdin
-hook_duration_ms,INTEGER,Hook execution time in milliseconds
+hook_duration_ms,INTEGER,hookwatch handler execution time in milliseconds (always NULL — not yet populated by ingest.ts; see ch-95ia)
 ```
 
 Indexed on: `event`, `session_id`, `ts`, `tool_name`.

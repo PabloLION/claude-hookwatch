@@ -59,7 +59,7 @@ cwd,TEXT,Working directory at time of event
 tool_name,TEXT,"Tool name for tool events, NULL otherwise"
 session_name,TEXT,Human-readable session name
 payload,TEXT,Full event JSON from stdin
-hook_duration_ms,INTEGER,Hook execution time in milliseconds
+hook_duration_ms,INTEGER,hookwatch handler execution time in milliseconds (always NULL — not yet populated by ingest.ts; see ch-95ia)
 ```
 
 The full stdin schema for all 18 event types is documented in
@@ -116,7 +116,7 @@ sqlite3 ~/.local/share/hookwatch/hookwatch.db \
      AND ts > datetime('now', '-1 hour')
    GROUP BY tool_name"
 
-# Hook performance (slow hooks)
+# hookwatch handler time per event type (our processing time, not Claude Code tool duration)
 sqlite3 ~/.local/share/hookwatch/hookwatch.db \
   "SELECT event, AVG(hook_duration_ms), MAX(hook_duration_ms)
    FROM events GROUP BY event ORDER BY AVG(hook_duration_ms) DESC"
