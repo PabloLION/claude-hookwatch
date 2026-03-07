@@ -91,7 +91,7 @@ function getEventSubtype(event: HookEvent): string | null {
       return (event as { trigger: string }).trigger;
     case "ConfigChange":
       return (event as { source: string }).source;
-    case "Setup":
+    case "InstructionsLoaded":
       return (event as { trigger: string }).trigger;
     default:
       // Stop, UserPromptSubmit, TeammateIdle, TaskCompleted, WorktreeCreate,

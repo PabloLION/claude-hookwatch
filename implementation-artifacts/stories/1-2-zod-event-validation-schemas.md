@@ -76,7 +76,7 @@ TaskCompleted,"task_id, task_subject, task_description?, teammate_name?, team_na
 ConfigChange,"source, file_path?",source,"source: z.enum(['user_settings','project_settings','local_settings','policy_settings','skills'])"
 WorktreeCreate,name,none,
 WorktreeRemove,worktree_path,none,
-Setup,trigger,unknown,"trigger: z.enum(['init','maintenance']) — SDK-only event; matcher target undocumented"
+InstructionsLoaded,trigger,unknown,"trigger: z.enum(['init','maintenance']) — SDK-only event; matcher target undocumented"
 ```
 
 Key Zod type decisions:

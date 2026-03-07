@@ -88,11 +88,11 @@ TaskCompleted,Task marked complete
 ConfigChange,Configuration changed
 WorktreeCreate,Git worktree created
 WorktreeRemove,Git worktree removed
-Setup,Plugin/environment initialization (SDK-only — not in hooks reference docs)
+InstructionsLoaded,Instructions loaded (SDK-only — not in hooks reference docs)
 ```
 
 17 events are documented in the [hooks reference](https://code.claude.com/docs/en/hooks).
-Setup is the 18th — present in the
+InstructionsLoaded is the 18th — present in the
 [Agent SDK types](https://platform.claude.com/docs/en/agent-sdk/typescript)
 (`@anthropic-ai/claude-agent-sdk`) but not yet in the hooks reference.
 

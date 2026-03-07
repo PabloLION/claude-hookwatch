@@ -72,7 +72,7 @@ Register all 18 event types with `".*"` matcher to capture everything:
     "ConfigChange": [{ "matcher": ".*", "type": "command", "command": "bun /absolute/path/to/src/handler/index.ts" }],
     "WorktreeCreate": [{ "matcher": ".*", "type": "command", "command": "bun /absolute/path/to/src/handler/index.ts" }],
     "WorktreeRemove": [{ "matcher": ".*", "type": "command", "command": "bun /absolute/path/to/src/handler/index.ts" }],
-    "Setup": [{ "matcher": ".*", "type": "command", "command": "bun /absolute/path/to/src/handler/index.ts" }]
+    "InstructionsLoaded": [{ "matcher": ".*", "type": "command", "command": "bun /absolute/path/to/src/handler/index.ts" }]
   }
 }
 ```

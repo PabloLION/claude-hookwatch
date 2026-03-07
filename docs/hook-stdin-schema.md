@@ -243,10 +243,10 @@ worktree_path,string,yes,Absolute path to the worktree being removed
 
 - **Matcher target:** none (always fires)
 
-### Setup
+### InstructionsLoaded
 
 Present in [Agent SDK types](https://platform.claude.com/docs/en/agent-sdk/typescript)
-(`SetupHookInput`) but not yet documented in the
+(`InstructionsLoadedHookInput`) but not yet documented in the
 [hooks reference](https://code.claude.com/docs/en/hooks).
 
 ```csv
@@ -366,7 +366,7 @@ Since 2.1.33. For these events, exit code 2 has special meaning:
 ## Event Count
 
 **18 events.** 17 are documented in the
-[hooks reference](https://code.claude.com/docs/en/hooks). Setup is the 18th —
+[hooks reference](https://code.claude.com/docs/en/hooks). InstructionsLoaded is the 18th —
 present in the
 [Agent SDK types](https://platform.claude.com/docs/en/agent-sdk/typescript)
 (`@anthropic-ai/claude-agent-sdk`) but not yet in the hooks reference.
@@ -376,7 +376,7 @@ SessionStart    SessionEnd       UserPromptSubmit  PreToolUse
 PostToolUse     PostToolUseFailure  PermissionRequest  Notification
 SubagentStart   SubagentStop     Stop              PreCompact
 TeammateIdle    TaskCompleted    ConfigChange      WorktreeCreate
-WorktreeRemove  Setup*
+WorktreeRemove  InstructionsLoaded*
 ```
 
 \* SDK-only — not in hooks reference docs.
