@@ -197,15 +197,72 @@ Future HITL features (ch-9wpp) that spawn a child `claude` process from a hook
 must unset `CLAUDECODE` first. Claude Code refuses to launch when `CLAUDECODE`
 is already set.
 
-## How to rerun the probes
+## Inline command probe results
+
+The shebang probes above confirm that script files run under their shebang
+interpreter. But hookwatch uses inline commands in hooks.json
+(`"command": "hookwatch SessionStart"`), not script files.
+
+Three inline command probes were run via `claude --print --settings` to
+determine which shell interprets the command string.
+
+### Baseline probe output
+
+```text
+0=/bin/sh
+/bin/sh
+BASH_VERSION=3.2.57(1)-release
+ZSH_VERSION=unset
+```
+
+`$0` = `/bin/sh`, process name = `/bin/sh`. On macOS, `/bin/sh` is bash 3.2 in
+POSIX compatibility mode (hence `BASH_VERSION` is set, but POSIX-only features
+are available).
+
+### Bash-only probe output (PIPESTATUS)
+
+Empty file (1 byte). `${PIPESTATUS[0]}` expanded to empty string. In POSIX sh
+mode, bash does not expose `PIPESTATUS`. This confirms the interpreter is sh
+(POSIX mode), not full bash.
+
+### Zsh-only probe output (print -l with glob qualifier)
+
+File not created. `print -l /tmp/...*(.)` is zsh-only syntax — it failed in sh.
+Confirms the interpreter is not zsh.
+
+### Inline command conclusion
+
+**Claude Code uses `sh -c '<command>'` for inline hook commands.** On macOS,
+`/bin/sh` is bash 3.2 in POSIX compatibility mode. This means:
+
+- POSIX sh syntax works (test, [, echo, etc.)
+- bash extensions (`PIPESTATUS`, `declare -A`, `[[ ]]`) are NOT available
+- zsh extensions (glob qualifiers, `print -l`) are NOT available
+- `$BASH_VERSION` is set (because /bin/sh IS bash) but bash-specific features
+  are disabled in POSIX mode
+
+For hookwatch, this means the `"command": "hookwatch SessionStart"` in
+hooks.json is executed via `sh -c 'hookwatch SessionStart'`. Since hookwatch is
+a Bun binary on PATH, this works correctly — sh just needs to find and exec the
+binary.
+
+### Probe launcher
+
+Probes can be rerun via:
+
+```sh
+bun scripts/claude-code-probes/probe-launcher.ts
+```
+
+## How to rerun the shebang probes
 
 ```sh
 # Prerequisites: claude binary must be available
 # Remove any stale output
-rm -f /tmp/hookwatch-probe-posix.txt /tmp/hookwatch-probe-bash.txt /tmp/hookwatch-probe-zsh.txt
+rm -f /tmp/hookwatch-probe-sh.txt /tmp/hookwatch-probe-bash.txt /tmp/hookwatch-probe-zsh.txt
 
 # Option A: inline settings (one probe at a time)
-PROBE=/path/to/probe-posix.sh
+PROBE=/path/to/probe-sh.sh
 env -u CLAUDECODE claude --print \
   --settings "{\"hooks\":{\"SessionStart\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"$PROBE\"}]}]}}" \
   --dangerously-skip-permissions \
@@ -220,7 +277,7 @@ env -u CLAUDECODE claude --print \
   "say hi"
 
 # Read results
-cat /tmp/hookwatch-probe-posix.txt
+cat /tmp/hookwatch-probe-sh.txt
 cat /tmp/hookwatch-probe-bash.txt
 cat /tmp/hookwatch-probe-zsh.txt
 ```
