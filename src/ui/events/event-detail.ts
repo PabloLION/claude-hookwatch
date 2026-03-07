@@ -111,6 +111,47 @@ export function EventDetail({ event }: EventDetailProps): ReturnType<typeof html
         <summary>Full stdin</summary>
         <pre><code>${formattedStdin}</code></pre>
       </details>
+      ${
+        event.stdout !== null &&
+        event.stdout !== undefined &&
+        event.stdout.length > 0 &&
+        html`
+        <details>
+          <summary>stdout</summary>
+          <pre><code>${event.stdout}</code></pre>
+        </details>
+      `
+      }
+      ${
+        event.stderr !== null &&
+        event.stderr !== undefined &&
+        event.stderr.length > 0 &&
+        html`
+        <details>
+          <summary>stderr</summary>
+          <pre><code>${event.stderr}</code></pre>
+        </details>
+      `
+      }
+      ${
+        event.exit_code !== null &&
+        event.exit_code !== undefined &&
+        html`
+        <details>
+          <summary>Exit code</summary>
+          <p>
+            <strong
+              style=${{
+                color:
+                  event.exit_code === 0
+                    ? "var(--pico-ins-color, #2d9a2d)"
+                    : "var(--pico-del-color, #c0392b)",
+              }}
+            >${event.exit_code}</strong>
+          </p>
+        </details>
+      `
+      }
     </div>
   `;
 }
