@@ -24,6 +24,8 @@
  * (console.error / process.stderr.write) — NEVER console.log().
  */
 
+import { errorMsg } from "./errors.ts";
+
 /** Result returned by runWrapped() after the child process exits. */
 export interface WrapResult {
   exitCode: number;
@@ -56,7 +58,7 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
     stdinContent = await Bun.stdin.text();
     stdinBytes = new TextEncoder().encode(stdinContent);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to read stdin: ${msg}`);
     return { exitCode: 1, stdin: "", stdout: "", stderr: "" };
   }
@@ -70,7 +72,7 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
       stderr: "pipe",
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to spawn wrapped command: ${msg}`);
     return { exitCode: 1, stdin: stdinContent, stdout: "", stderr: "" };
   }

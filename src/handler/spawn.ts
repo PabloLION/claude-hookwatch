@@ -13,6 +13,7 @@
 import { mkdirSync, openSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { portFilePath, serverLogPath } from "@/paths.ts";
+import { errorMsg } from "./errors.ts";
 
 const HEALTH_POLL_INTERVAL_MS = 100;
 const HEALTH_MAX_ATTEMPTS = 20; // 20 * 100ms = 2s max
@@ -99,7 +100,7 @@ export async function spawnServer(): Promise<number | null> {
   try {
     logFd = openSync(logPath, "a");
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to open server log file ${logPath}: ${msg}`);
     // Continue without log file — use inherited stderr as fallback
   }
@@ -117,7 +118,7 @@ export async function spawnServer(): Promise<number | null> {
       detached: true,
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to spawn server: ${msg}`);
     return null;
   }

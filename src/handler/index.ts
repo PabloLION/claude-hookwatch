@@ -37,6 +37,7 @@ import { portFilePath } from "@/paths.ts";
 import type { HookEvent } from "@/schemas/events.ts";
 import { parseHookEvent } from "@/schemas/events.ts";
 import { hookOutputSchema } from "@/schemas/output.ts";
+import { errorMsg } from "./errors.ts";
 import { spawnServer } from "./spawn.ts";
 import { runWrapped } from "./wrap.ts";
 
@@ -262,7 +263,7 @@ async function postEvent(opts: PostEventOptions): Promise<boolean> {
   } catch (err) {
     if (!isConnectionError(err)) {
       // Non-connection error (e.g. timeout, abort) — don't attempt spawn
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = errorMsg(err);
       console.error(`[hookwatch] Failed to POST event to server: ${msg}`);
       return false;
     }
@@ -294,7 +295,7 @@ async function postEvent(opts: PostEventOptions): Promise<boolean> {
 
     return true;
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to POST event to server after spawn: ${msg}`);
     return false;
   }
@@ -328,7 +329,7 @@ export function parseEventSafely(
   try {
     parsed = JSON.parse(jsonStr);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to parse stdin as JSON: ${msg}`);
     if (fallbackExitCode !== null) {
       process.exit(fallbackExitCode);
@@ -339,7 +340,7 @@ export function parseEventSafely(
   try {
     return parseHookEvent(parsed);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = errorMsg(err);
     console.error(`[hookwatch] Zod validation failed: ${msg}`);
     if (fallbackExitCode !== null) {
       process.exit(fallbackExitCode);
@@ -488,7 +489,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
 const wrapArgs = getWrapArgs();
 
 handleHook(wrapArgs).catch((err) => {
-  const msg = err instanceof Error ? err.message : String(err);
+  const msg = errorMsg(err);
   console.error(`[hookwatch] Unexpected error: ${msg}`);
   exitFatal(`Unexpected error: ${msg}`);
 });
