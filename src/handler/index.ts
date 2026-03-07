@@ -301,6 +301,54 @@ async function postEvent(opts: PostEventOptions): Promise<boolean> {
 }
 
 // ---------------------------------------------------------------------------
+// Event parsing helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Parses jsonStr as JSON and validates it against the HookEvent discriminated
+ * union schema. On any error, logs to stderr and terminates the process.
+ *
+ * The fallbackExitCode parameter controls error handling:
+ *   - null (bare mode): calls exitFatal() → exit 2 + JSON stdout (P1 fatal)
+ *   - non-null (wrapped mode): calls process.exit(fallbackExitCode) to forward
+ *     the child's exit code even when event parsing fails (best-effort)
+ *
+ * This helper eliminates duplicate try-catch blocks across the two error paths.
+ *
+ * @param jsonStr - Raw stdin JSON string from Claude Code
+ * @param fallbackExitCode - Child process exit code to forward on failure, or
+ *   null for bare mode (use exitFatal instead)
+ * @returns Parsed and validated hook event. Never returns on failure.
+ */
+export function parseEventSafely(
+  jsonStr: string,
+  fallbackExitCode: number | null,
+): ReturnType<typeof parseHookEvent> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[hookwatch] Failed to parse stdin as JSON: ${msg}`);
+    if (fallbackExitCode !== null) {
+      process.exit(fallbackExitCode);
+    }
+    exitFatal(`Failed to parse stdin as JSON: ${msg}`);
+  }
+
+  try {
+    return parseHookEvent(parsed);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[hookwatch] Zod validation failed: ${msg}`);
+    if (fallbackExitCode !== null) {
+      process.exit(fallbackExitCode);
+    }
+    exitFatal(`Zod validation failed: ${msg}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Unified pipeline: handleHook()
 // ---------------------------------------------------------------------------
 
@@ -359,35 +407,11 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // Wrapped mode timer starts here (after child exits — measures hookwatch overhead only)
   const startMs = Date.now();
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stdinJson);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[hookwatch] Failed to parse stdin as JSON: ${msg}`);
-    if (wrapArgs !== null) {
-      // Wrapped: best-effort — still forward child exit code
-      // Parse failure is P2 non-fatal when child exited; server can't receive
-      // event so we skip POST and just exit with child code
-      process.exit(childExitCode ?? 0);
-    }
-    // Bare: P1 fatal — no event to store
-    exitFatal(`Failed to parse stdin as JSON: ${msg}`);
-  }
-
-  let event: ReturnType<typeof parseHookEvent>;
-  try {
-    event = parseHookEvent(parsed);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[hookwatch] Zod validation failed: ${msg}`);
-    if (wrapArgs !== null) {
-      // Wrapped: best-effort — still forward child exit code
-      process.exit(childExitCode ?? 0);
-    }
-    // Bare: P1 fatal — can't validate event
-    exitFatal(`Zod validation failed: ${msg}`);
-  }
+  // parseEventSafely handles both try-catch blocks (JSON.parse + Zod validation).
+  // In wrapped mode (fallbackExitCode = childExitCode): forwards child exit code
+  // on parse failure (best-effort). In bare mode (fallbackExitCode = null):
+  // calls exitFatal() for P1 fatal error.
+  const event = parseEventSafely(stdinJson, wrapArgs !== null ? (childExitCode ?? 0) : null);
 
   // -------------------------------------------------------------------------
   // Step 4: Resolve port
