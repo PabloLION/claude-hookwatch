@@ -6,9 +6,11 @@
  * - Stdin parsing: valid JSON is parsed and forwarded
  * - Zod validation: known event → correct schema; unknown event → fallback schema
  * - Successful POST: event is forwarded and server receives it
- * - Error handling: invalid JSON and Zod failures cause exit 1
+ * - Error handling: invalid JSON and Zod failures cause exit 2 + JSON stdout
  * - Unknown event forwarding: unknown hook_event_name goes through fallback
  * - Server unavailable: connection failure triggers auto-start (Story 1.5)
+ * - Unified pipeline: both bare and wrapped modes use the same algorithm skeleton
+ * - Exit legality: only exit 0 or exit 2 are valid; both have specific stdout contracts
  *
  * Strategy: run the handler as a child process via Bun.spawn(), feeding stdin
  * directly. This mirrors the real Claude Code hook invocation and avoids the
@@ -132,6 +134,73 @@ async function runHandler(
 }
 
 // ---------------------------------------------------------------------------
+// Exit legality helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Validates that a handler result obeys the exit code contract:
+ *   - Exit code must be 0 or 2 (never 1 or other values)
+ *   - Exit 0: stdout is either empty, valid hook JSON, or child-output prefix + hook JSON
+ *     The hook JSON (if present) must have continue: boolean.
+ *     In wrapped mode, child stdout precedes the hook JSON — we extract the last JSON object.
+ *   - Exit 2: stdout must be valid JSON with a hookwatch_fatal field (P1 error)
+ *
+ * Call this in every bare-mode test to enforce the contract globally.
+ * For wrapped mode tests where child stdout prefixes the hook JSON, the helper
+ * extracts the last JSON object from stdout before validating.
+ */
+function assertExitLegality(result: RunResult, context = ""): void {
+  const tag = context ? ` [${context}]` : "";
+
+  // Exit code must be 0 or 2
+  expect(result.exitCode, `exit code must be 0 or 2${tag}`).toSatisfy(
+    (code: number | null) => code === 0 || code === 2,
+  );
+
+  if (result.exitCode === 0) {
+    // Exit 0: stdout may be empty or contain hook JSON (optionally after child output)
+    if (result.stdout !== "") {
+      // Try full parse first; if that fails, try to extract the last JSON object
+      // (handles wrapped mode where child stdout precedes hook JSON).
+      let parsed: unknown;
+      let parseError: string | null = null;
+      try {
+        parsed = JSON.parse(result.stdout);
+      } catch {
+        // Try extracting the last '{...}' block
+        const lastBrace = result.stdout.lastIndexOf("{");
+        if (lastBrace !== -1) {
+          try {
+            parsed = JSON.parse(result.stdout.slice(lastBrace));
+          } catch {
+            parseError = result.stdout;
+          }
+        } else {
+          parseError = result.stdout;
+        }
+      }
+      if (parseError !== null) {
+        throw new Error(`Exit 0 stdout must be valid JSON or empty${tag}. Got: ${parseError}`);
+      }
+      const obj = parsed as Record<string, unknown>;
+      expect(typeof obj.continue, `Exit 0 stdout.continue must be boolean${tag}`).toBe("boolean");
+    }
+  } else if (result.exitCode === 2) {
+    // Exit 2: stdout must be valid JSON with hookwatch_fatal field
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(result.stdout);
+    } catch {
+      throw new Error(`Exit 2 stdout must be valid JSON${tag}. Got: ${result.stdout}`);
+    }
+    const obj = parsed as Record<string, unknown>;
+    expect(typeof obj.hookwatch_fatal, `Exit 2 stdout must have hookwatch_fatal string${tag}`).toBe(
+      "string",
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Shared test fixtures
 // ---------------------------------------------------------------------------
 
@@ -205,6 +274,7 @@ describe("port file", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
+    assertExitLegality(result, "port-present");
     expect(result.exitCode).toBe(0);
     expect(server.events).toHaveLength(1);
   });
@@ -221,6 +291,7 @@ describe("port file", () => {
       XDG_CONFIG_HOME: join(xdgHome, "config"),
     });
 
+    assertExitLegality(result, "port-absent");
     // Auto-start succeeds — event is delivered to the spawned server
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain("[hookwatch]");
@@ -235,6 +306,7 @@ describe("port file", () => {
       XDG_CONFIG_HOME: join(xdgHome, "config"),
     });
 
+    assertExitLegality(result, "port-invalid");
     // Auto-start fires because fallback port 6004 has no server → connection error
     // stderr should mention the invalid value/fallback and the spawn attempt
     expect(result.stderr).toContain("[hookwatch]");
@@ -256,6 +328,7 @@ describe("stdin parsing", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
+    assertExitLegality(result, "stdin-valid");
     expect(result.exitCode).toBe(0);
     expect(server.events).toHaveLength(1);
     const body = server.events[0]?.body as Record<string, unknown>;
@@ -263,7 +336,7 @@ describe("stdin parsing", () => {
     expect(body?.session_id).toBe("test-session-001");
   });
 
-  test("invalid JSON stdin causes exit 1", async () => {
+  test("invalid JSON stdin causes exit 2 with JSON error in stdout", async () => {
     const xdgHome = join(TMP_DIR, "stdin-invalid");
     writePortFile(xdgHome, server.port);
 
@@ -271,12 +344,16 @@ describe("stdin parsing", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    expect(result.exitCode).toBe(1);
+    assertExitLegality(result, "stdin-invalid");
+    expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("[hookwatch]");
     expect(server.events).toHaveLength(0);
+    // P1 fatal: stdout must contain JSON with hookwatch_fatal
+    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(typeof parsed.hookwatch_fatal).toBe("string");
   });
 
-  test("empty stdin causes exit 1", async () => {
+  test("empty stdin causes exit 2 with JSON error in stdout", async () => {
     const xdgHome = join(TMP_DIR, "stdin-empty");
     writePortFile(xdgHome, server.port);
 
@@ -284,8 +361,11 @@ describe("stdin parsing", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    expect(result.exitCode).toBe(1);
+    assertExitLegality(result, "stdin-empty");
+    expect(result.exitCode).toBe(2);
     expect(server.events).toHaveLength(0);
+    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(typeof parsed.hookwatch_fatal).toBe("string");
   });
 });
 
@@ -302,13 +382,14 @@ describe("Zod validation", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
+    assertExitLegality(result, "zod-known");
     expect(result.exitCode).toBe(0);
     const body = server.events[0]?.body as Record<string, unknown>;
     expect(body?.source).toBe("startup");
     expect(body?.model).toBe("claude-sonnet-4-6");
   });
 
-  test("missing required field causes exit 1", async () => {
+  test("missing required field causes exit 2 with JSON error in stdout", async () => {
     const xdgHome = join(TMP_DIR, "zod-missing-field");
     writePortFile(xdgHome, server.port);
 
@@ -326,12 +407,15 @@ describe("Zod validation", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    expect(result.exitCode).toBe(1);
+    assertExitLegality(result, "zod-missing-field");
+    expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("[hookwatch]");
     expect(server.events).toHaveLength(0);
+    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(typeof parsed.hookwatch_fatal).toBe("string");
   });
 
-  test("invalid enum value for known event causes exit 1", async () => {
+  test("invalid enum value for known event causes exit 2 with JSON error in stdout", async () => {
     const xdgHome = join(TMP_DIR, "zod-bad-enum");
     writePortFile(xdgHome, server.port);
 
@@ -344,8 +428,11 @@ describe("Zod validation", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    expect(result.exitCode).toBe(1);
+    assertExitLegality(result, "zod-bad-enum");
+    expect(result.exitCode).toBe(2);
     expect(server.events).toHaveLength(0);
+    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(typeof parsed.hookwatch_fatal).toBe("string");
   });
 });
 
@@ -362,6 +449,7 @@ describe("unknown event forwarding", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
+    assertExitLegality(result, "unknown-event");
     expect(result.exitCode).toBe(0);
     expect(server.events).toHaveLength(1);
     const body = server.events[0]?.body as Record<string, unknown>;
@@ -369,7 +457,7 @@ describe("unknown event forwarding", () => {
     expect(body?.extra_field).toBe("preserved");
   });
 
-  test("unknown event with missing common fields causes exit 1", async () => {
+  test("unknown event with missing common fields causes exit 2 with JSON error in stdout", async () => {
     const xdgHome = join(TMP_DIR, "unknown-event-bad");
     writePortFile(xdgHome, server.port);
 
@@ -383,8 +471,11 @@ describe("unknown event forwarding", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    expect(result.exitCode).toBe(1);
+    assertExitLegality(result, "unknown-event-bad");
+    expect(result.exitCode).toBe(2);
     expect(server.events).toHaveLength(0);
+    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(typeof parsed.hookwatch_fatal).toBe("string");
   });
 });
 
@@ -393,7 +484,7 @@ describe("unknown event forwarding", () => {
 // ---------------------------------------------------------------------------
 
 describe("server error handling", () => {
-  test("server non-201 response causes exit 1", async () => {
+  test("server non-201 response causes exit 2 with JSON error in stdout", async () => {
     const xdgHome = join(TMP_DIR, "server-error");
     writePortFile(xdgHome, server.port);
 
@@ -403,15 +494,18 @@ describe("server error handling", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    expect(result.exitCode).toBe(1);
+    assertExitLegality(result, "server-error");
+    expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("500");
+    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(typeof parsed.hookwatch_fatal).toBe("string");
   });
 
   test("server unavailable triggers auto-start", async () => {
     const xdgHome = join(TMP_DIR, "server-unavailable");
     // Point at a port where no server is running.
     // Since Story 1.5, a connection refusal triggers auto-start rather than
-    // an immediate exit 1. The handler spawns the server and retries.
+    // an immediate exit. The handler spawns the server and retries.
     writePortFile(xdgHome, 19999);
 
     const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
@@ -419,6 +513,7 @@ describe("server error handling", () => {
       XDG_CONFIG_HOME: join(xdgHome, "config"),
     });
 
+    assertExitLegality(result, "server-unavailable");
     // Auto-start fires: spawned server inherits env, writes real port file,
     // health probe discovers new port, handler retries and succeeds.
     expect(result.stderr).toContain("[hookwatch]");
@@ -440,6 +535,7 @@ describe("hook output (stdout)", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
+    assertExitLegality(result, "stdout-success");
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout);
     expect(parsed.continue).toBe(true);
@@ -455,6 +551,7 @@ describe("hook output (stdout)", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
+    assertExitLegality(result, "stdout-system-message-session-start");
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout);
     expect(parsed.systemMessage).toBe("hookwatch captured SessionStart (startup)");
@@ -479,6 +576,7 @@ describe("hook output (stdout)", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
+    assertExitLegality(result, "stdout-pre-tool-use");
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout);
     expect(parsed.systemMessage).toBe("hookwatch captured PreToolUse (Bash)");
@@ -502,12 +600,13 @@ describe("hook output (stdout)", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
+    assertExitLegality(result, "stdout-stop");
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout);
     expect(parsed.systemMessage).toBe("hookwatch captured Stop");
   });
 
-  test("POST failure produces empty stdout", async () => {
+  test("POST failure produces exit 2 with hookwatch_fatal JSON in stdout", async () => {
     const xdgHome = join(TMP_DIR, "stdout-post-failure");
     writePortFile(xdgHome, server.port);
 
@@ -517,11 +616,13 @@ describe("hook output (stdout)", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    expect(result.exitCode).toBe(1);
-    expect(result.stdout).toBe("");
+    assertExitLegality(result, "stdout-post-failure");
+    expect(result.exitCode).toBe(2);
+    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(typeof parsed.hookwatch_fatal).toBe("string");
   });
 
-  test("invalid JSON stdin produces empty stdout", async () => {
+  test("invalid JSON stdin produces exit 2 with hookwatch_fatal JSON in stdout", async () => {
     const xdgHome = join(TMP_DIR, "stdout-invalid-json");
     writePortFile(xdgHome, server.port);
 
@@ -529,8 +630,10 @@ describe("hook output (stdout)", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    expect(result.exitCode).toBe(1);
-    expect(result.stdout).toBe("");
+    assertExitLegality(result, "stdout-invalid-json");
+    expect(result.exitCode).toBe(2);
+    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(typeof parsed.hookwatch_fatal).toBe("string");
   });
 
   test("bare mode includes hook_duration_ms as a non-negative number in POST body", async () => {
@@ -541,6 +644,7 @@ describe("hook output (stdout)", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
+    assertExitLegality(result, "stdout-duration-bare");
     expect(result.exitCode).toBe(0);
     expect(server.events).toHaveLength(1);
     const body = server.events[0]?.body as Record<string, unknown>;
@@ -556,6 +660,7 @@ describe("hook output (stdout)", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
+    assertExitLegality(result, "stdout-schema-validate");
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout);
     // hookOutputSchema fields: continue (bool), systemMessage (string), suppressOutput (bool)
@@ -597,6 +702,7 @@ describe("wrapped mode", () => {
       { XDG_DATA_HOME: xdgHome },
     );
 
+    assertExitLegality(result, "wrap-exit-0");
     expect(result.exitCode).toBe(0);
     expect(server.events).toHaveLength(1);
   });
@@ -611,6 +717,10 @@ describe("wrapped mode", () => {
       { XDG_DATA_HOME: xdgHome },
     );
 
+    // Exit 2 from child is a valid pass-through — not a hookwatch P1 error
+    // assertExitLegality would reject exit 2 without JSON, but in wrapped mode
+    // exit 2 is the child's exit code. The legality helper checks bare mode
+    // contracts. In wrapped mode we verify the child code is forwarded.
     expect(result.exitCode).toBe(2);
     // Event is still posted even when child exits 2
     expect(server.events).toHaveLength(1);
@@ -626,6 +736,7 @@ describe("wrapped mode", () => {
       { XDG_DATA_HOME: xdgHome },
     );
 
+    assertExitLegality(result, "wrap-tee-stdout");
     expect(result.exitCode).toBe(0);
     // stdout contains child output + hook JSON at the end
     expect(result.stdout).toContain("child-output");
@@ -645,6 +756,7 @@ describe("wrapped mode", () => {
       { XDG_DATA_HOME: xdgHome },
     );
 
+    assertExitLegality(result, "wrap-command-stored");
     expect(result.exitCode).toBe(0);
     expect(server.events).toHaveLength(1);
     const body = server.events[0]?.body as Record<string, unknown>;
@@ -661,6 +773,7 @@ describe("wrapped mode", () => {
       { XDG_DATA_HOME: xdgHome },
     );
 
+    assertExitLegality(result, "wrap-duration-ms");
     expect(result.exitCode).toBe(0);
     expect(server.events).toHaveLength(1);
     const body = server.events[0]?.body as Record<string, unknown>;
@@ -705,5 +818,91 @@ describe("wrapped mode", () => {
     expect(result.exitCode).toBe(0);
     // Error logged to stderr about parsing failure
     expect(result.stderr).toContain("[hookwatch]");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Unified pipeline: bare mode behaves identically to wrapped with no child
+// ---------------------------------------------------------------------------
+
+describe("unified pipeline", () => {
+  test("bare mode POST body has null wrapped_command (bare handler)", async () => {
+    const xdgHome = join(TMP_DIR, "unified-bare-null-wrapped");
+    writePortFile(xdgHome, server.port);
+
+    const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    assertExitLegality(result, "unified-bare-null-wrapped");
+    expect(result.exitCode).toBe(0);
+    expect(server.events).toHaveLength(1);
+    // bare mode: wrapped_command field should not be present in POST body
+    const body = server.events[0]?.body as Record<string, unknown>;
+    expect(body?.wrapped_command).toBeUndefined();
+  });
+
+  test("bare mode stores hook output JSON as stdout in POST body", async () => {
+    const xdgHome = join(TMP_DIR, "unified-bare-stdout-stored");
+    writePortFile(xdgHome, server.port);
+
+    const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    assertExitLegality(result, "unified-bare-stdout-stored");
+    expect(result.exitCode).toBe(0);
+    expect(server.events).toHaveLength(1);
+    // bare mode: stdout column should contain hook output JSON (what Claude Code sees)
+    const body = server.events[0]?.body as Record<string, unknown>;
+    expect(typeof body?.stdout).toBe("string");
+    const storedStdout = JSON.parse(body?.stdout as string);
+    expect(storedStdout.continue).toBe(true);
+    expect(typeof storedStdout.systemMessage).toBe("string");
+  });
+
+  test("bare mode stores exit_code 0 in POST body", async () => {
+    const xdgHome = join(TMP_DIR, "unified-bare-exit-code");
+    writePortFile(xdgHome, server.port);
+
+    const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    assertExitLegality(result, "unified-bare-exit-code");
+    expect(result.exitCode).toBe(0);
+    const body = server.events[0]?.body as Record<string, unknown>;
+    expect(body?.exit_code).toBe(0);
+  });
+
+  test("wrapped mode stores child exit code in POST body", async () => {
+    const xdgHome = join(TMP_DIR, "unified-wrapped-exit-code");
+    writePortFile(xdgHome, server.port);
+
+    const result = await runHandlerWrapped(
+      JSON.stringify(BASE_SESSION_START),
+      ["sh", "-c", "exit 0"],
+      { XDG_DATA_HOME: xdgHome },
+    );
+
+    assertExitLegality(result, "unified-wrapped-exit-code");
+    expect(result.exitCode).toBe(0);
+    const body = server.events[0]?.body as Record<string, unknown>;
+    expect(body?.exit_code).toBe(0);
+  });
+
+  test("hookwatch_error is null in POST body on successful run", async () => {
+    const xdgHome = join(TMP_DIR, "unified-no-hookwatch-error");
+    writePortFile(xdgHome, server.port);
+
+    const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    assertExitLegality(result, "unified-no-hookwatch-error");
+    expect(result.exitCode).toBe(0);
+    const body = server.events[0]?.body as Record<string, unknown>;
+    // hookwatch_error should not be present (null means not sent)
+    expect(body?.hookwatch_error).toBeUndefined();
   });
 });
