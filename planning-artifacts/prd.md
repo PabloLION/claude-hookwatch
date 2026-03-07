@@ -30,10 +30,11 @@ workflowType: 'prd'
 
 ## Executive Summary
 
-hookwatch is a Claude Code plugin that gives developers visibility into what
-their agent did. It captures all 18 hook event types, stores them in a local
-SQLite database, and serves a web UI for browsing events and filtering by
-session. Zero config — install the plugin, open the browser, see real data.
+hookwatch is a Claude Code plugin that lets developers see what their agent did,
+debug their hooks, and query their sessions. Install the plugin, open the
+browser, see real data — zero config. Backed by a local SQLite database and a
+web UI for browsing and filtering events, with full coverage of all 18 hook
+event types.
 
 The hook system fires events for every meaningful agent action — tool calls,
 session lifecycle, subagent spawning, permissions — but provides no built-in way
@@ -47,12 +48,12 @@ Claude Code skills that query hookwatch data programmatically.
 
 ### What Makes This Special
 
-- **Only tool combining** all 18 event types + `claude plugin install`
-  compliance + local web UI. 10 upstream tools exist; none deliver all three.
 - **Zero-config** — first hook event auto-starts the Bun server. Under 60 seconds
   from install to seeing real data.
 - **hookwatch wrap** — tee-like CLI that captures stdin/stdout/stderr of any
   command, viewable in the web UI for hook debugging.
+- **Only tool combining** full 18-event coverage + `claude plugin install`
+  compliance + local web UI. 10 upstream tools exist; none deliver all three.
 - **Forward-compatible** — unknown event types logged gracefully, never rejected.
 - **Two-plugin architecture** — hookwatch-hooks (event capture, v0) and
   hookwatch-skills (agent queries, v1) sharing one backend. Install only what

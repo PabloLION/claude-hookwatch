@@ -1,16 +1,17 @@
 # claude-hookwatch
 
-Claude Code plugin that captures all 18 hook event types, stores them in a
-local SQLite database, and serves a web UI for browsing and querying events.
+See what Claude did, debug your hooks, query your sessions — as a Claude Code
+plugin that captures all 18 hook event types and stores them in a local SQLite
+database with a web UI for browsing and querying.
 
 ## Features
 
-- Covers all 18 hook events (PreToolUse, PostToolUse, SessionStart, etc.)
 - Installs as a Claude Code plugin — one command in, one command out
-- SQLite storage via `bun:sqlite` — fast queries, WAL mode, zero external deps
 - Web UI for real-time event browsing and filtering
+- SQLite storage via `bun:sqlite` — fast queries, WAL mode, zero external deps
+- Covers all 18 hook events (PreToolUse, PostToolUse, SessionStart, etc.)
 - Zod validation of all stdin payloads
-- Fully offline — no network calls, localhost-only web UI
+- Localhost-only, zero external deps — no network calls, no accounts, no config
 
 ## Install
 
@@ -152,8 +153,8 @@ See `./docs/design.md` for the full design document and feature decisions.
 - [DazzleML/claude-session-logger](https://github.com/DazzleML/claude-session-logger) — only plugin-compliant tool found, covers 2 of 18 events
 - [karanb192/claude-code-hooks](https://github.com/karanb192/claude-code-hooks) — 12 events, JSONL logger, no plugin system
 
-hookwatch is the only tool targeting full event coverage + plugin compliance +
-local web UI.
+hookwatch is the only tool that combines full event coverage, plugin compliance,
+and a local web UI — install and browse, no setup beyond `bun install`.
 
 ## License
 
