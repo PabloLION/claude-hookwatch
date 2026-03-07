@@ -80,7 +80,7 @@ session_id,UUID v4 generated at wrap command start time — shared across all ev
 cwd,process.cwd() of the hookwatch wrap invocation
 tool_name,null
 session_name,null
-hook_duration_ms,elapsed time of wrapped command execution
+hook_duration_ms,hookwatch-measured elapsed time of the wrapped subprocess (from spawn to exit)
 payload,JSON with command/stdout/stderr/exit_code
 ```
 

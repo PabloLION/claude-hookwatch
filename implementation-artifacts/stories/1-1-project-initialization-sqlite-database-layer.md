@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS events (
 - `cwd`: working directory when hook fired
 - `tool_name`: nullable — only present for tool-related events
 - `session_name`: nullable
-- `hook_duration_ms`: nullable — handler execution time
+- `hook_duration_ms`: nullable — hookwatch handler execution time (how long handler.ts takes from start to exit; not Claude Code tool duration); always NULL until ch-95ia is resolved
 - `payload`: full stdin JSON as TEXT (never parsed in SQL)
 
 ### tsconfig.json Settings
