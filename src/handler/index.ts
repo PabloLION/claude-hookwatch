@@ -147,11 +147,20 @@ function buildSystemMessage(event: HookEvent): string {
 // Port resolution
 // ---------------------------------------------------------------------------
 
+interface ReadPortResult {
+  port: number;
+  /** Non-null when the port file was unreadable due to a non-ENOENT OS error. */
+  warning: string | null;
+}
+
 /**
  * Reads the server port from the port file written by the server on startup.
- * Falls back to DEFAULT_PORT if the file is absent or unreadable.
+ *
+ * Falls back to DEFAULT_PORT silently on ENOENT (file not yet written).
+ * For other OS errors (EACCES, EIO, etc.) falls back to DEFAULT_PORT but
+ * returns a warning string for the caller to record.
  */
-function readPort(): number {
+function readPort(): ReadPortResult {
   try {
     const content = readFileSync(portFilePath(), "utf8").trim();
     const port = Number.parseInt(content, 10);
@@ -159,12 +168,19 @@ function readPort(): number {
       console.error(
         `[hookwatch] Port file contained invalid value "${content}", using fallback ${DEFAULT_PORT}`,
       );
-      return DEFAULT_PORT;
+      return { port: DEFAULT_PORT, warning: null };
     }
-    return port;
-  } catch {
-    // File absent — server not started yet or running on default port
-    return DEFAULT_PORT;
+    return { port, warning: null };
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") {
+      // File absent — server not started yet or running on default port
+      return { port: DEFAULT_PORT, warning: null };
+    }
+    // Unexpected OS error (EACCES, EIO, etc.) — log and fall back
+    const msg = `Port file unreadable (${code ?? "unknown"}), using DEFAULT_PORT`;
+    console.error(`[hookwatch] ${msg}`);
+    return { port: DEFAULT_PORT, warning: msg };
   }
 }
 
@@ -417,7 +433,10 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // Step 4: Resolve port
   // -------------------------------------------------------------------------
 
-  const port = readPort();
+  const { port, warning: portWarning } = readPort();
+  if (portWarning !== null) {
+    p2Errors.push(portWarning);
+  }
 
   // -------------------------------------------------------------------------
   // Build hook output JSON (before POST so we can store it as bare stdout)

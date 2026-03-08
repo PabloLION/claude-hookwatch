@@ -28,7 +28,10 @@ const SERVER_ENTRY = new URL("../server/index.ts", import.meta.url).pathname;
 
 /**
  * Reads the server port synchronously from the port file.
- * Returns DEFAULT_PORT if the file is absent or contains an invalid value.
+ *
+ * Returns DEFAULT_PORT on ENOENT (file not yet written) or invalid content.
+ * Logs a warning to stderr for unexpected OS errors (EACCES, EIO, etc.) and
+ * still falls back to DEFAULT_PORT.
  */
 function readPortFileSync(): number {
   try {
@@ -38,7 +41,11 @@ function readPortFileSync(): number {
       return DEFAULT_PORT;
     }
     return port;
-  } catch {
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code !== "ENOENT") {
+      console.error(`[hookwatch] Port file unreadable (${code ?? "unknown"}), using DEFAULT_PORT`);
+    }
     return DEFAULT_PORT;
   }
 }
