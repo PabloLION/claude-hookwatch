@@ -677,18 +677,28 @@ describe("hook output (stdout)", () => {
 // ---------------------------------------------------------------------------
 
 /**
- * Run the handler in wrapped mode via the CLI entry point.
- * HOOKWATCH_WRAP_ARGS is set to JSON-encode the trailing args.
+ * Run the handler in wrapped mode.
+ * Wrap args are passed after `--` in argv so the handler enters wrapped mode.
  */
 async function runHandlerWrapped(
   stdinPayload: string,
   wrapArgs: string[],
   env: Record<string, string> = {},
 ): Promise<RunResult> {
-  return runHandler(stdinPayload, {
-    HOOKWATCH_WRAP_ARGS: JSON.stringify(wrapArgs),
-    ...env,
+  const proc = Bun.spawn(["bun", "--bun", HANDLER_PATH, "--", ...wrapArgs], {
+    stdin: new TextEncoder().encode(stdinPayload),
+    stdout: "pipe",
+    stderr: "pipe",
+    env: { ...process.env, ...env },
   });
+
+  const [exitCode, stderrBuf, stdoutBuf] = await Promise.all([
+    proc.exited,
+    new Response(proc.stderr).text(),
+    new Response(proc.stdout).text(),
+  ]);
+
+  return { exitCode, stderr: stderrBuf, stdout: stdoutBuf };
 }
 
 describe("wrapped mode", () => {

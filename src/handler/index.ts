@@ -1,14 +1,14 @@
 /**
  * Hook handler entry point for hookwatch.
  *
- * Two modes (detected via HOOKWATCH_WRAP_ARGS environment variable):
+ * Two modes (controlled via the wrappedCommand parameter):
  *
- * Bare mode (HOOKWATCH_WRAP_ARGS absent):
+ * Bare mode (wrappedCommand undefined/null):
  *   Reads a Claude Code hook event from stdin, validates it with Zod, POSTs
  *   it to the local hookwatch server for storage, and writes a hook output JSON
  *   to stdout so Claude Code injects a systemMessage into the agent's context.
  *
- * Wrapped mode (HOOKWATCH_WRAP_ARGS set):
+ * Wrapped mode (wrappedCommand is a non-empty string array):
  *   Reads stdin concurrently, spawns the wrapped command, tees its stdout/stderr
  *   to both terminal and capture buffers, waits for it to exit, then POSTs the
  *   event with captured I/O to the server. Always passes the child exit code
@@ -20,15 +20,15 @@
  *
  * Exit codes:
  *   0 — success (event forwarded, hook output written to stdout)
- *   2 — P1 fatal error (server unreachable, POST failed): JSON error to stdout
+ *   2 — fatal error (server unreachable, POST failed): JSON error to stdout
  *   In wrapped mode: child exit code is forwarded (pass-through)
  *   Never exits with code 1 — Claude Code shows generic "hook error" for exit 1
  *   and does not surface stderr. Exit 2 + JSON is strictly better.
  *
  * Error handling priority chain:
- *   P1 Fatal (server unreachable / POST fails): exit 2 + JSON stdout. Always.
- *   P2 Non-fatal (server OK, hookwatch internal issue): hookwatch_error in DB.
- *   P3 Normal: hookwatch_error NULL.
+ *   Fatal (server unreachable / POST fails): exit 2 + JSON stdout. Always.
+ *   Non-fatal error (server OK, hookwatch internal issue): hookwatch_error in DB.
+ *   Warn: event captured, hookwatch_error with [warn] prefix.
  *   Never mutate wrapped command exit code.
  */
 
@@ -45,40 +45,17 @@ const FETCH_TIMEOUT_MS = 5000;
 const SLOW_THRESHOLD_MS = 100;
 
 // ---------------------------------------------------------------------------
-// Wrap args detection
+// Fatal error: exit 2 + JSON stdout
 // ---------------------------------------------------------------------------
 
 /**
- * Returns the trailing command args for wrapped mode, or null for bare mode.
- * HOOKWATCH_WRAP_ARGS is set by cli/index.ts when trailing args are present.
- */
-function getWrapArgs(): string[] | null {
-  const raw = process.env.HOOKWATCH_WRAP_ARGS;
-  if (raw === undefined || raw === "") return null;
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0 && parsed.every((x) => typeof x === "string")) {
-      return parsed as string[];
-    }
-  } catch {
-    console.error(`[hookwatch] Failed to parse HOOKWATCH_WRAP_ARGS: ${raw}`);
-  }
-  return null;
-}
-
-// ---------------------------------------------------------------------------
-// P1 fatal error: exit 2 + JSON stdout
-// ---------------------------------------------------------------------------
-
-/**
- * Writes a P1 fatal error JSON to stdout and exits with code 2.
+ * Writes a fatal error JSON to stdout and exits with code 2.
  *
  * Claude Code displays exit 2 + stdout JSON to the user, making the hookwatch
  * error visible. Never exits with code 1 (shows only a generic "hook error").
  *
  * This is the ONLY place where a non-child exit code is used. Wrapped mode
- * passes through the child exit code and calls this only for P1 errors before
+ * passes through the child exit code and calls this only for fatal errors before
  * the child has been spawned (i.e., when stdin parsing fails before spawn, or
  * when the server cannot be reached after the child exits).
  */
@@ -211,8 +188,8 @@ function isConnectionError(err: unknown): boolean {
   );
 }
 
-/** Options for postEvent — extends the base event with optional wrap metadata. */
-interface PostEventOptions {
+/** Payload for postEvent — extends the base event with optional wrap metadata. */
+interface EventPostPayload {
   port: number;
   event: ReturnType<typeof parseHookEvent>;
   /** Command string to store in wrapped_command column; null for bare mode. */
@@ -225,7 +202,7 @@ interface PostEventOptions {
   exitCode: number | null;
   /** Hookwatch processing overhead in ms (excludes child process wall time). */
   hookDurationMs: number | null;
-  /** Accumulated P2 non-fatal hookwatch errors; null = no errors. */
+  /** Accumulated non-fatal hookwatch errors; null = no errors. */
   hookwatchError: string | null;
 }
 
@@ -235,9 +212,9 @@ interface PostEventOptions {
  * If the server is not reachable, attempts to spawn it automatically, then
  * retries the POST with the discovered port.
  *
- * Returns true on success, false on any unrecoverable error (P1 fatal).
+ * Returns true on success, false on any unrecoverable error (fatal).
  */
-async function postEvent(opts: PostEventOptions): Promise<boolean> {
+async function postEvent(opts: EventPostPayload): Promise<boolean> {
   const body: Record<string, unknown> = { ...opts.event };
   if (opts.wrappedCommand !== null) {
     body.wrapped_command = opts.wrappedCommand;
@@ -382,17 +359,16 @@ export function parseEventSafely(
  *   7. [Wrapped] Forward child exit code
  *
  * Error strategy:
- *   P1 Fatal (server unreachable / POST fails): exitFatal() → exit 2 + JSON.
- *     In wrapped mode: only if server fails AFTER child exits (child code lost).
- *     Actually in wrapped mode P1 is best-effort — we still forward child code.
- *   P2 Non-fatal (server OK, hookwatch internal issue): accumulate hookwatchError.
- *   P3 Normal: hookwatchError null.
+ *   Fatal (server unreachable / POST fails): exitFatal() → exit 2 + JSON.
+ *     In wrapped mode: best-effort — we still forward child code.
+ *   Error (server OK, hookwatch internal issue): accumulate hookwatchError.
+ *   Normal: hookwatchError null.
  */
 async function handleHook(wrapArgs: string[] | null): Promise<void> {
   const wrappedCommand = wrapArgs !== null ? wrapArgs.join(" ") : null;
 
-  // Accumulated P2 non-fatal errors (joined with "; " if multiple)
-  const p2Errors: string[] = [];
+  // Accumulated non-fatal hookwatch log entries (joined with "; " if multiple)
+  const logEntries: string[] = [];
 
   // -------------------------------------------------------------------------
   // Step 1+2: Read stdin (and optionally spawn child in wrapped mode)
@@ -435,7 +411,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
 
   const { port, warning: portWarning } = readPort();
   if (portWarning !== null) {
-    p2Errors.push(portWarning);
+    logEntries.push(portWarning);
   }
 
   // -------------------------------------------------------------------------
@@ -453,7 +429,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // -------------------------------------------------------------------------
 
   const elapsedMs = Date.now() - startMs;
-  const hookwatchError = p2Errors.length > 0 ? p2Errors.join("; ") : null;
+  const hookwatchError = logEntries.length > 0 ? logEntries.join("; ") : null;
 
   const postResult = await postEvent({
     port,
@@ -501,13 +477,36 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Entry point
+// Public API + entry point
 // ---------------------------------------------------------------------------
 
-const wrapArgs = getWrapArgs();
+/**
+ * Runs the hook handler.
+ *
+ * Pass wrappedCommand to enable wrapped mode (child process is spawned and
+ * its I/O is captured). Omit or pass undefined for bare mode.
+ *
+ * Exported for use by cli/index.ts (dynamic import) and tests.
+ */
+export async function runHandler(wrappedCommand?: string[]): Promise<void> {
+  const wrapArgs = wrappedCommand && wrappedCommand.length > 0 ? wrappedCommand : null;
+  await handleHook(wrapArgs).catch((err) => {
+    const msg = errorMsg(err);
+    console.error(`[hookwatch] Unexpected error: ${msg}`);
+    exitFatal(`Unexpected error: ${msg}`);
+  });
+}
 
-handleHook(wrapArgs).catch((err) => {
-  const msg = errorMsg(err);
-  console.error(`[hookwatch] Unexpected error: ${msg}`);
-  exitFatal(`Unexpected error: ${msg}`);
-});
+// Auto-execute when run as the main module (e.g. via `bun src/handler/index.ts`).
+// Bun strips `--` from process.argv, so extra args appear directly as argv.slice(2):
+//   bun src/handler/index.ts             → bare mode (argv.slice(2) is empty)
+//   bun src/handler/index.ts -- sh -c …  → wrapped mode (bun strips --, argv.slice(2) = ["sh",…])
+if (import.meta.main) {
+  const trailingArgs = process.argv.slice(2);
+  const wrapArgs = trailingArgs.length > 0 ? trailingArgs : undefined;
+  runHandler(wrapArgs).catch((err) => {
+    const msg = errorMsg(err);
+    console.error(`[hookwatch] Unexpected error: ${msg}`);
+    exitFatal(`Unexpected error: ${msg}`);
+  });
+}
