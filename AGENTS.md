@@ -112,7 +112,7 @@ Agents must run `bun run check` before each commit.
 
 ## Process Rules
 
-- **Handler errors:** Exit 1 on failure (non-blocking) — never crash Claude Code
+- **Handler errors:** Fatal errors exit 2 + JSON stdout (server unreachable). Non-fatal errors log to `hookwatch_error` DB column. Never exit 1 — Claude Code shows a generic "hook error" and does not surface stderr. Exit 2 + JSON is strictly better in every scenario.
 - **Server errors:** Structured JSON `{ "error": { "code": "...", "message": "..." } }`
 - **UI errors:** Display server errors — never swallow silently
 - **Imports:** Use `@/` path alias (maps to `./src/`) — no relative `../` chains

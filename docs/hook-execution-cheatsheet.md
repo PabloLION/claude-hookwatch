@@ -62,10 +62,10 @@ actual interpreter executing the hook command.
 ### Priority chain
 
 ```csv
-Priority,Condition,Exit code,Output
-P1 Fatal,"Server unreachable, port occupied, POST fails",2,JSON to stdout
-P2 Non-fatal,"Server OK, hookwatch had an issue","Wrapped: pass-through; Bare: 0",hookwatch_error in DB
-P3 Normal,No hookwatch error,"Wrapped: pass-through; Bare: 0",hookwatch_error NULL
+Severity,Condition,Exit code,Output
+fatal,"Server unreachable, port occupied, POST fails",2,JSON to stdout
+error,"Server OK, hookwatch had an issue","Wrapped: pass-through; Bare: 0",hookwatch_error in DB
+normal,No hookwatch error,"Wrapped: pass-through; Bare: 0",hookwatch_error NULL
 ```
 
 ### Never exit 1
@@ -89,9 +89,9 @@ positive during debugging. hookwatch observes; it does not heal.
 
 ### hookwatch_error column
 
-Non-fatal errors (P2) are stored in the `hookwatch_error TEXT` column in the
-events table. Multiple errors during a single handler run are accumulated via a
-string builder and written as one value. NULL means no error.
+Non-fatal errors are stored in the `hookwatch_error TEXT` column in the events
+table. Multiple errors during a single handler run are accumulated via a string
+builder and written as one value. NULL means no error.
 
 ## Hook Stdout Output Schema Strictness
 
