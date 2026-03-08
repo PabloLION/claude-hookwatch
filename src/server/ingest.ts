@@ -18,6 +18,7 @@
 
 import { ZodError } from "zod";
 import { openDb } from "@/db/connection.ts";
+import { isSqliteBusy } from "@/db/errors.ts";
 import { getEventById, insertEvent } from "@/db/queries.ts";
 import { parseHookEvent } from "@/schemas/events.ts";
 import { errorResponse } from "@/server/errors.ts";
@@ -99,15 +100,4 @@ export async function handleIngest(req: Request): Promise<Response> {
     const message = err instanceof Error ? err.message : "Unknown error";
     return errorResponse("INTERNAL", message, 500);
   }
-}
-
-/**
- * Returns true when the error is a SQLite SQLITE_BUSY or SQLITE_LOCKED condition.
- * bun:sqlite surfaces these as Error objects whose message contains the SQLite
- * error string.
- */
-function isSqliteBusy(err: unknown): boolean {
-  if (!(err instanceof Error)) return false;
-  const msg = err.message.toUpperCase();
-  return msg.includes("SQLITE_BUSY") || msg.includes("SQLITE_LOCKED");
 }
