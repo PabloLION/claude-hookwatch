@@ -31,8 +31,8 @@ function makeEvent(sessionId: string, timestamp: number) {
     wrapped_command: null,
     stdout: null,
     stderr: null,
-    exit_code: null,
-    hookwatch_error: null,
+    exit_code: 0,
+    hookwatch_log: null,
   };
 }
 
@@ -197,8 +197,8 @@ describe("timestamp index usage (EXPLAIN QUERY PLAN)", () => {
       wrapped_command: null,
       stdout: null,
       stderr: null,
-      exit_code: null,
-      hookwatch_error: null,
+      exit_code: 0,
+      hookwatch_log: null,
     });
     insertEvent(db, {
       timestamp: 1000,
@@ -212,8 +212,8 @@ describe("timestamp index usage (EXPLAIN QUERY PLAN)", () => {
       wrapped_command: null,
       stdout: null,
       stderr: null,
-      exit_code: null,
-      hookwatch_error: null,
+      exit_code: 0,
+      hookwatch_log: null,
     });
     insertEvent(db, {
       timestamp: 2000,
@@ -227,8 +227,8 @@ describe("timestamp index usage (EXPLAIN QUERY PLAN)", () => {
       wrapped_command: null,
       stdout: null,
       stderr: null,
-      exit_code: null,
-      hookwatch_error: null,
+      exit_code: 0,
+      hookwatch_log: null,
     });
 
     const rows = queryEvents(db, { limit: 100, offset: 0 });

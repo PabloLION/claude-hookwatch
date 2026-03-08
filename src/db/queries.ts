@@ -21,10 +21,14 @@ export interface EventRow {
   stdout: string | null;
   /** Captured child stderr (wrapped mode); NULL for bare mode */
   stderr: string | null;
-  /** Child exit code (wrapped mode); 0 for bare mode */
-  exit_code: number | null;
-  /** Hookwatch's own error messages, NULL = no error */
-  hookwatch_error: string | null;
+  /** Child exit code. NOT NULL DEFAULT 0 — Unix processes always exit 0-255. */
+  exit_code: number;
+  /**
+   * Hookwatch-internal diagnostics with severity prefix.
+   * Format: "[error] msg" or "[warn] msg" or "[error] msg1; [warn] msg2".
+   * NULL = no issues. See devlog: 20260308-hookwatch-log-column-design.md
+   */
+  hookwatch_log: string | null;
 }
 
 /**
@@ -46,10 +50,14 @@ export interface InsertEventParams {
   stdout: string | null;
   /** Captured child stderr (wrapped mode); NULL for bare mode */
   stderr: string | null;
-  /** Child exit code (wrapped mode); 0 for bare mode */
-  exit_code: number | null;
-  /** Hookwatch's own error messages, NULL = no error */
-  hookwatch_error: string | null;
+  /** Child exit code. NOT NULL DEFAULT 0 — Unix processes always exit 0-255. */
+  exit_code: number;
+  /**
+   * Hookwatch-internal diagnostics with severity prefix.
+   * Format: "[error] msg" or "[warn] msg" or "[error] msg1; [warn] msg2".
+   * NULL = no issues. See devlog: 20260308-hookwatch-log-column-design.md
+   */
+  hookwatch_log: string | null;
 }
 
 /**
@@ -60,7 +68,7 @@ export interface InsertEventParams {
 export function insertEvent(db: Database, params: InsertEventParams): number {
   const stmt = db.prepare(
     `INSERT INTO events
-       (timestamp, event, session_id, cwd, tool_name, session_name, hook_duration_ms, stdin, wrapped_command, stdout, stderr, exit_code, hookwatch_error)
+       (timestamp, event, session_id, cwd, tool_name, session_name, hook_duration_ms, stdin, wrapped_command, stdout, stderr, exit_code, hookwatch_log)
      VALUES
        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
@@ -77,7 +85,7 @@ export function insertEvent(db: Database, params: InsertEventParams): number {
     params.stdout,
     params.stderr,
     params.exit_code,
-    params.hookwatch_error,
+    params.hookwatch_log,
   );
   return Number(result.lastInsertRowid);
 }
