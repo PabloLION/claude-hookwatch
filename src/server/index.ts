@@ -4,8 +4,8 @@
  * Responsibilities:
  *   - Bind to 127.0.0.1 (never 0.0.0.0) — AC #1
  *   - Route dispatch: GET /health, POST /api/events, 404 fallback
- *   - Port auto-increment: start at 6004, retry on EADDRINUSE — AC #4
- *   - Write chosen port to XDG port file after successful bind — Story 1.3 decision
+ *   - Fixed port DEFAULT_PORT — error and exit if occupied — Story 2.5 decision
+ *   - Write port to XDG port file after successful bind — Story 1.3 decision
  *   - Graceful shutdown: remove port file, close DB
  *   - Idle timeout: self-terminate after 1 hour of no HTTP requests — Story 2.6
  *
@@ -15,7 +15,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { close as closeDb } from "@/db/connection.ts";
-import { portFilePath } from "@/paths.ts";
+import { DEFAULT_PORT, portFilePath } from "@/paths.ts";
 import { errorResponse } from "@/server/errors.ts";
 import { handleHealth } from "@/server/health.ts";
 import { handleIngest } from "@/server/ingest.ts";
@@ -23,8 +23,6 @@ import { handleQuery } from "@/server/query.ts";
 import { handleStatic } from "@/server/static.ts";
 import { closeAll as closeSseClients, handleStream } from "@/server/stream.ts";
 
-const BASE_PORT = 6004;
-const MAX_PORT = 6064; // 60 retries before giving up
 const HOSTNAME = "127.0.0.1";
 
 // ---------------------------------------------------------------------------
@@ -135,55 +133,59 @@ function dispatch(req: Request): Response | Promise<Response> {
   return errorResponse("NOT_FOUND", `No route for ${req.method} ${url.pathname}`, 404);
 }
 
+/** Thrown by startServer() when DEFAULT_PORT is already occupied. */
+export class PortInUseError extends Error {
+  constructor(public readonly port: number) {
+    super(`Port ${port} is already in use — is another hookwatch server running?`);
+    this.name = "PortInUseError";
+  }
+}
+
 /**
- * Start the server, incrementing the port on EADDRINUSE.
+ * Start the server on DEFAULT_PORT. Throws PortInUseError if the port is
+ * already occupied — no auto-increment.
  * Returns the bound server instance.
  */
 export async function startServer(): Promise<{ port: number; stop: () => void }> {
-  for (let port = BASE_PORT; port <= MAX_PORT; port++) {
-    try {
-      const server = Bun.serve({
-        hostname: HOSTNAME,
-        port,
-        fetch: dispatch,
-      });
+  let server: ReturnType<typeof Bun.serve>;
+  try {
+    server = Bun.serve({
+      hostname: HOSTNAME,
+      port: DEFAULT_PORT,
+      fetch: dispatch,
+    });
+  } catch (err) {
+    const isAddrInUse =
+      err instanceof Error &&
+      // Bun exposes .code on the error object; message text varies by platform
+      ((err as NodeJS.ErrnoException).code === "EADDRINUSE" ||
+        err.message.includes("address already in use"));
 
-      writePortFile(port);
-
-      const stop = (): void => {
-        cancelIdleTimer();
-        shutdownCallback = null;
-        removePortFile();
-        closeSseClients();
-        closeDb();
-        server.stop(true);
-      };
-
-      // Register the stop callback so the idle timeout handler can invoke it
-      shutdownCallback = stop;
-
-      // Start the initial idle timer now that the server is bound
-      resetIdleTimer();
-
-      return { port, stop };
-    } catch (err) {
-      const isAddrInUse =
-        err instanceof Error &&
-        // Bun exposes .code on the error object; message text varies by platform
-        ((err as NodeJS.ErrnoException).code === "EADDRINUSE" ||
-          err.message.includes("address already in use"));
-
-      if (isAddrInUse && port < MAX_PORT) {
-        // Try next port
-        continue;
-      }
-
-      throw err;
+    if (isAddrInUse) {
+      throw new PortInUseError(DEFAULT_PORT);
     }
+
+    throw err;
   }
 
-  // Should be unreachable — loop always returns or throws inside
-  throw new Error(`No available port in range [${BASE_PORT}, ${MAX_PORT}]`);
+  writePortFile(DEFAULT_PORT);
+
+  const stop = (): void => {
+    cancelIdleTimer();
+    shutdownCallback = null;
+    removePortFile();
+    closeSseClients();
+    closeDb();
+    server.stop(true);
+  };
+
+  // Register the stop callback so the idle timeout handler can invoke it
+  shutdownCallback = stop;
+
+  // Start the initial idle timer now that the server is bound
+  resetIdleTimer();
+
+  return { port: DEFAULT_PORT, stop };
 }
 
 // ---------------------------------------------------------------------------
@@ -191,7 +193,18 @@ export async function startServer(): Promise<{ port: number; stop: () => void }>
 // ---------------------------------------------------------------------------
 
 if (import.meta.main) {
-  const { port, stop } = await startServer();
+  let serverRef: { port: number; stop: () => void };
+  try {
+    serverRef = await startServer();
+  } catch (err) {
+    if (err instanceof PortInUseError) {
+      process.stderr.write(`[hookwatch] ${err.message}\n`);
+      process.exit(1);
+    }
+    throw err;
+  }
+
+  const { port, stop } = serverRef;
   console.log(`hookwatch server listening on http://${HOSTNAME}:${port}`);
 
   process.on("SIGINT", () => {

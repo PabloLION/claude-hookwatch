@@ -33,7 +33,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { portFilePath } from "@/paths.ts";
+import { DEFAULT_PORT, portFilePath } from "@/paths.ts";
 import type { HookEvent } from "@/schemas/events.ts";
 import { parseHookEvent } from "@/schemas/events.ts";
 import { hookOutputSchema } from "@/schemas/output.ts";
@@ -41,7 +41,6 @@ import { errorMsg } from "./errors.ts";
 import { spawnServer } from "./spawn.ts";
 import { runWrapped } from "./wrap.ts";
 
-const FALLBACK_PORT = 6004;
 const FETCH_TIMEOUT_MS = 5000;
 const SLOW_THRESHOLD_MS = 100;
 
@@ -150,7 +149,7 @@ function buildSystemMessage(event: HookEvent): string {
 
 /**
  * Reads the server port from the port file written by the server on startup.
- * Falls back to FALLBACK_PORT if the file is absent or unreadable.
+ * Falls back to DEFAULT_PORT if the file is absent or unreadable.
  */
 function readPort(): number {
   try {
@@ -158,14 +157,14 @@ function readPort(): number {
     const port = Number.parseInt(content, 10);
     if (Number.isNaN(port) || port <= 0 || port > 65535) {
       console.error(
-        `[hookwatch] Port file contained invalid value "${content}", using fallback ${FALLBACK_PORT}`,
+        `[hookwatch] Port file contained invalid value "${content}", using fallback ${DEFAULT_PORT}`,
       );
-      return FALLBACK_PORT;
+      return DEFAULT_PORT;
     }
     return port;
   } catch {
     // File absent — server not started yet or running on default port
-    return FALLBACK_PORT;
+    return DEFAULT_PORT;
   }
 }
 

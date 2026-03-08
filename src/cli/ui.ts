@@ -11,7 +11,7 @@
  *   win32   — start (not officially supported but handled gracefully)
  *
  * Port strategy:
- *   Fixed default port: 6004 (BASE_PORT). If 6004 is occupied by a
+ *   Fixed default port: DEFAULT_PORT (6004). If the port is occupied by a
  *   non-hookwatch process (port responds but health check fails), print
  *   an error and exit 1.
  */
@@ -19,10 +19,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { defineCommand } from "citty";
 import { spawnServer } from "@/handler/spawn.ts";
-import { portFilePath } from "@/paths.ts";
-
-/** The fixed default port for hookwatch (matches server BASE_PORT). */
-export const BASE_PORT = 6004;
+import { DEFAULT_PORT, portFilePath } from "@/paths.ts";
 
 const HEALTH_FETCH_TIMEOUT_MS = 1000;
 const PORT_PROBE_TIMEOUT_MS = 500;
@@ -139,9 +136,9 @@ export const uiCommand = defineCommand({
     const port = await spawnServer();
 
     if (port === null) {
-      // Health check timed out — check if BASE_PORT is occupied by a foreign process
-      if (await isPortOccupied(BASE_PORT)) {
-        process.stderr.write(`[hookwatch] port ${BASE_PORT} in use\n`);
+      // Health check timed out — check if DEFAULT_PORT is occupied by a foreign process
+      if (await isPortOccupied(DEFAULT_PORT)) {
+        process.stderr.write(`[hookwatch] port ${DEFAULT_PORT} in use\n`);
       } else {
         process.stderr.write("[hookwatch] Failed to start server — cannot open UI.\n");
       }

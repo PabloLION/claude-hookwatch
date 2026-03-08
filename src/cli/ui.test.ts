@@ -2,7 +2,7 @@
  * Tests for the hookwatch ui command logic (Story 2.5).
  *
  * Covers:
- * - BASE_PORT is 6004
+ * - DEFAULT_PORT is 6004
  * - readPortFile: returns null when file is absent
  * - readPortFile: returns null for invalid content
  * - readPortFile: returns valid port from file content
@@ -19,16 +19,17 @@ import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DEFAULT_PORT } from "@/paths.ts";
 import { startServer } from "@/server/index.ts";
-import { BASE_PORT, isPortOccupied, isServerRunning, openBrowser, readPortFile } from "./ui.ts";
+import { isPortOccupied, isServerRunning, openBrowser, readPortFile } from "./ui.ts";
 
 // ---------------------------------------------------------------------------
-// BASE_PORT constant
+// DEFAULT_PORT constant
 // ---------------------------------------------------------------------------
 
-describe("BASE_PORT", () => {
+describe("DEFAULT_PORT", () => {
   it("is 6004", () => {
-    expect(BASE_PORT).toBe(6004);
+    expect(DEFAULT_PORT).toBe(6004);
   });
 });
 

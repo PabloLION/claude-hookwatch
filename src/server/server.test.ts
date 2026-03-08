@@ -6,7 +6,7 @@
  *   - POST /api/events with a valid payload returns 201 and an id
  *   - POST /api/events with invalid JSON returns 400 INVALID_QUERY
  *   - POST /api/events with a payload that fails Zod validation returns 400
- *   - Port auto-increment: binding a second server finds the next free port
+ *   - Fixed port: startServer() throws PortInUseError when port is occupied
  *   - Unknown routes return 404 NOT_FOUND
  *   - POST /api/query: valid filter, empty result, invalid filter (Story 2.1a)
  *   - GET /: serves index.html (Story 2.1a)
@@ -16,7 +16,7 @@
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { close as closeDb } from "@/db/connection.ts";
-import { startServer } from "@/server/index.ts";
+import { PortInUseError, startServer } from "@/server/index.ts";
 
 // Use a temp in-memory DB path for tests to avoid polluting real data.
 // We override XDG_DATA_HOME so both connection.ts and index.ts use the temp dir.
@@ -176,21 +176,17 @@ describe("unknown routes", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Port auto-increment
+// Fixed port — PortInUseError when occupied
 // ---------------------------------------------------------------------------
 
-describe("port auto-increment", () => {
-  test("second server binds to a different port when first port is taken", async () => {
+describe("fixed port", () => {
+  test("startServer() throws PortInUseError when DEFAULT_PORT is already bound", async () => {
+    // The global beforeAll already bound DEFAULT_PORT.
+    // A second startServer() call should throw PortInUseError, not succeed.
     process.env.XDG_DATA_HOME = `${TMP_DATA_HOME}-port-test`;
-    let stop2: (() => void) | undefined;
     try {
-      const result2 = await startServer();
-      stop2 = result2.stop;
-      // Both servers bound successfully on different ports
-      expect(result2.port).not.toBe(serverPort);
-      expect(result2.port).toBeGreaterThan(serverPort);
+      await expect(startServer()).rejects.toBeInstanceOf(PortInUseError);
     } finally {
-      stop2?.();
       process.env.XDG_DATA_HOME = TMP_DATA_HOME;
     }
   });
