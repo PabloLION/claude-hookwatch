@@ -6,7 +6,7 @@
  *   Forward-compatible with Claude Code SDK changes (NFR12).
  * - z.enum() for fields with documented fixed values (source, reason, etc.).
  * - z.record(z.string(), z.unknown()) for arbitrary JSON objects (tool_input, tool_response).
- *   Note: Zod v4 requires two arguments for z.record(); z.record(z.string(), z.unknown()) is broken.
+ *   Note: Zod v4 requires two arguments for z.record(); the single-arg form z.record(z.unknown()) is broken (throws TypeError).
  * - Fallback schema for unknown event types — accepts any valid JSON with common fields.
  * - parseHookEvent() discriminates by hook_event_name and routes to the correct schema.
  *
