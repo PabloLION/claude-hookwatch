@@ -20,9 +20,14 @@ export interface EventRow {
   stdin: string;
   stdout: string | null;
   stderr: string | null;
-  exit_code: number | null;
+  /** NOT NULL DEFAULT 0 — Unix processes always exit 0-255. */
+  exit_code: number;
   wrapped_command: string | null;
-  hookwatch_error: string | null;
+  /**
+   * Hookwatch-internal diagnostics with severity prefix.
+   * Format: "[error] msg" or "[warn] msg". NULL = no issues.
+   */
+  hookwatch_log: string | null;
 }
 
 // Cross-component signal — owns the current event list

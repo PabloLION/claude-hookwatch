@@ -27,8 +27,8 @@
  *
  * Error handling priority chain:
  *   Fatal (server unreachable / POST fails): exit 2 + JSON stdout. Always.
- *   Non-fatal error (server OK, hookwatch internal issue): hookwatch_error in DB.
- *   Warn: event captured, hookwatch_error with [warn] prefix.
+ *   Non-fatal error (server OK, hookwatch internal issue): hookwatch_log in DB.
+ *   Warn: event captured, hookwatch_log with [warn] prefix.
  *   Never mutate wrapped command exit code.
  */
 
@@ -232,7 +232,7 @@ async function postEvent(opts: EventPostPayload): Promise<boolean> {
     body.hook_duration_ms = opts.hookDurationMs;
   }
   if (opts.hookwatchError !== null) {
-    body.hookwatch_error = opts.hookwatchError;
+    body.hookwatch_log = opts.hookwatchError;
   }
   const payload = JSON.stringify(body);
 

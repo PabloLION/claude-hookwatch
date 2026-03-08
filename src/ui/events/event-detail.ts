@@ -131,8 +131,7 @@ export function EventDetail({ event }: EventDetailProps): ReturnType<typeof html
       `
       }
       ${
-        event.exit_code !== null &&
-        event.exit_code !== undefined &&
+        event.wrapped_command !== null &&
         html`
         <details>
           <summary>Exit code</summary>

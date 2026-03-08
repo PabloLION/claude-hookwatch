@@ -901,18 +901,18 @@ describe("unified pipeline", () => {
     expect(body?.exit_code).toBe(0);
   });
 
-  test("hookwatch_error is null in POST body on successful run", async () => {
-    const xdgHome = join(TMP_DIR, "unified-no-hookwatch-error");
+  test("hookwatch_log is absent in POST body on successful run", async () => {
+    const xdgHome = join(TMP_DIR, "unified-no-hookwatch-log");
     writePortFile(xdgHome, server.port);
 
     const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "unified-no-hookwatch-error");
+    assertExitLegality(result, "unified-no-hookwatch-log");
     expect(result.exitCode).toBe(0);
     const body = server.events[0]?.body as Record<string, unknown>;
-    // hookwatch_error should not be present (null means not sent)
-    expect(body?.hookwatch_error).toBeUndefined();
+    // hookwatch_log should not be present (null means not sent)
+    expect(body?.hookwatch_log).toBeUndefined();
   });
 });

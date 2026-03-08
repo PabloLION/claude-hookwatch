@@ -6,7 +6,8 @@
  *
  * The request body may include optional top-level fields for wrapped events
  * (Story 3.1): `wrapped_command` (string), `stdout` (string), `stderr` (string),
- * `exit_code` (number). When present they are stored in DB columns; NULL otherwise.
+ * `exit_code` (number, defaults to 0), `hookwatch_log` (string). When present
+ * they are stored in DB columns; NULL/0 otherwise.
  *
  * Error handling:
  *   - 400 INVALID_QUERY  — malformed JSON or failed Zod validation
@@ -41,12 +42,11 @@ export async function handleIngest(req: Request): Promise<Response> {
     typeof bodyObj.wrapped_command === "string" ? bodyObj.wrapped_command : null;
   const wrappedStdout: string | null = typeof bodyObj.stdout === "string" ? bodyObj.stdout : null;
   const wrappedStderr: string | null = typeof bodyObj.stderr === "string" ? bodyObj.stderr : null;
-  const wrappedExitCode: number | null =
-    typeof bodyObj.exit_code === "number" ? bodyObj.exit_code : null;
+  const wrappedExitCode: number = typeof bodyObj.exit_code === "number" ? bodyObj.exit_code : 0;
   const hookDurationMs: number | null =
     typeof bodyObj.hook_duration_ms === "number" ? bodyObj.hook_duration_ms : null;
-  const hookwatchError: string | null =
-    typeof bodyObj.hookwatch_error === "string" ? bodyObj.hookwatch_error : null;
+  const hookwatchLog: string | null =
+    typeof bodyObj.hookwatch_log === "string" ? bodyObj.hookwatch_log : null;
 
   // Validate with Zod
   let event: ReturnType<typeof parseHookEvent>;
@@ -80,7 +80,7 @@ export async function handleIngest(req: Request): Promise<Response> {
       stdout: wrappedStdout,
       stderr: wrappedStderr,
       exit_code: wrappedExitCode,
-      hookwatch_error: hookwatchError,
+      hookwatch_log: hookwatchLog,
     });
 
     // Broadcast the saved row to all connected SSE clients.

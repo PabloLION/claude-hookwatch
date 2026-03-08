@@ -9,7 +9,7 @@
  *   - Valid JSON but missing hook_event_name → 400
  *   - Extra unknown fields pass through (schemas use .passthrough())
  *   - Very long stdin payload (10KB+) succeeds
- *   - Wrapped event with stdout/stderr/exit_code → 201, verify all fields stored
+ *   - Wrapped event with stdout/stderr/exit_code → 201, verify all wrap fields stored
  *   - Event with hook_duration_ms → 201, verify stored
  *
  * Strategy: Start the hookwatch server as a subprocess with an isolated
@@ -378,7 +378,7 @@ describe("wrapped event fields", () => {
     expect(row.wrapped_command).not.toBeNull();
   });
 
-  test("bare event (no wrap fields) has null wrapped_command/stdout/stderr/exit_code", async () => {
+  test("bare event (no wrap fields) has null wrapped_command/stdout/stderr and exit_code 0", async () => {
     const res = await postEvent(server.baseUrl, {
       ...PRE_TOOL_USE,
       session_id: "smoke-session-bare-verify",
@@ -395,7 +395,8 @@ describe("wrapped event fields", () => {
     expect(row.wrapped_command).toBeNull();
     expect(row.stdout).toBeNull();
     expect(row.stderr).toBeNull();
-    expect(row.exit_code).toBeNull();
+    // exit_code is NOT NULL DEFAULT 0 — bare events always have 0
+    expect(row.exit_code).toBe(0);
   });
 });
 
