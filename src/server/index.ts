@@ -84,7 +84,9 @@ function writePortFile(port: number): void {
     writeFileSync(portFile, String(port), { encoding: "utf8" });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    process.stderr.write(`[hookwatch] Warning: could not write port file ${portFile}: ${message}\n`);
+    process.stderr.write(
+      `[hookwatch] Warning: could not write port file ${portFile}: ${message}\n`,
+    );
   }
 }
 
