@@ -143,7 +143,7 @@ async function runHandler(
  *   - Exit 0: stdout is either empty, valid hook JSON, or child-output prefix + hook JSON
  *     The hook JSON (if present) must have continue: boolean.
  *     In wrapped mode, child stdout precedes the hook JSON — we extract the last JSON object.
- *   - Exit 2: stdout must be valid JSON with a hookwatch_fatal field (P1 error)
+ *   - Exit 2: stdout must be valid JSON with a hookwatch_fatal field (fatal error)
  *
  * Call this in every bare-mode test to enforce the contract globally.
  * For wrapped mode tests where child stdout prefixes the hook JSON, the helper
@@ -348,7 +348,7 @@ describe("stdin parsing", () => {
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("[hookwatch]");
     expect(server.events).toHaveLength(0);
-    // P1 fatal: stdout must contain JSON with hookwatch_fatal
+    // fatal: stdout must contain JSON with hookwatch_fatal
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe("string");
   });
@@ -727,7 +727,7 @@ describe("wrapped mode", () => {
       { XDG_DATA_HOME: xdgHome },
     );
 
-    // Exit 2 from child is a valid pass-through — not a hookwatch P1 error
+    // Exit 2 from child is a valid pass-through — not a hookwatch fatal error
     // assertExitLegality would reject exit 2 without JSON, but in wrapped mode
     // exit 2 is the child's exit code. The legality helper checks bare mode
     // contracts. In wrapped mode we verify the child code is forwarded.

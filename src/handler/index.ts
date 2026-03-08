@@ -302,7 +302,7 @@ async function postEvent(opts: EventPostPayload): Promise<boolean> {
  * union schema. On any error, logs to stderr and terminates the process.
  *
  * The fallbackExitCode parameter controls error handling:
- *   - null (bare mode): calls exitFatal() → exit 2 + JSON stdout (P1 fatal)
+ *   - null (bare mode): calls exitFatal() → exit 2 + JSON stdout (fatal)
  *   - non-null (wrapped mode): calls process.exit(fallbackExitCode) to forward
  *     the child's exit code even when event parsing fails (best-effort)
  *
@@ -402,7 +402,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // parseEventSafely handles both try-catch blocks (JSON.parse + Zod validation).
   // In wrapped mode (fallbackExitCode = childExitCode): forwards child exit code
   // on parse failure (best-effort). In bare mode (fallbackExitCode = null):
-  // calls exitFatal() for P1 fatal error.
+  // calls exitFatal() for a fatal error.
   const event = parseEventSafely(stdinJson, wrapArgs !== null ? (childExitCode ?? 0) : null);
 
   // -------------------------------------------------------------------------
@@ -444,13 +444,13 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
 
   if (!postResult) {
     if (wrapArgs !== null) {
-      // Wrapped P1: server unreachable after child exited — best-effort.
+      // Wrapped fatal: server unreachable after child exited — best-effort.
       // Log the failure and continue to forward child exit code.
       // The hook output JSON is NOT written (server couldn't record the event).
       console.error("[hookwatch] Failed to POST wrapped event — continuing (best-effort)");
       process.exit(childExitCode ?? 0);
     }
-    // Bare P1: server unreachable — exit 2 + JSON, stdout stays empty before this
+    // Bare fatal: server unreachable — exit 2 + JSON, stdout stays empty before this
     exitFatal("Failed to POST event to server");
   }
 
