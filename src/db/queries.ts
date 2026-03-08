@@ -17,11 +17,11 @@ export interface EventRow {
   stdin: string;
   /** NULL = bare handler event; non-NULL = wrapped command string (Story 3.1) */
   wrapped_command: string | null;
-  /** NULL = bare handler event; non-NULL = captured child stdout (wrapped mode) */
+  /** Captured child stdout (wrapped mode); hookwatch JSON output (bare mode) */
   stdout: string | null;
-  /** NULL = bare handler event; non-NULL = captured child stderr (wrapped mode) */
+  /** Captured child stderr (wrapped mode); NULL for bare mode */
   stderr: string | null;
-  /** NULL = bare handler event; non-NULL = child exit code (wrapped mode) */
+  /** Child exit code (wrapped mode); 0 for bare mode */
   exit_code: number | null;
   /** Hookwatch's own error messages, NULL = no error */
   hookwatch_error: string | null;
@@ -42,11 +42,11 @@ export interface InsertEventParams {
   stdin: string;
   /** NULL = bare handler event; non-NULL = wrapped command string (Story 3.1) */
   wrapped_command: string | null;
-  /** NULL = bare handler event; non-NULL = captured child stdout (wrapped mode) */
+  /** Captured child stdout (wrapped mode); hookwatch JSON output (bare mode) */
   stdout: string | null;
-  /** NULL = bare handler event; non-NULL = captured child stderr (wrapped mode) */
+  /** Captured child stderr (wrapped mode); NULL for bare mode */
   stderr: string | null;
-  /** NULL = bare handler event; non-NULL = child exit code (wrapped mode) */
+  /** Child exit code (wrapped mode); 0 for bare mode */
   exit_code: number | null;
   /** Hookwatch's own error messages, NULL = no error */
   hookwatch_error: string | null;

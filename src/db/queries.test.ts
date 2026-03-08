@@ -18,9 +18,9 @@ import { getDistinctSessions, insertEvent, queryEvents } from "./queries.ts";
 // Test helpers
 // ---------------------------------------------------------------------------
 
-function makeEvent(sessionId: string, ts: number) {
+function makeEvent(sessionId: string, timestamp: number) {
   return {
-    timestamp: ts,
+    timestamp: timestamp,
     event: "SessionStart",
     session_id: sessionId,
     cwd: "/tmp",
@@ -90,13 +90,13 @@ describe("getDistinctSessions", () => {
     expect(unique.has("sess-ccc")).toBe(true);
   });
 
-  test("orders by ts DESC — session with most recent event appears first", () => {
+  test("orders by timestamp DESC — session with most recent event appears first", () => {
     const db = openDb(dbPath);
-    // sess-old has only an old event (ts=100)
+    // sess-old has only an old event (timestamp=100)
     insertEvent(db, makeEvent("sess-old", 100));
-    // sess-mid has a mid-range event (ts=500)
+    // sess-mid has a mid-range event (timestamp=500)
     insertEvent(db, makeEvent("sess-mid", 500));
-    // sess-new has the most recent event (ts=9999)
+    // sess-new has the most recent event (timestamp=9999)
     insertEvent(db, makeEvent("sess-new", 9999));
 
     const sessions = getDistinctSessions(db);
@@ -105,12 +105,12 @@ describe("getDistinctSessions", () => {
     expect(sessions[2]).toBe("sess-old");
   });
 
-  test("ordering by ts DESC with multiple events per session uses latest ts for ordering", () => {
+  test("ordering by timestamp DESC with multiple events per session uses latest timestamp for ordering", () => {
     const db = openDb(dbPath);
-    // sess-a has events at ts=10 and ts=5000
+    // sess-a has events at timestamp=10 and timestamp=5000
     insertEvent(db, makeEvent("sess-a", 10));
     insertEvent(db, makeEvent("sess-a", 5000));
-    // sess-b has only ts=100
+    // sess-b has only timestamp=100
     insertEvent(db, makeEvent("sess-b", 100));
 
     const sessions = getDistinctSessions(db);

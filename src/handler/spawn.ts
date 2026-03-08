@@ -7,7 +7,7 @@
  * STDOUT SUPPRESSION: All logging goes to stderr — NEVER console.log().
  *
  * Exported:
- *   spawnServer() — also reused by cli/open.ts (Story 2.5)
+ *   spawnServer() — also reused by cli/ui.ts (Story 2.5)
  */
 
 import { mkdirSync, openSync, readFileSync } from "node:fs";
@@ -82,7 +82,7 @@ async function waitForHealth(): Promise<number | null> {
  *
  * Returns the port the server is listening on, or null if health check timed out.
  *
- * Exported for reuse by cli/open.ts (Story 2.5).
+ * Exported for reuse by cli/ui.ts (Story 2.5).
  */
 export async function spawnServer(): Promise<number | null> {
   const logPath = serverLogPath();
