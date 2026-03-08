@@ -74,11 +74,18 @@ function cancelIdleTimer(): void {
 
 /**
  * Write the active port to the port file so the hook handler can discover it.
+ * Failure is non-fatal — the handler falls back to DEFAULT_PORT when the file
+ * is absent, so a failed write should not crash the server.
  */
 function writePortFile(port: number): void {
   const portFile = portFilePath();
-  mkdirSync(dirname(portFile), { recursive: true });
-  writeFileSync(portFile, String(port), { encoding: "utf8" });
+  try {
+    mkdirSync(dirname(portFile), { recursive: true });
+    writeFileSync(portFile, String(port), { encoding: "utf8" });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    process.stderr.write(`[hookwatch] Warning: could not write port file ${portFile}: ${message}\n`);
+  }
 }
 
 /**
