@@ -25,7 +25,7 @@ src/handler/spawn.ts, tests/handler-server.test.ts
 ## Key constraints
 
 - stdout suppression is CRITICAL: Claude Code interprets any stdout as hook output JSON. All debug logging goes to console.error() or process.stderr — never console.log()
-- Exit codes: 0 = success, 2 + JSON stdout = hookwatch error (P1 fatal). Never exit 1 (useless generic error). Pass through wrapped command exit code unchanged.
+- Exit codes: 0 = success, 2 + JSON stdout = hookwatch fatal error (server unreachable). Never exit 1 (useless generic error). Pass through wrapped command exit code unchanged.
 - fetch() to local server must have AbortSignal.timeout(5000) — never hang indefinitely
 - spawn.ts exports spawnServer() — reused by cli/open.ts (Story 2.5)
 - Handler must exit quickly — spawn server detached, don't wait for it
