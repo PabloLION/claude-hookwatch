@@ -42,9 +42,9 @@ The FRs split across two process boundaries:
 
 - **Performance** (NFR1-4): <100ms amortized handler latency (design principle
   in v0, enforced SLA in v3). No build step. Web UI handles up to 10k events
-- **Reliability** (NFR5-8): Handler never crashes, exits 1 if server
-  unreachable (non-blocking, surfacing strategy TBD ch-cs6), SQLite WAL for
-  crash recovery
+- **Reliability** (NFR5-8): Handler never crashes, exits 2 + JSON stdout if
+  server unreachable (fatal; non-fatal issues log to hookwatch_log DB column),
+  SQLite WAL for crash recovery
 - **Security** (NFR9-11): 0600 file permissions, localhost-only, no secrets in
   config
 - **Integration** (NFR12-14): Forward-compatible schemas, clean plugin
@@ -91,15 +91,15 @@ The coordination flow for v0 (ch-a2f):
 2. If connection refused → spawn Bun server in background
 3. Poll `GET /health` at 50ms intervals (max 2s timeout)
 4. If health OK → retry POST
-5. If health timeout → exit 1 (non-blocking error, ch-cs6)
+5. If health timeout → exit 2 + JSON stdout (fatal, server unreachable)
 
 Happy path (server running) is one POST with no overhead.
 
 ### Cross-Cutting Concerns Identified
 
 - **Error resilience**: Handler must catch all errors — no exception may
-  propagate to Claude Code. Exit 0 on success, exit 1 on failure (non-blocking).
-  Error surfacing strategy TBD (ch-cs6, blocked by ch-20v)
+  propagate to Claude Code. Exit 0 on success; fatal errors (server unreachable)
+  exit 2 + JSON stdout. Non-fatal errors logged to `hookwatch_log` DB column.
 - **Forward compatibility**: Unknown event types and unknown fields must be
   preserved. Affects Zod schemas, SQLite storage, and web UI rendering.
   Note: forward compatibility applies to field-level schema evolution. New event
@@ -400,11 +400,11 @@ choices.
 
 ### Process Patterns
 
-- **Handler errors**: Exit 1 on failure, not silent drop. If server unreachable
-  after spawn+retry, handler exits 1 (non-blocking error). Claude Code
-  continues but receives a signal that something went wrong. Exit 0 = success
-  (output parsed as JSON). Exit 2 = blocking error (reserved for critical
-  failures that should halt Claude Code)
+- **Handler errors**: Priority chain — fatal (server unreachable): exit 2 + JSON
+  stdout; non-fatal (server OK, hookwatch internal issue): log to `hookwatch_log`
+  DB column; normal: `hookwatch_log` NULL. Never exit 1 — Claude Code shows only
+  a generic "hook error" and swallows stderr. Exit 2 + JSON is strictly better.
+  In wrapped mode: child exit code is always forwarded unchanged.
 - **Server errors**: Structured JSON
   `{ "error": { "code": "DB_LOCKED", "message": "..." } }` for all API
   responses. Log to stderr with level prefix (`[ERROR]`, `[WARN]`, `[INFO]`)
@@ -417,7 +417,7 @@ These patterns go into AGENTS.md as mandatory rules for all AI agents:
 - Parameterized SQL queries only (ch-lar)
 - Never use innerHTML or dangerouslySetInnerHTML (ch-u88)
 - snake_case for database columns and JSON API fields
-- Exit 1 (not 0) when handler fails to deliver event
+- Exit 2 + JSON stdout (not exit 1) for fatal handler errors
 - Co-locate unit tests, integration tests in `tests/`
 - Path aliases `@/` for imports
 
@@ -573,8 +573,8 @@ Browser
 Four inconsistencies found and resolved during validation:
 
 1. Handler POST path: `localhost:6004/events` → `localhost:6004/api/events`
-2. Exit code contradiction: "exit 0" / "drop silently" → "exit 1" (non-blocking)
-   with error surfacing strategy deferred (ch-cs6, blocked by ch-20v)
+2. Exit code strategy: resolved as priority chain — fatal errors exit 2 + JSON
+   stdout; non-fatal errors log to hookwatch_log DB column; never exit 1
 3. Component file naming: PascalCase example → kebab-case (matching step 5
    decision, PascalCase as fallback)
 4. UI delivery gap: added on-the-fly transpile via `Bun.Transpiler` with
@@ -587,8 +587,8 @@ user-facing channel.
 ### Requirements Coverage
 
 - **28 FRs**: All mapped to project directories (FR → Directory Mapping table)
-- **14 NFRs**: All addressed architecturally. NFR6 updated to reflect exit 1
-  instead of silent drop
+- **14 NFRs**: All addressed architecturally. NFR6 updated to reflect priority
+  chain (fatal: exit 2 + JSON; non-fatal: hookwatch_log column)
 - **19 beads issues**: Track all deferred decisions — no untracked debt
 
 ### Implementation Readiness

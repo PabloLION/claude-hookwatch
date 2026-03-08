@@ -110,9 +110,30 @@ bun run check,check,bun test && biome check .
 
 Agents must run `bun run check` before each commit.
 
+## Handler Entry Point
+
+The handler is invoked by the CLI (18 PascalCase event subcommands) and directly
+when run as the main module. The public API is:
+
+```ts
+export async function runHandler(wrappedCommand?: string[]): Promise<void>
+```
+
+Mode is determined solely by the `wrappedCommand` argument:
+
+- `wrappedCommand` undefined or empty → bare mode (observe only)
+- `wrappedCommand` non-empty → wrapped mode (spawn child, tee I/O)
+
+The CLI passes `context.rawArgs` directly: non-empty = wrapped mode, empty =
+bare mode. There is no environment variable for mode detection — only this
+argument.
+
+Both modes share the same `handleHook()` pipeline. The branch point is
+`wrapArgs` being null (bare) or non-null (wrapped).
+
 ## Process Rules
 
-- **Handler errors:** Fatal errors exit 2 + JSON stdout (server unreachable). Non-fatal errors log to `hookwatch_error` DB column. Never exit 1 — Claude Code shows a generic "hook error" and does not surface stderr. Exit 2 + JSON is strictly better in every scenario.
+- **Handler errors:** Fatal errors exit 2 + JSON stdout (server unreachable). Non-fatal errors log to `hookwatch_log` DB column. Never exit 1 — Claude Code shows a generic "hook error" and does not surface stderr. Exit 2 + JSON is strictly better in every scenario.
 - **Server errors:** Structured JSON `{ "error": { "code": "...", "message": "..." } }`
 - **UI errors:** Display server errors — never swallow silently
 - **Imports:** Use `@/` path alias (maps to `./src/`) — no relative `../` chains
