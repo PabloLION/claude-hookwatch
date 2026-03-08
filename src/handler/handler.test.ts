@@ -234,10 +234,10 @@ beforeAll(() => {
 
 afterAll(async () => {
   server.stop();
-  // Kill any server processes spawned by auto-start tests in the hookwatch
-  // port range (6004–6064). Best-effort — ignore errors.
+  // Kill any server processes spawned by auto-start tests on the hookwatch
+  // default port (6004). Best-effort — ignore errors.
   try {
-    const proc = Bun.spawn(["lsof", "-ti", "tcp:6004-6064"], {
+    const proc = Bun.spawn(["lsof", "-ti", "tcp:6004"], {
       stdout: "pipe",
       stderr: "ignore",
     });

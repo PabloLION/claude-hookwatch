@@ -5,6 +5,12 @@
  * Respects $XDG_DATA_HOME and $XDG_CONFIG_HOME; falls back to XDG defaults.
  */
 
+/** The fixed default port for the hookwatch server.
+ * The server binds exclusively to this port and errors if it is occupied.
+ * TODO: configurable via config.toml (ch-1ex5.1)
+ */
+export const DEFAULT_PORT = 6004;
+
 function xdgDataHome(): string {
   return process.env.XDG_DATA_HOME ?? `${process.env.HOME}/.local/share`;
 }

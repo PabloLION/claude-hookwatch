@@ -12,13 +12,12 @@
 
 import { mkdirSync, openSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { portFilePath, serverLogPath } from "@/paths.ts";
+import { DEFAULT_PORT, portFilePath, serverLogPath } from "@/paths.ts";
 import { errorMsg } from "./errors.ts";
 
 const HEALTH_POLL_INTERVAL_MS = 100;
 const HEALTH_MAX_ATTEMPTS = 20; // 20 * 100ms = 2s max
 const HEALTH_FETCH_TIMEOUT_MS = 500;
-const FALLBACK_PORT = 6004;
 
 /** Absolute path to the server entry point.
  * import.meta.url is file:///…/src/handler/spawn.ts
@@ -29,18 +28,18 @@ const SERVER_ENTRY = new URL("../server/index.ts", import.meta.url).pathname;
 
 /**
  * Reads the server port synchronously from the port file.
- * Returns FALLBACK_PORT if the file is absent or contains an invalid value.
+ * Returns DEFAULT_PORT if the file is absent or contains an invalid value.
  */
 function readPortFileSync(): number {
   try {
     const content = readFileSync(portFilePath(), "utf8").trim();
     const port = Number.parseInt(content, 10);
     if (Number.isNaN(port) || port <= 0 || port > 65535) {
-      return FALLBACK_PORT;
+      return DEFAULT_PORT;
     }
     return port;
   } catch {
-    return FALLBACK_PORT;
+    return DEFAULT_PORT;
   }
 }
 
