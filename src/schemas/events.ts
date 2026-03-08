@@ -9,6 +9,8 @@
  *   Note: Zod v4 requires two arguments for z.record(); the single-arg form z.record(z.unknown()) is broken (throws TypeError).
  * - Fallback schema for unknown event types — accepts any valid JSON with common fields.
  * - parseHookEvent() discriminates by hook_event_name and routes to the correct schema.
+ * - Each event schema extends commonFieldsSchema — hook_event_name z.literal() overrides
+ *   the z.string() from common fields, acting as the discriminator.
  *
  * Source: docs/hook-stdin-schema.md (authoritative field definitions).
  * Naming: camelCase + Schema suffix (e.g. sessionStartSchema), PascalCase inferred types.
@@ -41,12 +43,8 @@ export type CommonFields = z.infer<typeof commonFieldsSchema>;
 // Event-specific schemas
 // ---------------------------------------------------------------------------
 
-export const sessionStartSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const sessionStartSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("SessionStart"),
     source: z.enum(["startup", "resume", "clear", "compact"]),
     model: z.string(),
@@ -56,12 +54,8 @@ export const sessionStartSchema = z
 
 export type SessionStart = z.infer<typeof sessionStartSchema>;
 
-export const sessionEndSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const sessionEndSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("SessionEnd"),
     reason: z.enum([
       "clear",
@@ -75,12 +69,8 @@ export const sessionEndSchema = z
 
 export type SessionEnd = z.infer<typeof sessionEndSchema>;
 
-export const userPromptSubmitSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const userPromptSubmitSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("UserPromptSubmit"),
     prompt: z.string(),
   })
@@ -88,12 +78,8 @@ export const userPromptSubmitSchema = z
 
 export type UserPromptSubmit = z.infer<typeof userPromptSubmitSchema>;
 
-export const preToolUseSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const preToolUseSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("PreToolUse"),
     tool_name: z.string(),
     tool_use_id: z.string(),
@@ -103,12 +89,8 @@ export const preToolUseSchema = z
 
 export type PreToolUse = z.infer<typeof preToolUseSchema>;
 
-export const postToolUseSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const postToolUseSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("PostToolUse"),
     tool_name: z.string(),
     tool_use_id: z.string(),
@@ -119,12 +101,8 @@ export const postToolUseSchema = z
 
 export type PostToolUse = z.infer<typeof postToolUseSchema>;
 
-export const postToolUseFailureSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const postToolUseFailureSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("PostToolUseFailure"),
     tool_name: z.string(),
     tool_use_id: z.string(),
@@ -140,12 +118,8 @@ export type PostToolUseFailure = z.infer<typeof postToolUseFailureSchema>;
  * PermissionRequest intentionally has NO tool_use_id — unlike PreToolUse/PostToolUse.
  * See docs/hook-stdin-schema.md.
  */
-export const permissionRequestSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const permissionRequestSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("PermissionRequest"),
     tool_name: z.string(),
     tool_input: z.record(z.string(), z.unknown()),
@@ -155,12 +129,8 @@ export const permissionRequestSchema = z
 
 export type PermissionRequest = z.infer<typeof permissionRequestSchema>;
 
-export const notificationSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const notificationSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("Notification"),
     message: z.string(),
     title: z.string().optional(),
@@ -175,12 +145,8 @@ export const notificationSchema = z
 
 export type Notification = z.infer<typeof notificationSchema>;
 
-export const subagentStartSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const subagentStartSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("SubagentStart"),
     agent_id: z.string(),
     agent_type: z.string(),
@@ -189,12 +155,8 @@ export const subagentStartSchema = z
 
 export type SubagentStart = z.infer<typeof subagentStartSchema>;
 
-export const subagentStopSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const subagentStopSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("SubagentStop"),
     agent_id: z.string(),
     agent_type: z.string(),
@@ -206,12 +168,8 @@ export const subagentStopSchema = z
 
 export type SubagentStop = z.infer<typeof subagentStopSchema>;
 
-export const stopSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const stopSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("Stop"),
     stop_hook_active: z.boolean(),
     last_assistant_message: z.string(),
@@ -220,12 +178,8 @@ export const stopSchema = z
 
 export type Stop = z.infer<typeof stopSchema>;
 
-export const preCompactSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const preCompactSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("PreCompact"),
     trigger: z.enum(["manual", "auto"]),
     custom_instructions: z.string(),
@@ -234,12 +188,8 @@ export const preCompactSchema = z
 
 export type PreCompact = z.infer<typeof preCompactSchema>;
 
-export const teammateIdleSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const teammateIdleSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("TeammateIdle"),
     teammate_name: z.string(),
     team_name: z.string(),
@@ -248,12 +198,8 @@ export const teammateIdleSchema = z
 
 export type TeammateIdle = z.infer<typeof teammateIdleSchema>;
 
-export const taskCompletedSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const taskCompletedSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("TaskCompleted"),
     task_id: z.string(),
     task_subject: z.string(),
@@ -265,12 +211,8 @@ export const taskCompletedSchema = z
 
 export type TaskCompleted = z.infer<typeof taskCompletedSchema>;
 
-export const configChangeSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const configChangeSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("ConfigChange"),
     source: z.enum([
       "user_settings",
@@ -285,12 +227,8 @@ export const configChangeSchema = z
 
 export type ConfigChange = z.infer<typeof configChangeSchema>;
 
-export const worktreeCreateSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const worktreeCreateSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("WorktreeCreate"),
     name: z.string(),
   })
@@ -298,12 +236,8 @@ export const worktreeCreateSchema = z
 
 export type WorktreeCreate = z.infer<typeof worktreeCreateSchema>;
 
-export const worktreeRemoveSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const worktreeRemoveSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("WorktreeRemove"),
     worktree_path: z.string(),
   })
@@ -316,12 +250,8 @@ export type WorktreeRemove = z.infer<typeof worktreeRemoveSchema>;
  * rules files). Present in the Agent SDK types as InstructionsLoadedHookInput.
  * trigger values are documented as "init" | "maintenance" in the SDK.
  */
-export const instructionsLoadedSchema = z
-  .object({
-    session_id: z.string(),
-    transcript_path: z.string(),
-    cwd: z.string(),
-    permission_mode: z.string(),
+export const instructionsLoadedSchema = commonFieldsSchema
+  .extend({
     hook_event_name: z.literal("InstructionsLoaded"),
     trigger: z.enum(["init", "maintenance"]),
   })
