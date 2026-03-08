@@ -41,20 +41,20 @@ describe("hookOutputSchema — valid output", () => {
 
   test("systemMessage is preserved when present", () => {
     const result = hookOutputSchema.parse({
-      systemMessage: "hookwatch: captured SessionStart event for session-001",
+      systemMessage: "hookwatch captured SessionStart (startup)",
     });
-    expect(result.systemMessage).toBe("hookwatch: captured SessionStart event for session-001");
+    expect(result.systemMessage).toBe("hookwatch captured SessionStart (startup)");
   });
 
   test("all three base fields together", () => {
     const result = hookOutputSchema.parse({
       continue: true,
       suppressOutput: false,
-      systemMessage: "hookwatch: captured Stop event for session-001",
+      systemMessage: "hookwatch captured Stop",
     });
     expect(result.continue).toBe(true);
     expect(result.suppressOutput).toBe(false);
-    expect(result.systemMessage).toBe("hookwatch: captured Stop event for session-001");
+    expect(result.systemMessage).toBe("hookwatch captured Stop");
   });
 });
 
@@ -141,14 +141,14 @@ describe("preToolUseOutputSchema — valid output", () => {
     const result = preToolUseOutputSchema.parse({
       continue: true,
       suppressOutput: false,
-      systemMessage: "hookwatch: captured PreToolUse event for Bash",
+      systemMessage: "hookwatch captured PreToolUse (Bash)",
       hookSpecificOutput: {
         permissionDecision: "allow",
         updatedInput: { command: "echo hello" },
       },
     });
     expect(result.hookSpecificOutput?.permissionDecision).toBe("allow");
-    expect(result.systemMessage).toBe("hookwatch: captured PreToolUse event for Bash");
+    expect(result.systemMessage).toBe("hookwatch captured PreToolUse (Bash)");
   });
 
   test("systemMessage is optional — valid without it", () => {
@@ -233,16 +233,16 @@ describe("stopOutputSchema — valid output", () => {
   test("systemMessage is preserved when present", () => {
     const result = stopOutputSchema.parse({
       decision: "approve",
-      systemMessage: "hookwatch: captured Stop event for session-001",
+      systemMessage: "hookwatch captured Stop",
     });
-    expect(result.systemMessage).toBe("hookwatch: captured Stop event for session-001");
+    expect(result.systemMessage).toBe("hookwatch captured Stop");
   });
 
   test("full Stop output with all fields", () => {
     const result = stopOutputSchema.parse({
       continue: false,
       suppressOutput: false,
-      systemMessage: "hookwatch: captured Stop event for session-001",
+      systemMessage: "hookwatch captured Stop",
       decision: "block",
       reason: "Linting errors detected",
     });
@@ -281,28 +281,28 @@ describe("stopOutputSchema — validation failures", () => {
 // ---------------------------------------------------------------------------
 
 describe("systemMessage format — hookwatch convention", () => {
-  test("format: hookwatch: captured {EventType} event for {detail}", () => {
-    const msg = "hookwatch: captured PreToolUse event for Bash";
+  test("format with subtype: hookwatch captured {EventType} ({subtype})", () => {
+    const msg = "hookwatch captured PreToolUse (Bash)";
     const result = preToolUseOutputSchema.parse({
       hookSpecificOutput: { permissionDecision: "allow" },
       systemMessage: msg,
     });
     expect(result.systemMessage).toBe(msg);
-    expect(result.systemMessage).toMatch(/^hookwatch: captured \w+ event for .+$/);
+    expect(result.systemMessage).toMatch(/^hookwatch captured \w+( \(.+\))?$/);
   });
 
-  test("Stop event systemMessage follows format", () => {
-    const msg = "hookwatch: captured Stop event for session-abc123";
+  test("Stop event systemMessage has no subtype", () => {
+    const msg = "hookwatch captured Stop";
     const result = stopOutputSchema.parse({
       decision: "approve",
       systemMessage: msg,
     });
-    expect(result.systemMessage).toMatch(/^hookwatch: captured \w+ event for .+$/);
+    expect(result.systemMessage).toMatch(/^hookwatch captured \w+( \(.+\))?$/);
   });
 
   test("base schema systemMessage follows format", () => {
-    const msg = "hookwatch: captured SessionStart event for session-001";
+    const msg = "hookwatch captured SessionStart (startup)";
     const result = hookOutputSchema.parse({ systemMessage: msg });
-    expect(result.systemMessage).toMatch(/^hookwatch: captured \w+ event for .+$/);
+    expect(result.systemMessage).toMatch(/^hookwatch captured \w+( \(.+\))?$/);
   });
 });

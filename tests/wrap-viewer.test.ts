@@ -12,11 +12,6 @@
  *   - Collapsible panels (stdout/stderr) toggle open/closed
  *   - Bare event (wrapped_command null) still shows standard EventDetail
  *
- * NOTE: These tests require the rename agent (column rename) to be merged
- * first so that the server returns the new column names:
- *   timestamp (was ts), stdin (was payload), stdout, stderr, exit_code.
- * Until then, run these tests manually after the rename is merged.
- *
  * Test setup pattern:
  *   1. Spawn hookwatch server as subprocess with isolated XDG_DATA_HOME
  *   2. Wait for /health to respond

@@ -43,7 +43,7 @@ describe("database creation and WAL mode", () => {
     expect(row.journal_mode).toBe("wal");
   });
 
-  test("sets user_version to 1 after schema application", () => {
+  test("sets user_version to 2 after schema application", () => {
     const dbPath = join(tmpDir, "hookwatch.db");
     const db = openDb(dbPath);
 
