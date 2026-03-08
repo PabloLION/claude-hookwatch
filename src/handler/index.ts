@@ -198,12 +198,12 @@ interface EventPostPayload {
   stdout: string | null;
   /** Captured child stderr; null for bare mode. */
   stderr: string | null;
-  /** Child exit code; null for bare mode. */
-  exitCode: number | null;
+  /** Child exit code; 0 for bare mode. */
+  exitCode: number;
   /** Hookwatch processing overhead in ms (excludes child process wall time). */
   hookDurationMs: number | null;
-  /** Accumulated non-fatal hookwatch errors; null = no errors. */
-  hookwatchError: string | null;
+  /** Accumulated non-fatal hookwatch log entries; null = no entries. */
+  hookwatchLog: string | null;
 }
 
 /**
@@ -225,14 +225,12 @@ async function postEvent(opts: EventPostPayload): Promise<boolean> {
   if (opts.stderr !== null) {
     body.stderr = opts.stderr;
   }
-  if (opts.exitCode !== null) {
-    body.exit_code = opts.exitCode;
-  }
+  body.exit_code = opts.exitCode;
   if (opts.hookDurationMs !== null) {
     body.hook_duration_ms = opts.hookDurationMs;
   }
-  if (opts.hookwatchError !== null) {
-    body.hookwatch_log = opts.hookwatchError;
+  if (opts.hookwatchLog !== null) {
+    body.hookwatch_log = opts.hookwatchLog;
   }
   const payload = JSON.stringify(body);
 
@@ -361,13 +359,13 @@ export function parseEventSafely(
  * Error strategy:
  *   Fatal (server unreachable / POST fails): exitFatal() → exit 2 + JSON.
  *     In wrapped mode: best-effort — we still forward child code.
- *   Error (server OK, hookwatch internal issue): accumulate hookwatchError.
- *   Normal: hookwatchError null.
+ *   Error (server OK, hookwatch internal issue): accumulate hookwatchLog.
+ *   Normal: hookwatchLog null.
  */
 async function handleHook(wrapArgs: string[] | null): Promise<void> {
   const wrappedCommand = wrapArgs !== null ? wrapArgs.join(" ") : null;
 
-  // Accumulated non-fatal hookwatch log entries (joined with "; " if multiple)
+  // Accumulated non-fatal hookwatch log entries; joined with "; " if multiple
   const logEntries: string[] = [];
 
   // -------------------------------------------------------------------------
@@ -377,7 +375,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   let stdinJson: string;
   let childStdout: string | null = null;
   let childStderr: string | null = null;
-  let childExitCode: number | null = null;
+  let childExitCode = 0;
 
   if (wrapArgs !== null) {
     // Wrapped mode: runWrapped() reads stdin, tees child I/O, returns everything
@@ -403,7 +401,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // In wrapped mode (fallbackExitCode = childExitCode): forwards child exit code
   // on parse failure (best-effort). In bare mode (fallbackExitCode = null):
   // calls exitFatal() for a fatal error.
-  const event = parseEventSafely(stdinJson, wrapArgs !== null ? (childExitCode ?? 0) : null);
+  const event = parseEventSafely(stdinJson, wrapArgs !== null ? childExitCode : null);
 
   // -------------------------------------------------------------------------
   // Step 4: Resolve port
@@ -429,7 +427,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // -------------------------------------------------------------------------
 
   const elapsedMs = Date.now() - startMs;
-  const hookwatchError = logEntries.length > 0 ? logEntries.join("; ") : null;
+  const hookwatchLog = logEntries.length > 0 ? logEntries.join("; ") : null;
 
   const postResult = await postEvent({
     port,
@@ -439,7 +437,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
     stderr: wrapArgs !== null ? childStderr : null,
     exitCode: wrapArgs !== null ? childExitCode : 0,
     hookDurationMs: elapsedMs,
-    hookwatchError,
+    hookwatchLog,
   });
 
   if (!postResult) {
@@ -448,7 +446,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
       // Log the failure and continue to forward child exit code.
       // The hook output JSON is NOT written (server couldn't record the event).
       console.error("[hookwatch] Failed to POST wrapped event — continuing (best-effort)");
-      process.exit(childExitCode ?? 0);
+      process.exit(childExitCode);
     }
     // Bare fatal: server unreachable — exit 2 + JSON, stdout stays empty before this
     exitFatal("Failed to POST event to server");
@@ -472,7 +470,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // -------------------------------------------------------------------------
 
   if (wrapArgs !== null) {
-    process.exit(childExitCode ?? 0);
+    process.exit(childExitCode);
   }
 }
 
