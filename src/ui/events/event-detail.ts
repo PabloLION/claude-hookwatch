@@ -13,12 +13,9 @@
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
-import htm from "htm";
-import { h } from "preact";
 import type { EventRow } from "../app.ts";
+import { html } from "../shared/html.ts";
 import { WrapViewer } from "../wrap/wrap-viewer.ts";
-
-const html = htm.bind(h);
 
 /**
  * Event types that carry tool information and warrant the tool info header.
