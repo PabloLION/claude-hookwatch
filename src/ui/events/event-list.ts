@@ -17,13 +17,10 @@
  */
 
 import type { Signal } from "@preact/signals";
-import htm from "htm";
-import { h } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import type { EventRow } from "../app.ts";
+import { html } from "../shared/html.ts";
 import { EventDetail } from "./event-detail.ts";
-
-const html = htm.bind(h);
 
 // TODO: configurable via config.toml (ch-1ex5.1)
 const DEFAULT_QUERY_LIMIT = 100;

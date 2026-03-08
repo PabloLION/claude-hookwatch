@@ -10,16 +10,14 @@
  * stdin (the raw JSON payload) is also shown in a collapsible panel so the
  * full event data remains accessible.
  *
- * stdin is NOT captured by the wrap handler — only stdout and stderr are.
+ * stdin (the Claude Code event JSON) IS captured by the wrap handler —
+ * src/handler/wrap.ts reads it, buffers it, and pipes it to the child process.
  *
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
-import htm from "htm";
-import { h } from "preact";
 import type { EventRow } from "../app.ts";
-
-const html = htm.bind(h);
+import { html } from "../shared/html.ts";
 
 interface WrapViewerProps {
   event: EventRow;

@@ -15,12 +15,9 @@
  */
 
 import type { Signal } from "@preact/signals";
-import htm from "htm";
-import { h } from "preact";
 import { useEffect, useState } from "preact/hooks";
+import { html } from "../shared/html.ts";
 import { fetchSessions, formatSessionId } from "./session-list.ts";
-
-const html = htm.bind(h);
 
 interface SessionFilterProps {
   activeSession: Signal<string | null>;
