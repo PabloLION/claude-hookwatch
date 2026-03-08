@@ -17,6 +17,7 @@
  */
 
 import { defineCommand, runMain } from "citty";
+import { runHandler } from "@/handler/index.ts";
 import { name as pkgName, version as pkgVersion } from "../../package.json";
 import { EVENT_TYPE_SET, EVENT_TYPES, type EventType } from "./events.ts";
 import { installCommand } from "./install.ts";
@@ -31,9 +32,9 @@ import { uninstallCommand } from "./uninstall.ts";
  *   - Wrapped: `hookwatch PreToolUse ./hook.sh` — spawns ./hook.sh, tees I/O,
  *               posts event with captured output (Story 3.1)
  *
- * Trailing args after the event type are passed to the handler via the
- * HOOKWATCH_WRAP_ARGS environment variable (JSON-encoded string array).
- * Using an env var avoids re-architecting the dynamic import boundary.
+ * All rawArgs after the event type subcommand are passed directly to
+ * runHandler() as the wrapped command. No filtering — flags intended for
+ * the wrapped command (e.g. --verbose) must be preserved.
  */
 function makeEventCommand(eventType: EventType) {
   return defineCommand({
@@ -43,13 +44,9 @@ function makeEventCommand(eventType: EventType) {
     },
     run(context) {
       // rawArgs contains everything after the subcommand name.
-      // Any trailing args indicate wrapped mode.
-      const trailingArgs = context.rawArgs.filter((a) => !a.startsWith("-"));
-      if (trailingArgs.length > 0) {
-        process.env.HOOKWATCH_WRAP_ARGS = JSON.stringify(trailingArgs);
-      }
-      // Dynamically import to keep startup fast for other subcommands
-      return import("@/handler/index.ts" as string);
+      // Pass all args as-is: non-empty = wrapped mode, empty = bare mode.
+      const wrappedCommand = context.rawArgs.length > 0 ? context.rawArgs : undefined;
+      return runHandler(wrappedCommand);
     },
   });
 }
