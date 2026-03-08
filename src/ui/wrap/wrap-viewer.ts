@@ -10,7 +10,8 @@
  * stdin (the raw JSON payload) is also shown in a collapsible panel so the
  * full event data remains accessible.
  *
- * stdin is NOT captured by the wrap handler — only stdout and stderr are.
+ * stdin (the Claude Code event JSON) IS captured by the wrap handler —
+ * src/handler/wrap.ts reads it, buffers it, and pipes it to the child process.
  *
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */

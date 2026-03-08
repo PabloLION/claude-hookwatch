@@ -29,12 +29,7 @@
  *     (single backslash) or single-quoted strings for shell variable literals
  */
 
-import {
-  appendFileSync,
-  existsSync,
-  readFileSync,
-  unlinkSync,
-} from "node:fs";
+import { appendFileSync, existsSync, readFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -49,7 +44,7 @@ const REPORT_FILE = join(OUT_DIR, `${PREFIX}-report.txt`);
 // readable via: cat <tmpdir>/hookwatch-probe-inline-report.txt
 function log(msg: string): void {
   console.log(msg);
-  appendFileSync(REPORT_FILE, msg + "\n");
+  appendFileSync(REPORT_FILE, `${msg}\n`);
 }
 
 interface Probe {
@@ -84,17 +79,16 @@ const unixProbes: Probe[] = [
     command: [
       'echo "0=$0"',
       'echo "comm=$(ps -p $$ -o comm=)"',
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional shell variable (not JS template)
       'echo "BASH_VERSION=${BASH_VERSION:-unset}"',
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional shell variable (not JS template)
       'echo "ZSH_VERSION=${ZSH_VERSION:-unset}"',
     ]
       .map((cmd, i) =>
-        i === 0
-          ? cmd + ` > ${outFile("baseline")}`
-          : cmd + ` >> ${outFile("baseline")}`,
+        i === 0 ? `${cmd} > ${outFile("baseline")}` : `${cmd} >> ${outFile("baseline")}`,
       )
       .join(" && "),
-    explanation:
-      "Captures interpreter identity via $0, process name, and shell-specific env vars.",
+    explanation: "Captures interpreter identity via $0, process name, and shell-specific env vars.",
   },
   {
     name: "bash-only",
@@ -170,8 +164,8 @@ const windowsProbes: Probe[] = [
 ];
 
 const probes: Probe[] = [
-  ...unixProbes.filter((p) => !IS_WINDOWS),
-  ...windowsProbes.filter((p) => IS_WINDOWS),
+  ...unixProbes.filter((_p) => !IS_WINDOWS),
+  ...windowsProbes.filter((_p) => IS_WINDOWS),
 ];
 
 function cleanup(): void {
@@ -185,9 +179,7 @@ function cleanup(): void {
 async function runProbe(probe: Probe): Promise<number> {
   const settings = JSON.stringify({
     hooks: {
-      SessionStart: [
-        { hooks: [{ type: "command", command: probe.command }] },
-      ],
+      SessionStart: [{ hooks: [{ type: "command", command: probe.command }] }],
     },
   });
 
@@ -207,13 +199,21 @@ async function runProbe(probe: Probe): Promise<number> {
 
   const args = IS_WINDOWS
     ? ["claude", "--print", "--settings", settings, "--dangerously-skip-permissions", "say hi"]
-    : ["env", "-u", "CLAUDECODE", "claude", "--print", "--settings", settings, "--dangerously-skip-permissions", "say hi"];
+    : [
+        "env",
+        "-u",
+        "CLAUDECODE",
+        "claude",
+        "--print",
+        "--settings",
+        settings,
+        "--dangerously-skip-permissions",
+        "say hi",
+      ];
 
   // On Windows, remove CLAUDECODE from the environment directly
   const env = IS_WINDOWS
-    ? Object.fromEntries(
-        Object.entries(process.env).filter(([k]) => k !== "CLAUDECODE"),
-      )
+    ? Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== "CLAUDECODE"))
     : undefined; // inherit on Unix (env -u handles it)
 
   const proc = Bun.spawn(args, {
@@ -293,13 +293,13 @@ function interpretWindows(results: Record<string, string | null>): void {
   const psResult = results["powershell-only"];
   const cmdResult = results["cmd-only"];
 
-  if (psResult && psResult.includes("PSVersion=")) {
+  if (psResult?.includes("PSVersion=")) {
     log("Interpreter: PowerShell");
     log(psResult);
-  } else if (cmdResult && cmdResult.includes("Microsoft Windows")) {
+  } else if (cmdResult?.includes("Microsoft Windows")) {
     log("Interpreter: cmd.exe");
     log("  'ver' command succeeded — this is cmd.exe");
-  } else if (baselineWin && baselineWin.includes("COMSPEC=")) {
+  } else if (baselineWin?.includes("COMSPEC=")) {
     log("Interpreter: likely cmd.exe (COMSPEC expanded)");
   } else {
     log("Interpreter: unknown — review raw output above");
