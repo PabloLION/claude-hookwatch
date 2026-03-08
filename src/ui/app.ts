@@ -6,13 +6,11 @@
  */
 
 import { signal } from "@preact/signals";
-import htm from "htm";
-import { h, render } from "preact";
+import { render } from "preact";
 import { EventList } from "./events/event-list.ts";
 import { SessionFilter } from "./sessions/session-filter.ts";
+import { html } from "./shared/html.ts";
 import { startSseClient } from "./shared/sse-client.ts";
-
-const html = htm.bind(h);
 
 export interface EventRow {
   id: number;
