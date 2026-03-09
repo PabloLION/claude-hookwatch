@@ -7,6 +7,7 @@
  */
 
 export * from "./fixtures.ts";
+export * from "./handler-assertions.ts";
 export * from "./setup.ts";
 export * from "./subprocess.ts";
 export * from "./test-server.ts";

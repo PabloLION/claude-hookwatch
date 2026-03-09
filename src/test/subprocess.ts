@@ -82,7 +82,7 @@ export async function runSubprocess(
 // runHandler — bare mode
 // ---------------------------------------------------------------------------
 
-const HANDLER_PATH = new URL("../../handler/index.ts", import.meta.url).pathname;
+const HANDLER_PATH = new URL("../handler/index.ts", import.meta.url).pathname;
 
 /**
  * Runs the hookwatch handler in bare mode (no wrapped command).
@@ -115,7 +115,7 @@ export async function runHandlerWrapped(
 // ---------------------------------------------------------------------------
 
 const WRAP_RUNNER_PATH = join(
-  new URL("../../handler", import.meta.url).pathname,
+  new URL("../handler", import.meta.url).pathname,
   "wrap-runner.fixture.ts",
 );
 
