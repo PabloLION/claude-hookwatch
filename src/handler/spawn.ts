@@ -10,9 +10,9 @@
  *   spawnServer() — also reused by cli/ui.ts (Story 2.5)
  */
 
-import { mkdirSync, openSync, readFileSync } from "node:fs";
+import { mkdirSync, openSync } from "node:fs";
 import { dirname } from "node:path";
-import { DEFAULT_PORT, portFilePath, serverLogPath } from "@/paths.ts";
+import { readPort, serverLogPath } from "@/paths.ts";
 import { errorMsg } from "./errors.ts";
 
 const HEALTH_POLL_INTERVAL_MS = 100;
@@ -27,30 +27,6 @@ const HEALTH_FETCH_TIMEOUT_MS = 500;
 const SERVER_ENTRY = new URL("../server/index.ts", import.meta.url).pathname;
 
 /**
- * Reads the server port synchronously from the port file.
- *
- * Returns DEFAULT_PORT on ENOENT (file not yet written) or invalid content.
- * Logs a warning to stderr for unexpected OS errors (EACCES, EIO, etc.) and
- * still falls back to DEFAULT_PORT.
- */
-function readPortFileSync(): number {
-  try {
-    const content = readFileSync(portFilePath(), "utf8").trim();
-    const port = Number.parseInt(content, 10);
-    if (Number.isNaN(port) || port <= 0 || port > 65535) {
-      return DEFAULT_PORT;
-    }
-    return port;
-  } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
-    if (code !== "ENOENT") {
-      console.error(`[hookwatch] Port file unreadable (${code ?? "unknown"}), using DEFAULT_PORT`);
-    }
-    return DEFAULT_PORT;
-  }
-}
-
-/**
  * Waits for the server to respond to GET /health.
  * Polls every HEALTH_POLL_INTERVAL_MS for up to HEALTH_MAX_ATTEMPTS attempts.
  *
@@ -62,7 +38,7 @@ async function waitForHealth(): Promise<number | null> {
     await new Promise<void>((resolve) => setTimeout(resolve, HEALTH_POLL_INTERVAL_MS));
 
     // Read the port file — the server writes it after successfully binding
-    const port = readPortFileSync();
+    const { port } = readPort();
 
     try {
       const res = await fetch(`http://127.0.0.1:${port}/health`, {
