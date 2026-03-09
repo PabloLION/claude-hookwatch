@@ -52,7 +52,8 @@ export function startTestServer(): TestServer {
         let body: unknown;
         try {
           body = await req.json();
-        } catch {
+        } catch (err) {
+          console.error("[test-server] req.json() parse failed:", err);
           body = null;
         }
         const status = state.nextStatus;

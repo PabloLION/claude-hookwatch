@@ -4,13 +4,16 @@
  * Provides:
  *   - createTempXdgHome(): isolated XDG_DATA_HOME temp dir with cleanup
  *   - setupTestDb() / closeTestDb(): DB lifecycle helpers for schema/queries tests
+ *   - createHandlerTestContext(): combined TMP_DIR + TestServer lifecycle for handler tests
  */
 
 import type { Database } from "bun:sqlite";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { close, openDb } from "@/db/connection.ts";
+import type { TestServer } from "./test-server.ts";
+import { startTestServer } from "./test-server.ts";
 
 // ---------------------------------------------------------------------------
 // XDG_DATA_HOME isolation
@@ -84,4 +87,60 @@ export function setupTestDb(prefix = "hookwatch-test-"): TestDbHandle {
 export function closeTestDb(handle: TestDbHandle): void {
   close();
   rmSync(handle.tmpDir, { recursive: true, force: true });
+}
+
+// ---------------------------------------------------------------------------
+// Handler test context
+// ---------------------------------------------------------------------------
+
+export interface HandlerTestContext {
+  /** Absolute path of the shared temp directory for per-test XDG subdirectories. */
+  tmpDir: string;
+  /** In-process HTTP test server that records received events. */
+  server: TestServer;
+  /** Remove tmpDir and stop the test server. Call in afterAll. */
+  cleanup: () => void;
+  /** Clear recorded events and reset nextStatus to 201. Call in afterEach. */
+  reset: () => void;
+}
+
+/**
+ * Creates a shared temp directory and starts an in-process test server.
+ *
+ * Intended for use in beforeAll/afterAll/afterEach of handler test files:
+ *
+ *   const ctx = createHandlerTestContext("hookwatch-handler-test-");
+ *   beforeAll(() => ctx.setup());
+ *   afterAll(() => ctx.cleanup());
+ *   afterEach(() => ctx.reset());
+ *
+ * The context exposes ctx.tmpDir for per-test XDG subdirectory creation and
+ * ctx.server for inspecting received events and configuring responses.
+ */
+export function createHandlerTestContext(prefix = "hookwatch-handler-test-"): HandlerTestContext & {
+  setup: () => void;
+} {
+  const tmpDir = join(tmpdir(), `${prefix}${Date.now()}`);
+  let server: TestServer;
+
+  return {
+    get tmpDir() {
+      return tmpDir;
+    },
+    get server() {
+      return server;
+    },
+    setup() {
+      mkdirSync(tmpDir, { recursive: true });
+      server = startTestServer();
+    },
+    cleanup() {
+      server?.stop();
+      rmSync(tmpDir, { recursive: true, force: true });
+    },
+    reset() {
+      server.events.length = 0;
+      server.nextStatus = 201;
+    },
+  };
 }

@@ -10,12 +10,9 @@
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
-import { mkdirSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { HookEvent } from "@/schemas/events.ts";
-import type { TestServer } from "@/test";
-import { BASE_SESSION_START, runHandler, startTestServer, writePortFile } from "@/test";
+import { BASE_SESSION_START, createHandlerTestContext, runHandler, writePortFile } from "@/test";
 import { buildSystemMessage, getEventSubtype } from "./context.ts";
 
 // ---------------------------------------------------------------------------
@@ -174,28 +171,24 @@ describe("buildSystemMessage", () => {
 // Integration tests: systemMessage in hook stdout (subprocess)
 // ---------------------------------------------------------------------------
 
-const TMP_DIR = join(tmpdir(), `hookwatch-context-test-${Date.now()}`);
-
-let server: TestServer;
+const ctx = createHandlerTestContext("hookwatch-context-test-");
 
 beforeAll(() => {
-  mkdirSync(TMP_DIR, { recursive: true });
-  server = startTestServer();
+  ctx.setup();
 });
 
 afterAll(() => {
-  server.stop();
+  ctx.cleanup();
 });
 
 afterEach(() => {
-  server.events.length = 0;
-  server.nextStatus = 201;
+  ctx.reset();
 });
 
 describe("systemMessage in hook stdout", () => {
   test("successful POST writes valid JSON hook output to stdout", async () => {
-    const xdgHome = join(TMP_DIR, "stdout-success");
-    writePortFile(xdgHome, server.port);
+    const xdgHome = join(ctx.tmpDir, "stdout-success");
+    writePortFile(xdgHome, ctx.server.port);
 
     const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
       XDG_DATA_HOME: xdgHome,
@@ -209,8 +202,8 @@ describe("systemMessage in hook stdout", () => {
   });
 
   test("systemMessage is 'hookwatch captured SessionStart (startup)'", async () => {
-    const xdgHome = join(TMP_DIR, "system-message-session-start");
-    writePortFile(xdgHome, server.port);
+    const xdgHome = join(ctx.tmpDir, "system-message-session-start");
+    writePortFile(xdgHome, ctx.server.port);
 
     const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
       XDG_DATA_HOME: xdgHome,
@@ -222,8 +215,8 @@ describe("systemMessage in hook stdout", () => {
   });
 
   test("systemMessage contains tool_name for PreToolUse", async () => {
-    const xdgHome = join(TMP_DIR, "system-message-pre-tool-use");
-    writePortFile(xdgHome, server.port);
+    const xdgHome = join(ctx.tmpDir, "system-message-pre-tool-use");
+    writePortFile(xdgHome, ctx.server.port);
 
     const preToolUseEvent = {
       session_id: "test-session-001",
@@ -246,8 +239,8 @@ describe("systemMessage in hook stdout", () => {
   });
 
   test("systemMessage has no subtype for Stop", async () => {
-    const xdgHome = join(TMP_DIR, "system-message-stop");
-    writePortFile(xdgHome, server.port);
+    const xdgHome = join(ctx.tmpDir, "system-message-stop");
+    writePortFile(xdgHome, ctx.server.port);
 
     const stopEvent = {
       session_id: "test-session-001",
@@ -269,8 +262,8 @@ describe("systemMessage in hook stdout", () => {
   });
 
   test("stdout output validates against hookOutputSchema", async () => {
-    const xdgHome = join(TMP_DIR, "stdout-schema-validate");
-    writePortFile(xdgHome, server.port);
+    const xdgHome = join(ctx.tmpDir, "stdout-schema-validate");
+    writePortFile(xdgHome, ctx.server.port);
 
     const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
       XDG_DATA_HOME: xdgHome,
