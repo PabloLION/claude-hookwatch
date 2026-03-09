@@ -12,13 +12,14 @@
  *   hookwatch SessionStart — etc.
  *
  * Flags:
- *   --version / -v  — print version from package.json
+ *   --version / -v  — print version from src/version.ts (reads package.json)
  *   --help / -h     — help text
  */
 
 import { defineCommand, runMain } from "citty";
 import { runHandler } from "@/handler/index.ts";
-import { name as pkgName, version as pkgVersion } from "../../package.json";
+import { name as pkgName } from "../../package.json";
+import { VERSION } from "@/version.ts";
 import { EVENT_TYPE_SET, EVENT_TYPES, type EventType } from "./events.ts";
 import { installCommand } from "./install.ts";
 import { uiCommand } from "./ui.ts";
@@ -54,7 +55,7 @@ function makeEventCommand(eventType: EventType) {
 const main = defineCommand({
   meta: {
     name: pkgName,
-    version: pkgVersion,
+    version: VERSION,
     description: "Log all Claude Code hook events to local storage",
   },
   subCommands: {
