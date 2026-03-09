@@ -22,6 +22,7 @@ import { handleIngest } from "@/server/ingest.ts";
 import { handleQuery } from "@/server/query.ts";
 import { handleStatic } from "@/server/static.ts";
 import { closeAll as closeSseClients, handleStream } from "@/server/stream.ts";
+import { VERSION } from "@/version.ts";
 
 const HOSTNAME = "127.0.0.1";
 
@@ -103,6 +104,24 @@ function removePortFile(): void {
 }
 
 /**
+ * Attach X-Hookwatch-Version to every response.
+ * Handles both synchronous Response values and Promise<Response>.
+ * Creates a new Response that copies all existing headers and adds the version
+ * header on top. SSE streaming responses (ReadableStream body) are forwarded
+ * as-is — the body is not buffered or consumed.
+ */
+async function withVersionHeader(res: Response | Promise<Response>): Promise<Response> {
+  const resolved = await res;
+  const headers = new Headers(resolved.headers);
+  headers.set("X-Hookwatch-Version", VERSION);
+  return new Response(resolved.body, {
+    status: resolved.status,
+    statusText: resolved.statusText,
+    headers,
+  });
+}
+
+/**
  * Route a request to the correct handler.
  * Resets the idle timer on every request so inactivity is measured from the
  * last real HTTP activity on any endpoint.
@@ -115,31 +134,33 @@ function removePortFile(): void {
  *   GET  /                    — serve index.html
  *   GET  /*                   — serve UI assets (static or transpiled .ts)
  */
-function dispatch(req: Request): Response | Promise<Response> {
+function dispatch(req: Request): Promise<Response> {
   resetIdleTimer();
   const url = new URL(req.url);
 
   if (req.method === "GET" && url.pathname === "/health") {
-    return handleHealth(req);
+    return withVersionHeader(handleHealth(req));
   }
 
   if (req.method === "POST" && url.pathname === "/api/events") {
-    return handleIngest(req);
+    return withVersionHeader(handleIngest(req));
   }
 
   if (req.method === "POST" && url.pathname === "/api/query") {
-    return handleQuery(req);
+    return withVersionHeader(handleQuery(req));
   }
 
   if (req.method === "GET" && url.pathname === "/api/events/stream") {
-    return handleStream(req);
+    return withVersionHeader(handleStream(req));
   }
 
   if (req.method === "GET") {
-    return handleStatic(url.pathname);
+    return withVersionHeader(handleStatic(url.pathname));
   }
 
-  return errorResponse("NOT_FOUND", `No route for ${req.method} ${url.pathname}`, 404);
+  return withVersionHeader(
+    errorResponse("NOT_FOUND", `No route for ${req.method} ${url.pathname}`, 404),
+  );
 }
 
 /** Thrown by startServer() when DEFAULT_PORT is already occupied. */

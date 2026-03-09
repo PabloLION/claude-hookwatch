@@ -1,8 +1,9 @@
 /**
- * Tests for the Bun HTTP server (Stories 1.3, 2.1a).
+ * Tests for the Bun HTTP server (Stories 1.3, 2.1a, ch-f2tr).
  *
  * Covers:
- *   - GET /health returns 200 with { status: "ok" }
+ *   - GET /health returns 200 with { status: "ok", app: "hookwatch", version: "<semver>" }
+ *   - X-Hookwatch-Version header present on all routes
  *   - POST /api/events with a valid payload returns 201 and an id
  *   - POST /api/events with invalid JSON returns 400 INVALID_QUERY
  *   - POST /api/events with a payload that fails Zod validation returns 400
@@ -18,6 +19,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { close as closeDb } from "@/db/connection.ts";
 import { PortInUseError, startServer } from "@/server/index.ts";
 import { BASE_SESSION_START } from "@/test/index.ts";
+import { VERSION } from "@/version.ts";
 
 // Use a temp in-memory DB path for tests to avoid polluting real data.
 // We override XDG_DATA_HOME so both connection.ts and index.ts use the temp dir.
@@ -54,6 +56,67 @@ describe("GET /health", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toMatchObject({ status: "ok" });
+  });
+
+  test("returns app and version fields in JSON body", async () => {
+    const res = await fetch(url("/health"));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.app).toBe("hookwatch");
+    expect(typeof body.version).toBe("string");
+    expect(body.version).toBe(VERSION);
+    // version must be a valid semver string (e.g. "0.1.0")
+    expect(body.version).toMatch(/^\d+\.\d+\.\d+/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// X-Hookwatch-Version header
+// ---------------------------------------------------------------------------
+
+describe("X-Hookwatch-Version header", () => {
+  test("present on GET /health", async () => {
+    const res = await fetch(url("/health"));
+    expect(res.headers.get("X-Hookwatch-Version")).toBe(VERSION);
+  });
+
+  test("present on POST /api/events (201)", async () => {
+    const res = await fetch(url("/api/events"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(BASE_SESSION_START),
+    });
+    expect(res.headers.get("X-Hookwatch-Version")).toBe(VERSION);
+  });
+
+  test("present on POST /api/events (400 error response)", async () => {
+    const res = await fetch(url("/api/events"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{ invalid json",
+    });
+    expect(res.status).toBe(400);
+    expect(res.headers.get("X-Hookwatch-Version")).toBe(VERSION);
+  });
+
+  test("present on POST /api/query", async () => {
+    const res = await fetch(url("/api/query"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.headers.get("X-Hookwatch-Version")).toBe(VERSION);
+  });
+
+  test("present on GET / (static file)", async () => {
+    const res = await fetch(url("/"));
+    expect(res.headers.get("X-Hookwatch-Version")).toBe(VERSION);
+  });
+
+  test("present on 404 for unknown route", async () => {
+    const res = await fetch(url("/no-such-route-xyz"));
+    expect(res.status).toBe(404);
+    expect(res.headers.get("X-Hookwatch-Version")).toBe(VERSION);
   });
 });
 
