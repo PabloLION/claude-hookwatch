@@ -70,12 +70,10 @@ async function waitForHealth(): Promise<number | null> {
 export async function spawnServer(): Promise<number | null> {
   const logPath = serverLogPath();
 
-  // Ensure log directory exists
-  try {
-    mkdirSync(dirname(logPath), { recursive: true });
-  } catch {
-    // Ignore — directory may already exist
-  }
+  // Ensure log directory exists.
+  // recursive: true already handles EEXIST — real errors (EACCES, ENOSPC, etc.)
+  // must propagate so the caller knows the spawn setup failed.
+  mkdirSync(dirname(logPath), { recursive: true });
 
   // Open log file for append (create if absent)
   let logFd = -1;
