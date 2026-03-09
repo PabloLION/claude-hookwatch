@@ -154,8 +154,14 @@ export async function runWrapRunner(
   if (resultLine) {
     try {
       wrapResult = JSON.parse(resultLine.slice("WRAP_RESULT:".length)) as WrapResult;
-    } catch {
-      // parse failure — wrapResult stays null
+    } catch (err) {
+      console.error(
+        "[subprocess] WRAP_RESULT JSON parse failed. Raw line:",
+        resultLine,
+        "Error:",
+        err,
+      );
+      // wrapResult stays null
     }
   }
 
