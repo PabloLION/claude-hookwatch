@@ -17,10 +17,10 @@
 
 import { afterAll, beforeAll, describe, expect, it, spyOn } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DEFAULT_PORT } from "@/paths.ts";
 import { startServer } from "@/server/index.ts";
+import { createTempXdgHome, type TempXdgHome } from "@/test/index.ts";
 import { isPortOccupied, isServerRunning, openBrowser, readPortFile } from "./ui.ts";
 
 // ---------------------------------------------------------------------------
@@ -38,23 +38,21 @@ describe("DEFAULT_PORT", () => {
 // ---------------------------------------------------------------------------
 
 describe("readPortFile", () => {
-  const TMP_DATA_HOME = join(tmpdir(), `hookwatch-ui-test-${Date.now()}`);
-  const portDir = join(TMP_DATA_HOME, "hookwatch");
-  const portFile = join(portDir, "hookwatch.port");
+  let xdg: TempXdgHome;
+  let portFile: string;
 
   beforeAll(() => {
+    xdg = createTempXdgHome("hookwatch-ui-test-");
+    const portDir = join(xdg.tmpDir, "hookwatch");
     mkdirSync(portDir, { recursive: true });
+    portFile = join(portDir, "hookwatch.port");
     // Override XDG_DATA_HOME so portFilePath() resolves to our temp dir
-    process.env.XDG_DATA_HOME = TMP_DATA_HOME;
+    process.env.XDG_DATA_HOME = xdg.tmpDir;
   });
 
   afterAll(() => {
     delete process.env.XDG_DATA_HOME;
-    try {
-      rmSync(TMP_DATA_HOME, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
-    }
+    xdg.cleanup();
   });
 
   it("returns null when port file is absent", () => {
@@ -103,12 +101,13 @@ describe("readPortFile", () => {
 // ---------------------------------------------------------------------------
 
 describe("isServerRunning", () => {
-  const TMP_DATA_HOME = join(tmpdir(), `hookwatch-ui-running-test-${Date.now()}`);
+  let xdg: TempXdgHome;
   let serverPort: number;
   let stopServer: () => void;
 
   beforeAll(async () => {
-    process.env.XDG_DATA_HOME = TMP_DATA_HOME;
+    xdg = createTempXdgHome("hookwatch-ui-running-test-");
+    process.env.XDG_DATA_HOME = xdg.tmpDir;
     const result = await startServer();
     serverPort = result.port;
     stopServer = result.stop;
@@ -117,11 +116,7 @@ describe("isServerRunning", () => {
   afterAll(() => {
     stopServer();
     delete process.env.XDG_DATA_HOME;
-    try {
-      rmSync(TMP_DATA_HOME, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
-    }
+    xdg.cleanup();
   });
 
   it("returns false for a port with nothing listening", async () => {
@@ -148,12 +143,13 @@ describe("isServerRunning", () => {
 // ---------------------------------------------------------------------------
 
 describe("isPortOccupied", () => {
-  const TMP_DATA_HOME = join(tmpdir(), `hookwatch-ui-occupied-test-${Date.now()}`);
+  let xdg: TempXdgHome;
   let serverPort: number;
   let stopServer: () => void;
 
   beforeAll(async () => {
-    process.env.XDG_DATA_HOME = TMP_DATA_HOME;
+    xdg = createTempXdgHome("hookwatch-ui-occupied-test-");
+    process.env.XDG_DATA_HOME = xdg.tmpDir;
     const result = await startServer();
     serverPort = result.port;
     stopServer = result.stop;
@@ -162,11 +158,7 @@ describe("isPortOccupied", () => {
   afterAll(() => {
     stopServer();
     delete process.env.XDG_DATA_HOME;
-    try {
-      rmSync(TMP_DATA_HOME, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
-    }
+    xdg.cleanup();
   });
 
   it("returns false for a port with nothing listening", async () => {

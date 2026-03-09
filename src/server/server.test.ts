@@ -17,6 +17,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { close as closeDb } from "@/db/connection.ts";
 import { PortInUseError, startServer } from "@/server/index.ts";
+import { BASE_SESSION_START } from "@/test/index.ts";
 
 // Use a temp in-memory DB path for tests to avoid polluting real data.
 // We override XDG_DATA_HOME so both connection.ts and index.ts use the temp dir.
@@ -60,15 +61,7 @@ describe("GET /health", () => {
 // Event ingestion
 // ---------------------------------------------------------------------------
 
-const validSessionStart = {
-  session_id: "test-session-001",
-  transcript_path: "/tmp/transcript.json",
-  cwd: "/home/user/project",
-  permission_mode: "default",
-  hook_event_name: "SessionStart",
-  source: "startup",
-  model: "claude-opus-4-5",
-};
+const validSessionStart = BASE_SESSION_START;
 
 describe("POST /api/events", () => {
   test("returns 201 with id for valid payload", async () => {

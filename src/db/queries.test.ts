@@ -8,64 +8,35 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { close, openDb } from "./connection.ts";
+import { closeTestDb, makeEvent, setupTestDb, type TestDbHandle } from "@/test/index.ts";
+import type { openDb } from "./connection.ts";
 import { getDistinctSessions, insertEvent, queryEvents } from "./queries.ts";
-
-// ---------------------------------------------------------------------------
-// Test helpers
-// ---------------------------------------------------------------------------
-
-function makeEvent(sessionId: string, timestamp: number) {
-  return {
-    timestamp: timestamp,
-    event: "SessionStart",
-    session_id: sessionId,
-    cwd: "/tmp",
-    tool_name: null,
-    session_name: null,
-    hook_duration_ms: null,
-    stdin: "{}",
-    wrapped_command: null,
-    stdout: null,
-    stderr: null,
-    exit_code: 0,
-    hookwatch_log: null,
-  };
-}
 
 // ---------------------------------------------------------------------------
 // getDistinctSessions tests
 // ---------------------------------------------------------------------------
 
 describe("getDistinctSessions", () => {
-  let tmpDir: string;
-  let dbPath: string;
+  let handle: TestDbHandle;
 
   beforeEach(() => {
-    close();
-    tmpDir = mkdtempSync(join(tmpdir(), "hookwatch-queries-test-"));
-    dbPath = join(tmpDir, "hookwatch.db");
+    handle = setupTestDb("hookwatch-queries-test-");
   });
 
   afterEach(() => {
-    close();
-    rmSync(tmpDir, { recursive: true, force: true });
+    closeTestDb(handle);
   });
 
   test("returns empty array when no events exist", () => {
-    const db = openDb(dbPath);
-    const sessions = getDistinctSessions(db);
+    const sessions = getDistinctSessions(handle.db);
     expect(sessions).toEqual([]);
   });
 
   test("returns a single session when all events share one session_id", () => {
-    const db = openDb(dbPath);
-    insertEvent(db, makeEvent("sess-aaa", 1000));
-    insertEvent(db, makeEvent("sess-aaa", 2000));
-    insertEvent(db, makeEvent("sess-aaa", 3000));
+    const db = handle.db;
+    insertEvent(db, makeEvent({ session_id: "sess-aaa", timestamp: 1000 }));
+    insertEvent(db, makeEvent({ session_id: "sess-aaa", timestamp: 2000 }));
+    insertEvent(db, makeEvent({ session_id: "sess-aaa", timestamp: 3000 }));
 
     const sessions = getDistinctSessions(db);
     expect(sessions).toHaveLength(1);
@@ -73,12 +44,12 @@ describe("getDistinctSessions", () => {
   });
 
   test("returns each session ID exactly once", () => {
-    const db = openDb(dbPath);
-    insertEvent(db, makeEvent("sess-aaa", 1000));
-    insertEvent(db, makeEvent("sess-bbb", 2000));
-    insertEvent(db, makeEvent("sess-aaa", 3000));
-    insertEvent(db, makeEvent("sess-ccc", 4000));
-    insertEvent(db, makeEvent("sess-bbb", 5000));
+    const db = handle.db;
+    insertEvent(db, makeEvent({ session_id: "sess-aaa", timestamp: 1000 }));
+    insertEvent(db, makeEvent({ session_id: "sess-bbb", timestamp: 2000 }));
+    insertEvent(db, makeEvent({ session_id: "sess-aaa", timestamp: 3000 }));
+    insertEvent(db, makeEvent({ session_id: "sess-ccc", timestamp: 4000 }));
+    insertEvent(db, makeEvent({ session_id: "sess-bbb", timestamp: 5000 }));
 
     const sessions = getDistinctSessions(db);
     expect(sessions).toHaveLength(3);
@@ -91,13 +62,13 @@ describe("getDistinctSessions", () => {
   });
 
   test("orders by timestamp DESC — session with most recent event appears first", () => {
-    const db = openDb(dbPath);
+    const db = handle.db;
     // sess-old has only an old event (timestamp=100)
-    insertEvent(db, makeEvent("sess-old", 100));
+    insertEvent(db, makeEvent({ session_id: "sess-old", timestamp: 100 }));
     // sess-mid has a mid-range event (timestamp=500)
-    insertEvent(db, makeEvent("sess-mid", 500));
+    insertEvent(db, makeEvent({ session_id: "sess-mid", timestamp: 500 }));
     // sess-new has the most recent event (timestamp=9999)
-    insertEvent(db, makeEvent("sess-new", 9999));
+    insertEvent(db, makeEvent({ session_id: "sess-new", timestamp: 9999 }));
 
     const sessions = getDistinctSessions(db);
     expect(sessions[0]).toBe("sess-new");
@@ -106,12 +77,12 @@ describe("getDistinctSessions", () => {
   });
 
   test("ordering by timestamp DESC with multiple events per session uses latest timestamp for ordering", () => {
-    const db = openDb(dbPath);
+    const db = handle.db;
     // sess-a has events at timestamp=10 and timestamp=5000
-    insertEvent(db, makeEvent("sess-a", 10));
-    insertEvent(db, makeEvent("sess-a", 5000));
+    insertEvent(db, makeEvent({ session_id: "sess-a", timestamp: 10 }));
+    insertEvent(db, makeEvent({ session_id: "sess-a", timestamp: 5000 }));
     // sess-b has only timestamp=100
-    insertEvent(db, makeEvent("sess-b", 100));
+    insertEvent(db, makeEvent({ session_id: "sess-b", timestamp: 100 }));
 
     const sessions = getDistinctSessions(db);
     // sess-a should appear first because its most recent event (5000) > sess-b's (100)
@@ -136,18 +107,14 @@ interface QueryPlanRow {
 }
 
 describe("timestamp index usage (EXPLAIN QUERY PLAN)", () => {
-  let tmpDir: string;
-  let dbPath: string;
+  let handle: TestDbHandle;
 
   beforeEach(() => {
-    close();
-    tmpDir = mkdtempSync(join(tmpdir(), "hookwatch-idx-test-"));
-    dbPath = join(tmpDir, "hookwatch.db");
+    handle = setupTestDb("hookwatch-idx-test-");
   });
 
   afterEach(() => {
-    close();
-    rmSync(tmpDir, { recursive: true, force: true });
+    closeTestDb(handle);
   });
 
   /**
@@ -168,68 +135,30 @@ describe("timestamp index usage (EXPLAIN QUERY PLAN)", () => {
   }
 
   test("getAllEvents (ORDER BY timestamp ASC) uses idx_events_timestamp", () => {
-    const db = openDb(dbPath);
-    assertUsesTimestampIndex(db, "SELECT * FROM events ORDER BY timestamp ASC");
+    assertUsesTimestampIndex(handle.db, "SELECT * FROM events ORDER BY timestamp ASC");
   });
 
   test("queryEvents default sort (ORDER BY timestamp DESC LIMIT ? OFFSET ?) uses idx_events_timestamp", () => {
-    const db = openDb(dbPath);
     assertUsesTimestampIndex(
-      db,
+      handle.db,
       "SELECT * FROM events ORDER BY timestamp DESC LIMIT ? OFFSET ?",
       [100, 0],
     );
   });
 
   test("queryEvents runtime: returns rows ordered by timestamp DESC", () => {
-    const db = openDb(dbPath);
+    const db = handle.db;
 
     // Insert events out of order
-    insertEvent(db, {
-      timestamp: 3000,
-      event: "PostToolUse",
-      session_id: "s-idx",
-      cwd: "/",
-      tool_name: "Read",
-      session_name: null,
-      hook_duration_ms: null,
-      stdin: "{}",
-      wrapped_command: null,
-      stdout: null,
-      stderr: null,
-      exit_code: 0,
-      hookwatch_log: null,
-    });
-    insertEvent(db, {
-      timestamp: 1000,
-      event: "SessionStart",
-      session_id: "s-idx",
-      cwd: "/",
-      tool_name: null,
-      session_name: null,
-      hook_duration_ms: null,
-      stdin: "{}",
-      wrapped_command: null,
-      stdout: null,
-      stderr: null,
-      exit_code: 0,
-      hookwatch_log: null,
-    });
-    insertEvent(db, {
-      timestamp: 2000,
-      event: "PreToolUse",
-      session_id: "s-idx",
-      cwd: "/",
-      tool_name: "Bash",
-      session_name: null,
-      hook_duration_ms: null,
-      stdin: "{}",
-      wrapped_command: null,
-      stdout: null,
-      stderr: null,
-      exit_code: 0,
-      hookwatch_log: null,
-    });
+    insertEvent(
+      db,
+      makeEvent({ session_id: "s-idx", timestamp: 3000, event: "PostToolUse", tool_name: "Read" }),
+    );
+    insertEvent(db, makeEvent({ session_id: "s-idx", timestamp: 1000 }));
+    insertEvent(
+      db,
+      makeEvent({ session_id: "s-idx", timestamp: 2000, event: "PreToolUse", tool_name: "Bash" }),
+    );
 
     const rows = queryEvents(db, { limit: 100, offset: 0 });
     expect(rows).toHaveLength(3);
@@ -240,7 +169,9 @@ describe("timestamp index usage (EXPLAIN QUERY PLAN)", () => {
   });
 
   test("getDistinctSessions scan uses idx_events_timestamp", () => {
-    const db = openDb(dbPath);
-    assertUsesTimestampIndex(db, "SELECT DISTINCT session_id FROM events ORDER BY timestamp DESC");
+    assertUsesTimestampIndex(
+      handle.db,
+      "SELECT DISTINCT session_id FROM events ORDER BY timestamp DESC",
+    );
   });
 });
