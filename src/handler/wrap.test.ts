@@ -14,73 +14,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { join } from "node:path";
-
-// ---------------------------------------------------------------------------
-// Fixture runner
-// ---------------------------------------------------------------------------
-
-const WRAP_RUNNER_PATH = join(import.meta.dir, "wrap-runner.fixture.ts");
-
-interface WrapResult {
-  exitCode: number;
-  stdin: string;
-  stdout: string;
-  stderr: string;
-}
-
-interface RunnerOutput {
-  /** Exit code of the fixture runner process (mirrors child exit code) */
-  runnerExitCode: number | null;
-  /** Child's tee'd stdout (pass-through from child via teeStream) */
-  runnerStdout: string;
-  /** Parsed WrapResult from the WRAP_RESULT: stderr line */
-  wrapResult: WrapResult | null;
-  /** Non-result stderr lines (child's tee'd stderr + any errors) */
-  runnerStderr: string;
-}
-
-/**
- * Spawns the wrap runner fixture with the given child command and stdin input.
- * Returns the combined output plus the parsed WrapResult from stderr.
- */
-async function runWrapRunner(
-  childCmd: string[],
-  stdinInput = "",
-  timeoutMs = 5000,
-): Promise<RunnerOutput> {
-  const proc = Bun.spawn(["bun", "--bun", WRAP_RUNNER_PATH, ...childCmd], {
-    stdin: new TextEncoder().encode(stdinInput),
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  const timeoutHandle = setTimeout(() => proc.kill(), timeoutMs);
-
-  const [runnerExitCode, runnerStdout, stderrRaw] = await Promise.all([
-    proc.exited,
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-  ]);
-
-  clearTimeout(timeoutHandle);
-
-  // Extract WRAP_RESULT line from stderr
-  const lines = stderrRaw.split("\n");
-  const resultLine = lines.find((l) => l.startsWith("WRAP_RESULT:"));
-  let wrapResult: WrapResult | null = null;
-  if (resultLine) {
-    try {
-      wrapResult = JSON.parse(resultLine.slice("WRAP_RESULT:".length)) as WrapResult;
-    } catch {
-      // parse failure — wrapResult stays null
-    }
-  }
-
-  const runnerStderr = lines.filter((l) => !l.startsWith("WRAP_RESULT:")).join("\n");
-
-  return { runnerExitCode, runnerStdout, wrapResult, runnerStderr };
-}
+import { runWrapRunner } from "@/test";
 
 // ---------------------------------------------------------------------------
 // Tests: tee and capture

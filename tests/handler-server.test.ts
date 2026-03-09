@@ -16,9 +16,11 @@
  */
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { RunResult } from "@/test";
+import { BASE_SESSION_START, writePortFile } from "@/test";
 
 // ---------------------------------------------------------------------------
 // Shared test fixtures
@@ -27,23 +29,13 @@ import { join } from "node:path";
 const TMP_DIR = join(tmpdir(), `hookwatch-handler-server-test-${Date.now()}`);
 const HANDLER_PATH = new URL("../src/handler/index.ts", import.meta.url).pathname;
 
-const BASE_SESSION_START = {
-  session_id: "integration-test-001",
-  transcript_path: "/tmp/transcript.jsonl",
-  cwd: "/home/user/project",
-  permission_mode: "default",
-  hook_event_name: "SessionStart",
-  source: "startup",
-  model: "claude-sonnet-4-6",
-};
-
-interface RunResult {
-  exitCode: number | null;
-  stderr: string;
-  stdout: string;
-}
-
-async function runHandler(
+/**
+ * Runs the hookwatch handler with a subprocess kill guard.
+ * This file's auto-start tests spawn real server processes which can take up
+ * to 10-12s. The kill guard ensures the subprocess is terminated if it hangs
+ * past the timeout rather than blocking the test runner.
+ */
+async function runHandlerWithTimeout(
   stdinPayload: string,
   env: Record<string, string> = {},
   timeoutMs = 8000,
@@ -83,16 +75,6 @@ function readPortFile(xdgDataHome: string): number | null {
   } catch {
     return null;
   }
-}
-
-/**
- * Writes a port file in the location that portFilePath() resolves to under
- * the given XDG_DATA_HOME value: <xdgDataHome>/hookwatch/hookwatch.port
- */
-function writePortFile(xdgDataHome: string, port: number): void {
-  const dir = join(xdgDataHome, "hookwatch");
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "hookwatch.port"), String(port));
 }
 
 /**
@@ -179,7 +161,7 @@ describe("server already running", () => {
     writePortFile(xdgHome, testServer.port);
 
     try {
-      const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      const result = await runHandlerWithTimeout(JSON.stringify(BASE_SESSION_START), {
         XDG_DATA_HOME: xdgHome,
       });
 
@@ -211,7 +193,7 @@ describe("server already running", () => {
     writePortFile(xdgHome, testServer.port);
 
     try {
-      const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      const result = await runHandlerWithTimeout(JSON.stringify(BASE_SESSION_START), {
         XDG_DATA_HOME: xdgHome,
       });
 
@@ -241,7 +223,7 @@ describe("auto-start", () => {
     // ECONNREFUSED, triggering the spawn path
     // (No writePortFile call here intentionally)
 
-    const result = await runHandler(
+    const result = await runHandlerWithTimeout(
       JSON.stringify(BASE_SESSION_START),
       {
         XDG_DATA_HOME: xdgHome,
@@ -312,7 +294,7 @@ describe("auto-start", () => {
     // spawned server uses a different XDG path), the handler exits 2 with a
     // hookwatch_fatal JSON in stdout.
 
-    const result = await runHandler(
+    const result = await runHandlerWithTimeout(
       JSON.stringify(BASE_SESSION_START),
       {
         XDG_DATA_HOME: xdgHome,
@@ -349,7 +331,7 @@ describe("hook output during auto-start", () => {
     const xdgHome = join(TMP_DIR, "auto-start-stdout");
     mkdirSync(xdgHome, { recursive: true });
 
-    const result = await runHandler(
+    const result = await runHandlerWithTimeout(
       JSON.stringify(BASE_SESSION_START),
       {
         XDG_DATA_HOME: xdgHome,
