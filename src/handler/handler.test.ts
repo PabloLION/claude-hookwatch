@@ -30,9 +30,9 @@ import type { TestServer } from "@/test";
 import {
   assertExitLegality,
   BASE_SESSION_START,
+  firstEventBody,
   runHandler,
   startTestServer,
-  writeInvalidPortFile,
   writePortFile,
 } from "@/test";
 
@@ -124,7 +124,7 @@ describe("port file", () => {
 
   test("ignores invalid port file content and uses fallback, then auto-starts server", async () => {
     const xdgHome = join(TMP_DIR, "port-invalid");
-    writeInvalidPortFile(xdgHome, "not-a-number");
+    writePortFile(xdgHome, "not-a-number");
 
     const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
       XDG_DATA_HOME: xdgHome,
@@ -156,7 +156,7 @@ describe("stdin parsing", () => {
     assertExitLegality(result, "stdin-valid");
     expect(result.exitCode).toBe(0);
     expect(server.events).toHaveLength(1);
-    const body = server.events[0]?.body as Record<string, unknown>;
+    const body = firstEventBody(server);
     expect(body?.hook_event_name).toBe("SessionStart");
     expect(body?.session_id).toBe("test-session-001");
   });
@@ -191,20 +191,6 @@ describe("stdin parsing", () => {
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe("string");
   });
-
-  test("invalid JSON produces exit 2 with hookwatch_fatal JSON in stdout", async () => {
-    const xdgHome = join(TMP_DIR, "stdout-invalid-json");
-    writePortFile(xdgHome, server.port);
-
-    const result = await runHandler("not valid json at all", {
-      XDG_DATA_HOME: xdgHome,
-    });
-
-    assertExitLegality(result, "stdout-invalid-json");
-    expect(result.exitCode).toBe(2);
-    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
-    expect(typeof parsed.hookwatch_fatal).toBe("string");
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -222,7 +208,7 @@ describe("Zod validation", () => {
 
     assertExitLegality(result, "zod-known");
     expect(result.exitCode).toBe(0);
-    const body = server.events[0]?.body as Record<string, unknown>;
+    const body = firstEventBody(server);
     expect(body?.source).toBe("startup");
     expect(body?.model).toBe("claude-sonnet-4-6");
   });
@@ -290,7 +276,7 @@ describe("unknown event forwarding", () => {
     assertExitLegality(result, "unknown-event");
     expect(result.exitCode).toBe(0);
     expect(server.events).toHaveLength(1);
-    const body = server.events[0]?.body as Record<string, unknown>;
+    const body = firstEventBody(server);
     expect(body?.hook_event_name).toBe("FutureUnknownEvent");
     expect(body?.extra_field).toBe("preserved");
   });

@@ -25,6 +25,7 @@ import type { TestServer } from "@/test";
 import {
   assertExitLegality,
   BASE_SESSION_START,
+  firstEventBody,
   runHandler,
   runHandlerWrapped,
   startTestServer,
@@ -235,7 +236,7 @@ describe("wrapped mode", () => {
     assertExitLegality(result, "wrap-command-stored");
     expect(result.exitCode).toBe(0);
     expect(server.events).toHaveLength(1);
-    const body = server.events[0]?.body as Record<string, unknown>;
+    const body = firstEventBody(server);
     expect(body?.wrapped_command).toBe("sh -c exit 0");
   });
 
@@ -252,7 +253,7 @@ describe("wrapped mode", () => {
     assertExitLegality(result, "wrap-duration-ms");
     expect(result.exitCode).toBe(0);
     expect(server.events).toHaveLength(1);
-    const body = server.events[0]?.body as Record<string, unknown>;
+    const body = firstEventBody(server);
     expect(typeof body?.hook_duration_ms).toBe("number");
     expect(body?.hook_duration_ms as number).toBeGreaterThanOrEqual(0);
   });
@@ -288,7 +289,7 @@ describe("unified pipeline", () => {
     assertExitLegality(result, "unified-bare-null-wrapped");
     expect(result.exitCode).toBe(0);
     expect(server.events).toHaveLength(1);
-    const body = server.events[0]?.body as Record<string, unknown>;
+    const body = firstEventBody(server);
     expect(body?.wrapped_command).toBeUndefined();
   });
 
@@ -304,7 +305,7 @@ describe("unified pipeline", () => {
     expect(result.exitCode).toBe(0);
     expect(server.events).toHaveLength(1);
     // bare mode: stdout column should contain hook output JSON (what Claude Code sees)
-    const body = server.events[0]?.body as Record<string, unknown>;
+    const body = firstEventBody(server);
     expect(typeof body?.stdout).toBe("string");
     const storedStdout = JSON.parse(body?.stdout as string);
     expect(storedStdout.continue).toBe(true);
@@ -321,7 +322,7 @@ describe("unified pipeline", () => {
 
     assertExitLegality(result, "unified-bare-exit-code");
     expect(result.exitCode).toBe(0);
-    const body = server.events[0]?.body as Record<string, unknown>;
+    const body = firstEventBody(server);
     expect(body?.exit_code).toBe(0);
   });
 
@@ -337,7 +338,7 @@ describe("unified pipeline", () => {
 
     assertExitLegality(result, "unified-wrapped-exit-code");
     expect(result.exitCode).toBe(0);
-    const body = server.events[0]?.body as Record<string, unknown>;
+    const body = firstEventBody(server);
     expect(body?.exit_code).toBe(0);
   });
 
@@ -351,7 +352,7 @@ describe("unified pipeline", () => {
 
     assertExitLegality(result, "unified-no-hookwatch-log");
     expect(result.exitCode).toBe(0);
-    const body = server.events[0]?.body as Record<string, unknown>;
+    const body = firstEventBody(server);
     // hookwatch_log should not be present (null means not sent)
     expect(body?.hookwatch_log).toBeUndefined();
   });
@@ -367,7 +368,7 @@ describe("unified pipeline", () => {
     assertExitLegality(result, "unified-duration-bare");
     expect(result.exitCode).toBe(0);
     expect(server.events).toHaveLength(1);
-    const body = server.events[0]?.body as Record<string, unknown>;
+    const body = firstEventBody(server);
     expect(typeof body?.hook_duration_ms).toBe("number");
     expect(body?.hook_duration_ms as number).toBeGreaterThanOrEqual(0);
   });

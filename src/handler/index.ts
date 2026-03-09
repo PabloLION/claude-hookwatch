@@ -84,7 +84,7 @@ function exitFatal(message: string): never {
  *   null for bare mode (use exitFatal instead)
  * @returns Parsed and validated hook event. Never returns on failure.
  */
-export function parseEventSafely(
+function parseEventSafely(
   jsonStr: string,
   fallbackExitCode: number | null,
 ): ReturnType<typeof parseHookEvent> {
@@ -189,10 +189,16 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // Build hook output JSON (before POST so we can store it as bare stdout)
   // -------------------------------------------------------------------------
 
-  const hookOutput = hookOutputSchema.parse({
-    continue: true,
-    systemMessage: buildSystemMessage(event),
-  });
+  let hookOutput: ReturnType<typeof hookOutputSchema.parse>;
+  try {
+    hookOutput = hookOutputSchema.parse({
+      continue: true,
+      systemMessage: buildSystemMessage(event),
+    });
+  } catch (err) {
+    const msg = errorMsg(err);
+    exitFatal(`Failed to build hook output JSON: ${msg}`);
+  }
   const hookOutputJson = JSON.stringify(hookOutput);
 
   // -------------------------------------------------------------------------
@@ -202,7 +208,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   const elapsedMs = Date.now() - startMs;
   const hookwatchLog = logEntries.length > 0 ? logEntries.join("; ") : null;
 
-  const postResult = await postEvent({
+  const eventPosted = await postEvent({
     port,
     event,
     wrappedCommand,
@@ -213,7 +219,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
     hookwatchLog,
   });
 
-  if (!postResult) {
+  if (!eventPosted) {
     if (wrapArgs !== null) {
       // Wrapped fatal: server unreachable after child exited — best-effort.
       // Log the failure and continue to forward child exit code.
