@@ -5,7 +5,7 @@
  * be programmed to return specific status codes. Used by handler.test.ts
  * and any other test that needs to verify what the handler POSTs.
  *
- * Extracted from src/handler/handler.test.ts lines 51-102.
+ * Extracted from src/handler/handler.test.ts (originally lines 51-102).
  */
 
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -86,21 +86,24 @@ export function startTestServer(): TestServer {
 // ---------------------------------------------------------------------------
 
 /**
- * Writes a port file to `<xdgDataHome>/hookwatch/hookwatch.port`.
- * This is the location that portFilePath() resolves to, so the handler
- * finds the test server when XDG_DATA_HOME is set to xdgDataHome.
+ * Returns the parsed body of the first recorded event as a plain object.
+ * Convenience helper to avoid repeating `server.events[0]?.body as Record<string, unknown>`
+ * in every test that needs to inspect the POST body.
  */
-export function writePortFile(xdgDataHome: string, port: number): void {
-  const dir = join(xdgDataHome, "hookwatch");
-  mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "hookwatch.port"), String(port));
+export function firstEventBody(server: TestServer): Record<string, unknown> {
+  return server.events[0]?.body as Record<string, unknown>;
 }
 
 /**
- * Writes an invalid (non-numeric) port file for negative testing.
+ * Writes a port file to `<xdgDataHome>/hookwatch/hookwatch.port`.
+ * This is the location that portFilePath() resolves to, so the handler
+ * finds the test server when XDG_DATA_HOME is set to xdgDataHome.
+ *
+ * Pass a number for a valid port; pass a string for invalid content (negative
+ * testing).
  */
-export function writeInvalidPortFile(xdgDataHome: string, content: string): void {
+export function writePortFile(xdgDataHome: string, content: number | string): void {
   const dir = join(xdgDataHome, "hookwatch");
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "hookwatch.port"), content);
+  writeFileSync(join(dir, "hookwatch.port"), String(content));
 }

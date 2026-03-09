@@ -3,8 +3,6 @@
  *
  * Builds the systemMessage string written to stdout so Claude Code injects
  * hookwatch context into the agent's conversation.
- *
- * STDOUT SUPPRESSION: All logging goes to stderr — NEVER console.log().
  */
 
 import type { HookEvent } from "@/schemas/events.ts";

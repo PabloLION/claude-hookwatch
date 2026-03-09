@@ -26,14 +26,14 @@
  *   and does not surface stderr. Exit 2 + JSON is strictly better.
  *
  * Error handling priority chain:
- *   Fatal (server unreachable / POST fails): exit 2 + JSON stdout. Always.
+ *   Fatal (server unreachable / POST fails): exit 2 + JSON stdout (bare mode).
+ *   Wrapped mode fatal: forward child exit code (best-effort — never exit 2).
  *   Non-fatal error (server OK, hookwatch internal issue): hookwatch_log in DB.
  *   Warn: event captured, hookwatch_log with [warn] prefix.
  *   Never mutate wrapped command exit code.
  */
 
-import { readFileSync } from "node:fs";
-import { DEFAULT_PORT, portFilePath } from "@/paths.ts";
+import { readPort } from "@/paths.ts";
 import { parseHookEvent } from "@/schemas/events.ts";
 import { hookOutputSchema } from "@/schemas/output.ts";
 import { buildSystemMessage } from "./context.ts";
@@ -53,56 +53,15 @@ const SLOW_THRESHOLD_MS = 100;
  * Claude Code displays exit 2 + stdout JSON to the user, making the hookwatch
  * error visible. Never exits with code 1 (shows only a generic "hook error").
  *
- * This is the ONLY place where a non-child exit code is used. Wrapped mode
- * passes through the child exit code and calls this only for fatal errors before
- * the child has been spawned (i.e., when stdin parsing fails before spawn, or
- * when the server cannot be reached after the child exits).
+ * In bare mode this is the only non-zero exit path. In wrapped mode, exitFatal
+ * is NOT called after the child exits — the child exit code is forwarded instead
+ * (best-effort). exitFatal is only called in wrapped mode if an error occurs
+ * before the child is spawned (e.g. stdin read failure at the process level).
  */
 function exitFatal(message: string): never {
   const errorOutput = JSON.stringify({ hookwatch_fatal: message });
   process.stdout.write(errorOutput);
   process.exit(2);
-}
-
-// ---------------------------------------------------------------------------
-// Port resolution
-// ---------------------------------------------------------------------------
-
-interface ReadPortResult {
-  port: number;
-  /** Non-null when the port file was unreadable due to a non-ENOENT OS error. */
-  warning: string | null;
-}
-
-/**
- * Reads the server port from the port file written by the server on startup.
- *
- * Falls back to DEFAULT_PORT silently on ENOENT (file not yet written).
- * For other OS errors (EACCES, EIO, etc.) falls back to DEFAULT_PORT but
- * returns a warning string for the caller to record.
- */
-function readPort(): ReadPortResult {
-  try {
-    const content = readFileSync(portFilePath(), "utf8").trim();
-    const port = Number.parseInt(content, 10);
-    if (Number.isNaN(port) || port <= 0 || port > 65535) {
-      console.error(
-        `[hookwatch] Port file contained invalid value "${content}", using fallback ${DEFAULT_PORT}`,
-      );
-      return { port: DEFAULT_PORT, warning: null };
-    }
-    return { port, warning: null };
-  } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
-    if (code === "ENOENT") {
-      // File absent — server not started yet or running on default port
-      return { port: DEFAULT_PORT, warning: null };
-    }
-    // Unexpected OS error (EACCES, EIO, etc.) — log and fall back
-    const msg = `Port file unreadable (${code ?? "unknown"}), using DEFAULT_PORT`;
-    console.error(`[hookwatch] ${msg}`);
-    return { port: DEFAULT_PORT, warning: msg };
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -125,7 +84,7 @@ function readPort(): ReadPortResult {
  *   null for bare mode (use exitFatal instead)
  * @returns Parsed and validated hook event. Never returns on failure.
  */
-export function parseEventSafely(
+function parseEventSafely(
   jsonStr: string,
   fallbackExitCode: number | null,
 ): ReturnType<typeof parseHookEvent> {
@@ -230,10 +189,16 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // Build hook output JSON (before POST so we can store it as bare stdout)
   // -------------------------------------------------------------------------
 
-  const hookOutput = hookOutputSchema.parse({
-    continue: true,
-    systemMessage: buildSystemMessage(event),
-  });
+  let hookOutput: ReturnType<typeof hookOutputSchema.parse>;
+  try {
+    hookOutput = hookOutputSchema.parse({
+      continue: true,
+      systemMessage: buildSystemMessage(event),
+    });
+  } catch (err) {
+    const msg = errorMsg(err);
+    exitFatal(`Failed to build hook output JSON: ${msg}`);
+  }
   const hookOutputJson = JSON.stringify(hookOutput);
 
   // -------------------------------------------------------------------------
@@ -243,7 +208,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   const elapsedMs = Date.now() - startMs;
   const hookwatchLog = logEntries.length > 0 ? logEntries.join("; ") : null;
 
-  const postResult = await postEvent({
+  const eventPosted = await postEvent({
     port,
     event,
     wrappedCommand,
@@ -254,7 +219,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
     hookwatchLog,
   });
 
-  if (!postResult) {
+  if (!eventPosted) {
     if (wrapArgs !== null) {
       // Wrapped fatal: server unreachable after child exited — best-effort.
       // Log the failure and continue to forward child exit code.
@@ -298,7 +263,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
  * Pass wrappedCommand to enable wrapped mode (child process is spawned and
  * its I/O is captured). Omit or pass undefined for bare mode.
  *
- * Exported for use by cli/index.ts (dynamic import) and tests.
+ * Exported for use by cli/index.ts (static import) and tests.
  */
 export async function runHandler(wrappedCommand?: string[]): Promise<void> {
   const wrapArgs = wrappedCommand && wrappedCommand.length > 0 ? wrappedCommand : null;
@@ -310,9 +275,9 @@ export async function runHandler(wrappedCommand?: string[]): Promise<void> {
 }
 
 // Auto-execute when run as the main module (e.g. via `bun src/handler/index.ts`).
-// Bun strips `--` from process.argv, so extra args appear directly as argv.slice(2):
-//   bun src/handler/index.ts             → bare mode (argv.slice(2) is empty)
-//   bun src/handler/index.ts -- sh -c …  → wrapped mode (bun strips --, argv.slice(2) = ["sh",…])
+// Extra args after the script path become argv.slice(2).
+//   bun src/handler/index.ts          → bare mode (argv.slice(2) is empty)
+//   bun src/handler/index.ts sh -c …  → wrapped mode (argv.slice(2) = ["sh",…])
 if (import.meta.main) {
   const trailingArgs = process.argv.slice(2);
   const wrapArgs = trailingArgs.length > 0 ? trailingArgs : undefined;
