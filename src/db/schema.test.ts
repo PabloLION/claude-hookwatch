@@ -1,74 +1,49 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { existsSync, rmSync, writeFileSync } from "node:fs";
+import { closeTestDb, setupTestDb, type TestDbHandle } from "@/test/index.ts";
 import { close, openDb } from "./connection.ts";
 import { getAllEvents, getEventById, insertEvent } from "./queries.ts";
 
-/**
- * Create a temporary directory for each test to get isolated DB files.
- */
-function _makeTempDbPath(): string {
-  const dir = mkdtempSync(join(tmpdir(), "hookwatch-test-"));
-  return join(dir, "hookwatch.db");
-}
-
 describe("database creation and WAL mode", () => {
-  let tmpDir: string;
+  let handle: TestDbHandle;
 
   beforeEach(() => {
-    close(); // reset singleton
-    tmpDir = mkdtempSync(join(tmpdir(), "hookwatch-test-"));
+    handle = setupTestDb();
   });
 
   afterEach(() => {
-    close();
-    rmSync(tmpDir, { recursive: true, force: true });
+    closeTestDb(handle);
   });
 
   test("creates database file on first open", () => {
-    const dbPath = join(tmpDir, "hookwatch.db");
-    const db = openDb(dbPath);
-    expect(db).toBeDefined();
-
-    const { existsSync } = require("node:fs");
-    expect(existsSync(dbPath)).toBe(true);
+    expect(handle.db).toBeDefined();
+    expect(existsSync(handle.dbPath)).toBe(true);
   });
 
   test("enables WAL journal mode", () => {
-    const dbPath = join(tmpDir, "hookwatch.db");
-    const db = openDb(dbPath);
-
-    const row = db.query("PRAGMA journal_mode;").get() as { journal_mode: string };
+    const row = handle.db.query("PRAGMA journal_mode;").get() as { journal_mode: string };
     expect(row.journal_mode).toBe("wal");
   });
 
   test("sets user_version to 3 after schema application", () => {
-    const dbPath = join(tmpDir, "hookwatch.db");
-    const db = openDb(dbPath);
-
-    const row = db.query("PRAGMA user_version;").get() as { user_version: number };
+    const row = handle.db.query("PRAGMA user_version;").get() as { user_version: number };
     expect(row.user_version).toBe(3);
   });
 });
 
 describe("events table existence and structure", () => {
-  let tmpDir: string;
-  let dbPath: string;
+  let handle: TestDbHandle;
 
   beforeEach(() => {
-    close();
-    tmpDir = mkdtempSync(join(tmpdir(), "hookwatch-test-"));
-    dbPath = join(tmpDir, "hookwatch.db");
+    handle = setupTestDb();
   });
 
   afterEach(() => {
-    close();
-    rmSync(tmpDir, { recursive: true, force: true });
+    closeTestDb(handle);
   });
 
   test("events table exists with all required columns", () => {
-    const db = openDb(dbPath);
+    const db = handle.db;
     const rows = db.query("PRAGMA table_info(events);").all() as Array<{
       name: string;
       type: string;
@@ -94,7 +69,7 @@ describe("events table existence and structure", () => {
   });
 
   test("required columns are NOT NULL", () => {
-    const db = openDb(dbPath);
+    const db = handle.db;
     const rows = db.query("PRAGMA table_info(events);").all() as Array<{
       name: string;
       notnull: number;
@@ -110,7 +85,7 @@ describe("events table existence and structure", () => {
   });
 
   test("nullable columns allow NULL", () => {
-    const db = openDb(dbPath);
+    const db = handle.db;
     const rows = db.query("PRAGMA table_info(events);").all() as Array<{
       name: string;
       notnull: number;
@@ -128,7 +103,7 @@ describe("events table existence and structure", () => {
   });
 
   test("exit_code is NOT NULL with DEFAULT 0", () => {
-    const db = openDb(dbPath);
+    const db = handle.db;
     const rows = db.query("PRAGMA table_info(events);").all() as Array<{
       name: string;
       notnull: number;
@@ -143,22 +118,18 @@ describe("events table existence and structure", () => {
 });
 
 describe("insert and retrieve round-trip", () => {
-  let tmpDir: string;
-  let dbPath: string;
+  let handle: TestDbHandle;
 
   beforeEach(() => {
-    close();
-    tmpDir = mkdtempSync(join(tmpdir(), "hookwatch-test-"));
-    dbPath = join(tmpDir, "hookwatch.db");
+    handle = setupTestDb();
   });
 
   afterEach(() => {
-    close();
-    rmSync(tmpDir, { recursive: true, force: true });
+    closeTestDb(handle);
   });
 
   test("inserts an event and retrieves it by id", () => {
-    const db = openDb(dbPath);
+    const db = handle.db;
     const payload = JSON.stringify({
       hook_event_name: "PreToolUse",
       session_id: "sess-001",
@@ -196,7 +167,7 @@ describe("insert and retrieve round-trip", () => {
   });
 
   test("inserts event with null optional fields", () => {
-    const db = openDb(dbPath);
+    const db = handle.db;
     const id = insertEvent(db, {
       timestamp: Date.now(),
       event: "SessionStart",
@@ -226,7 +197,7 @@ describe("insert and retrieve round-trip", () => {
   });
 
   test("persists events after close and reopen", () => {
-    const db = openDb(dbPath);
+    const db = handle.db;
     const id = insertEvent(db, {
       timestamp: 1000000,
       event: "SessionEnd",
@@ -247,7 +218,7 @@ describe("insert and retrieve round-trip", () => {
     close();
 
     // Reopen
-    const db2 = openDb(dbPath);
+    const db2 = openDb(handle.dbPath);
     const row = getEventById(db2, id);
 
     expect(row).not.toBeNull();
@@ -258,7 +229,7 @@ describe("insert and retrieve round-trip", () => {
   });
 
   test("getAllEvents returns all inserted events ordered by ts", () => {
-    const db = openDb(dbPath);
+    const db = handle.db;
 
     insertEvent(db, {
       timestamp: 3000,
@@ -317,64 +288,54 @@ describe("insert and retrieve round-trip", () => {
 });
 
 describe("schema idempotency", () => {
-  let tmpDir: string;
-  let dbPath: string;
+  let handle: TestDbHandle;
 
   beforeEach(() => {
-    close();
-    tmpDir = mkdtempSync(join(tmpdir(), "hookwatch-test-"));
-    dbPath = join(tmpDir, "hookwatch.db");
+    handle = setupTestDb();
   });
 
   afterEach(() => {
-    close();
-    rmSync(tmpDir, { recursive: true, force: true });
+    closeTestDb(handle);
   });
 
   test("opening the same database twice does not fail", () => {
-    // First open: schema applied
-    openDb(dbPath);
+    // First open: schema applied (already done by setupTestDb)
     close();
 
     // Second open: schema already at CURRENT_VERSION, no re-application
     expect(() => {
-      openDb(dbPath);
+      openDb(handle.dbPath);
     }).not.toThrow();
 
-    const db = openDb(dbPath);
+    const db = openDb(handle.dbPath);
     const row = db.query("PRAGMA user_version;").get() as { user_version: number };
     expect(row.user_version).toBe(3);
   });
 });
 
 describe("version mismatch — backup-and-recreate", () => {
-  let tmpDir: string;
-  let dbPath: string;
+  let handle: TestDbHandle;
 
   beforeEach(() => {
-    close();
-    tmpDir = mkdtempSync(join(tmpdir(), "hookwatch-mismatch-test-"));
-    dbPath = join(tmpDir, "hookwatch.db");
+    handle = setupTestDb("hookwatch-mismatch-test-");
   });
 
   afterEach(() => {
-    close();
-    rmSync(tmpDir, { recursive: true, force: true });
+    closeTestDb(handle);
   });
 
   test("renames old DB to .bak and opens a fresh schema-v3 DB on version mismatch", () => {
     // Bootstrap a v2 DB by opening, applying schema, then manually downgrading version
-    const db = openDb(dbPath);
-    db.exec("PRAGMA user_version = 2;");
+    handle.db.exec("PRAGMA user_version = 2;");
     close();
 
     // Verify the file exists before we test
-    expect(existsSync(dbPath)).toBe(true);
-    const backupPath = `${dbPath}.bak`;
+    expect(existsSync(handle.dbPath)).toBe(true);
+    const backupPath = `${handle.dbPath}.bak`;
     expect(existsSync(backupPath)).toBe(false);
 
     // Reopen — should detect mismatch, rename to .bak, recreate
-    const db2 = openDb(dbPath);
+    const db2 = openDb(handle.dbPath);
 
     // Backup must exist
     expect(existsSync(backupPath)).toBe(true);
@@ -394,13 +355,13 @@ describe("version mismatch — backup-and-recreate", () => {
     // Write a non-DB file to dbPath to simulate a corrupted/placeholder
     // This tests that writeFileSync + openDb path combination doesn't regress.
     // A proper empty SQLite DB will have user_version=0 → treated as fresh.
-    writeFileSync(dbPath, ""); // zero-byte file — will fail to open as SQLite
+    writeFileSync(handle.dbPath, ""); // zero-byte file — will fail to open as SQLite
     // openDb on an empty file should fail or produce user_version=0 and apply schema
     // bun:sqlite may throw on an empty file; what matters is the normal flow
     // So just test the normal case with a brand-new path
     close();
-    rmSync(dbPath);
-    const db = openDb(dbPath);
+    rmSync(handle.dbPath);
+    const db = openDb(handle.dbPath);
     const row = db.query("PRAGMA user_version;").get() as { user_version: number };
     expect(row.user_version).toBe(3);
   });

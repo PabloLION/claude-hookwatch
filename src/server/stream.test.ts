@@ -9,33 +9,8 @@
  */
 
 import { afterEach, describe, expect, test } from "bun:test";
-import type { EventRow } from "@/db/queries.ts";
 import { broadcast, closeAll, handleStream } from "@/server/stream.ts";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Build a minimal EventRow for testing. */
-function makeRow(overrides: Partial<EventRow> = {}): EventRow {
-  return {
-    id: 1,
-    timestamp: 1700000000000,
-    event: "SessionStart",
-    session_id: "sess-test-001",
-    cwd: "/tmp",
-    tool_name: null,
-    session_name: null,
-    hook_duration_ms: null,
-    stdin: "{}",
-    wrapped_command: null,
-    stdout: null,
-    stderr: null,
-    exit_code: 0,
-    hookwatch_log: null,
-    ...overrides,
-  };
-}
+import { makeEventRow } from "@/test/index.ts";
 
 /** Open a real SSE connection to the handleStream handler and return the
  *  stream reader so test code can pull chunks from it. */
@@ -79,7 +54,7 @@ describe("handleStream", () => {
 describe("broadcast", () => {
   test("delivers SSE data message to a connected client", async () => {
     const reader = openSseStream();
-    const row = makeRow({ id: 42 });
+    const row = makeEventRow({ id: 42 });
 
     broadcast(row);
 
@@ -103,7 +78,7 @@ describe("broadcast", () => {
   test("delivers to all connected clients simultaneously", async () => {
     const reader1 = openSseStream();
     const reader2 = openSseStream();
-    const row = makeRow({ id: 7 });
+    const row = makeEventRow({ id: 7 });
 
     broadcast(row);
 
@@ -132,7 +107,7 @@ describe("broadcast", () => {
     const healthyReader = openSseStream();
 
     // Broadcast should not throw even with the dead client present
-    expect(() => broadcast(makeRow())).not.toThrow();
+    expect(() => broadcast(makeEventRow())).not.toThrow();
 
     // Healthy client still receives the message
     const { value, done } = await healthyReader.read();
