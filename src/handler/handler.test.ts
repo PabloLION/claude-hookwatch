@@ -24,14 +24,12 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { TestServer } from "@/test";
 import {
   assertExitLegality,
   BASE_SESSION_START,
+  createHandlerTestContext,
   runHandler,
-  startTestServer,
   writeInvalidPortFile,
   writePortFile,
 } from "@/test";
@@ -39,8 +37,6 @@ import {
 // ---------------------------------------------------------------------------
 // Shared test fixtures
 // ---------------------------------------------------------------------------
-
-const TMP_DIR = join(tmpdir(), `hookwatch-handler-test-${Date.now()}`);
 
 const UNKNOWN_EVENT = {
   session_id: "test-session-002",
@@ -51,15 +47,14 @@ const UNKNOWN_EVENT = {
   extra_field: "preserved",
 };
 
-let server: TestServer;
+const ctx = createHandlerTestContext("hookwatch-handler-test-");
 
 beforeAll(() => {
-  mkdirSync(TMP_DIR, { recursive: true });
-  server = startTestServer();
+  ctx.setup();
 });
 
 afterAll(async () => {
-  server.stop();
+  ctx.cleanup();
   // Kill any server processes spawned by auto-start tests on the hookwatch
   // default port (6004). Best-effort — ignore errors.
   try {
@@ -82,8 +77,7 @@ afterAll(async () => {
 });
 
 afterEach(() => {
-  server.events.length = 0;
-  server.nextStatus = 201;
+  ctx.reset();
 });
 
 // ---------------------------------------------------------------------------
@@ -92,8 +86,8 @@ afterEach(() => {
 
 describe("port file", () => {
   test("uses port from file when present", async () => {
-    const xdgHome = join(TMP_DIR, "port-present");
-    writePortFile(xdgHome, server.port);
+    const xdgHome = join(ctx.tmpDir, "port-present");
+    writePortFile(xdgHome, ctx.server.port);
 
     const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
       XDG_DATA_HOME: xdgHome,
@@ -101,11 +95,11 @@ describe("port file", () => {
 
     assertExitLegality(result, "port-present");
     expect(result.exitCode).toBe(0);
-    expect(server.events).toHaveLength(1);
+    expect(ctx.server.events).toHaveLength(1);
   });
 
   test("falls back to port 6004 when file is absent, then auto-starts server", async () => {
-    const xdgHome = join(TMP_DIR, "port-absent");
+    const xdgHome = join(ctx.tmpDir, "port-absent");
     mkdirSync(xdgHome, { recursive: true });
     // No port file written — handler falls back to 6004, gets ECONNREFUSED,
     // then auto-starts the server. The spawned server inherits XDG_DATA_HOME
@@ -123,7 +117,7 @@ describe("port file", () => {
   }, 10000);
 
   test("ignores invalid port file content and uses fallback, then auto-starts server", async () => {
-    const xdgHome = join(TMP_DIR, "port-invalid");
+    const xdgHome = join(ctx.tmpDir, "port-invalid");
     writeInvalidPortFile(xdgHome, "not-a-number");
 
     const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
@@ -146,8 +140,8 @@ describe("port file", () => {
 
 describe("stdin parsing", () => {
   test("valid JSON stdin is parsed and forwarded", async () => {
-    const xdgHome = join(TMP_DIR, "stdin-valid");
-    writePortFile(xdgHome, server.port);
+    const xdgHome = join(ctx.tmpDir, "stdin-valid");
+    writePortFile(xdgHome, ctx.server.port);
 
     const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
       XDG_DATA_HOME: xdgHome,
@@ -155,15 +149,15 @@ describe("stdin parsing", () => {
 
     assertExitLegality(result, "stdin-valid");
     expect(result.exitCode).toBe(0);
-    expect(server.events).toHaveLength(1);
-    const body = server.events[0]?.body as Record<string, unknown>;
+    expect(ctx.server.events).toHaveLength(1);
+    const body = ctx.server.events[0]?.body as Record<string, unknown>;
     expect(body?.hook_event_name).toBe("SessionStart");
     expect(body?.session_id).toBe("test-session-001");
   });
 
   test("invalid JSON stdin causes exit 2 with JSON error in stdout", async () => {
-    const xdgHome = join(TMP_DIR, "stdin-invalid");
-    writePortFile(xdgHome, server.port);
+    const xdgHome = join(ctx.tmpDir, "stdin-invalid");
+    writePortFile(xdgHome, ctx.server.port);
 
     const result = await runHandler("{ this is not valid json", {
       XDG_DATA_HOME: xdgHome,
@@ -172,14 +166,14 @@ describe("stdin parsing", () => {
     assertExitLegality(result, "stdin-invalid");
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("[hookwatch]");
-    expect(server.events).toHaveLength(0);
+    expect(ctx.server.events).toHaveLength(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe("string");
   });
 
   test("empty stdin causes exit 2 with JSON error in stdout", async () => {
-    const xdgHome = join(TMP_DIR, "stdin-empty");
-    writePortFile(xdgHome, server.port);
+    const xdgHome = join(ctx.tmpDir, "stdin-empty");
+    writePortFile(xdgHome, ctx.server.port);
 
     const result = await runHandler("", {
       XDG_DATA_HOME: xdgHome,
@@ -187,14 +181,14 @@ describe("stdin parsing", () => {
 
     assertExitLegality(result, "stdin-empty");
     expect(result.exitCode).toBe(2);
-    expect(server.events).toHaveLength(0);
+    expect(ctx.server.events).toHaveLength(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe("string");
   });
 
   test("invalid JSON produces exit 2 with hookwatch_fatal JSON in stdout", async () => {
-    const xdgHome = join(TMP_DIR, "stdout-invalid-json");
-    writePortFile(xdgHome, server.port);
+    const xdgHome = join(ctx.tmpDir, "stdout-invalid-json");
+    writePortFile(xdgHome, ctx.server.port);
 
     const result = await runHandler("not valid json at all", {
       XDG_DATA_HOME: xdgHome,
@@ -213,8 +207,8 @@ describe("stdin parsing", () => {
 
 describe("Zod validation", () => {
   test("known event type routes to correct schema and is forwarded", async () => {
-    const xdgHome = join(TMP_DIR, "zod-known");
-    writePortFile(xdgHome, server.port);
+    const xdgHome = join(ctx.tmpDir, "zod-known");
+    writePortFile(xdgHome, ctx.server.port);
 
     const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
       XDG_DATA_HOME: xdgHome,
@@ -222,14 +216,14 @@ describe("Zod validation", () => {
 
     assertExitLegality(result, "zod-known");
     expect(result.exitCode).toBe(0);
-    const body = server.events[0]?.body as Record<string, unknown>;
+    const body = ctx.server.events[0]?.body as Record<string, unknown>;
     expect(body?.source).toBe("startup");
     expect(body?.model).toBe("claude-sonnet-4-6");
   });
 
   test("missing required field causes exit 2 with JSON error in stdout", async () => {
-    const xdgHome = join(TMP_DIR, "zod-missing-field");
-    writePortFile(xdgHome, server.port);
+    const xdgHome = join(ctx.tmpDir, "zod-missing-field");
+    writePortFile(xdgHome, ctx.server.port);
 
     const payload = {
       // Missing session_id
@@ -248,14 +242,14 @@ describe("Zod validation", () => {
     assertExitLegality(result, "zod-missing-field");
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("[hookwatch]");
-    expect(server.events).toHaveLength(0);
+    expect(ctx.server.events).toHaveLength(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe("string");
   });
 
   test("invalid enum value for known event causes exit 2 with JSON error in stdout", async () => {
-    const xdgHome = join(TMP_DIR, "zod-bad-enum");
-    writePortFile(xdgHome, server.port);
+    const xdgHome = join(ctx.tmpDir, "zod-bad-enum");
+    writePortFile(xdgHome, ctx.server.port);
 
     const payload = {
       ...BASE_SESSION_START,
@@ -268,7 +262,7 @@ describe("Zod validation", () => {
 
     assertExitLegality(result, "zod-bad-enum");
     expect(result.exitCode).toBe(2);
-    expect(server.events).toHaveLength(0);
+    expect(ctx.server.events).toHaveLength(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe("string");
   });
@@ -280,8 +274,8 @@ describe("Zod validation", () => {
 
 describe("unknown event forwarding", () => {
   test("unknown hook_event_name passes through fallback schema and is forwarded", async () => {
-    const xdgHome = join(TMP_DIR, "unknown-event");
-    writePortFile(xdgHome, server.port);
+    const xdgHome = join(ctx.tmpDir, "unknown-event");
+    writePortFile(xdgHome, ctx.server.port);
 
     const result = await runHandler(JSON.stringify(UNKNOWN_EVENT), {
       XDG_DATA_HOME: xdgHome,
@@ -289,15 +283,15 @@ describe("unknown event forwarding", () => {
 
     assertExitLegality(result, "unknown-event");
     expect(result.exitCode).toBe(0);
-    expect(server.events).toHaveLength(1);
-    const body = server.events[0]?.body as Record<string, unknown>;
+    expect(ctx.server.events).toHaveLength(1);
+    const body = ctx.server.events[0]?.body as Record<string, unknown>;
     expect(body?.hook_event_name).toBe("FutureUnknownEvent");
     expect(body?.extra_field).toBe("preserved");
   });
 
   test("unknown event with missing common fields causes exit 2 with JSON error in stdout", async () => {
-    const xdgHome = join(TMP_DIR, "unknown-event-bad");
-    writePortFile(xdgHome, server.port);
+    const xdgHome = join(ctx.tmpDir, "unknown-event-bad");
+    writePortFile(xdgHome, ctx.server.port);
 
     const payload = {
       // Missing session_id, transcript_path, cwd, permission_mode
@@ -311,7 +305,7 @@ describe("unknown event forwarding", () => {
 
     assertExitLegality(result, "unknown-event-bad");
     expect(result.exitCode).toBe(2);
-    expect(server.events).toHaveLength(0);
+    expect(ctx.server.events).toHaveLength(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe("string");
   });
