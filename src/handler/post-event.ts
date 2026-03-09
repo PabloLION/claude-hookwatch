@@ -3,8 +3,6 @@
  *
  * Exports postEvent() — POSTs a hook event to the local server, auto-starting
  * it if not reachable.
- *
- * STDOUT SUPPRESSION: All logging goes to stderr — NEVER console.log().
  */
 
 import type { parseHookEvent } from "@/schemas/events.ts";

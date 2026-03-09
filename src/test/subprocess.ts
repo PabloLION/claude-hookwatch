@@ -88,7 +88,7 @@ const HANDLER_PATH = new URL("../handler/index.ts", import.meta.url).pathname;
  * Runs the hookwatch handler in bare mode (no wrapped command).
  *
  * Equivalent to the handler subprocess pattern in handler.test.ts and
- * handler-server.test.ts. Feeds stdinPayload as stdin and returns
+ * post-event.test.ts. Feeds stdinPayload as stdin and returns
  * exitCode, stdout, stderr.
  */
 export async function runHandler(

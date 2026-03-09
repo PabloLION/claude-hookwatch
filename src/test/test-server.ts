@@ -5,7 +5,7 @@
  * be programmed to return specific status codes. Used by handler.test.ts
  * and any other test that needs to verify what the handler POSTs.
  *
- * Extracted from src/handler/handler.test.ts lines 51-102.
+ * Extracted from src/handler/handler.test.ts (originally lines 51-102).
  */
 
 import { mkdirSync, writeFileSync } from "node:fs";

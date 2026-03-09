@@ -26,7 +26,8 @@
  *   and does not surface stderr. Exit 2 + JSON is strictly better.
  *
  * Error handling priority chain:
- *   Fatal (server unreachable / POST fails): exit 2 + JSON stdout. Always.
+ *   Fatal (server unreachable / POST fails): exit 2 + JSON stdout (bare mode).
+ *   Wrapped mode fatal: forward child exit code (best-effort — never exit 2).
  *   Non-fatal error (server OK, hookwatch internal issue): hookwatch_log in DB.
  *   Warn: event captured, hookwatch_log with [warn] prefix.
  *   Never mutate wrapped command exit code.
@@ -52,10 +53,10 @@ const SLOW_THRESHOLD_MS = 100;
  * Claude Code displays exit 2 + stdout JSON to the user, making the hookwatch
  * error visible. Never exits with code 1 (shows only a generic "hook error").
  *
- * This is the ONLY place where a non-child exit code is used. Wrapped mode
- * passes through the child exit code and calls this only for fatal errors before
- * the child has been spawned (i.e., when stdin parsing fails before spawn, or
- * when the server cannot be reached after the child exits).
+ * In bare mode this is the only non-zero exit path. In wrapped mode, exitFatal
+ * is NOT called after the child exits — the child exit code is forwarded instead
+ * (best-effort). exitFatal is only called in wrapped mode if an error occurs
+ * before the child is spawned (e.g. stdin read failure at the process level).
  */
 function exitFatal(message: string): never {
   const errorOutput = JSON.stringify({ hookwatch_fatal: message });
@@ -256,7 +257,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
  * Pass wrappedCommand to enable wrapped mode (child process is spawned and
  * its I/O is captured). Omit or pass undefined for bare mode.
  *
- * Exported for use by cli/index.ts (dynamic import) and tests.
+ * Exported for use by cli/index.ts (static import) and tests.
  */
 export async function runHandler(wrappedCommand?: string[]): Promise<void> {
   const wrapArgs = wrappedCommand && wrappedCommand.length > 0 ? wrappedCommand : null;
@@ -268,9 +269,9 @@ export async function runHandler(wrappedCommand?: string[]): Promise<void> {
 }
 
 // Auto-execute when run as the main module (e.g. via `bun src/handler/index.ts`).
-// Bun strips `--` from process.argv, so extra args appear directly as argv.slice(2):
-//   bun src/handler/index.ts             → bare mode (argv.slice(2) is empty)
-//   bun src/handler/index.ts -- sh -c …  → wrapped mode (bun strips --, argv.slice(2) = ["sh",…])
+// Extra args after the script path become argv.slice(2).
+//   bun src/handler/index.ts          → bare mode (argv.slice(2) is empty)
+//   bun src/handler/index.ts sh -c …  → wrapped mode (argv.slice(2) = ["sh",…])
 if (import.meta.main) {
   const trailingArgs = process.argv.slice(2);
   const wrapArgs = trailingArgs.length > 0 ? trailingArgs : undefined;

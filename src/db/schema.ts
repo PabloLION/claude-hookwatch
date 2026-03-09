@@ -13,7 +13,7 @@ export const CURRENT_VERSION = 3;
  * is preserved in the `stdin` column for forward compatibility.
  *
  * wrapped_command (nullable): NULL = bare handler event; non-NULL = the
- * wrapped command string (Story 3.1). Pre-release — no migration needed.
+ * wrapped command string (Story 3.1).
  *
  * stdout, stderr (nullable): only populated for wrapped events.
  * exit_code: NOT NULL DEFAULT 0 — Unix processes always exit 0-255.
