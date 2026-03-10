@@ -18,7 +18,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { close as closeDb } from "@/db/connection.ts";
 import { PortInUseError, startServer } from "@/server/index.ts";
-import { BASE_SESSION_START } from "@/test/index.ts";
+import { BASE_SESSION_START } from "@/test";
 import { VERSION } from "@/version.ts";
 
 // Use a temp in-memory DB path for tests to avoid polluting real data.

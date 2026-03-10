@@ -12,7 +12,13 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import type { HookEvent } from "@/schemas/events.ts";
-import { BASE_SESSION_START, createHandlerTestContext, runHandler, writePortFile } from "@/test";
+import {
+  BASE_SESSION_START,
+  createHandlerTestContext,
+  GENERIC_EVENT_BASE,
+  runHandler,
+  writePortFile,
+} from "@/test";
 import { buildSystemMessage, getEventSubtype } from "./context.ts";
 
 // ---------------------------------------------------------------------------
@@ -219,10 +225,7 @@ describe("systemMessage in hook stdout", () => {
     writePortFile(xdgHome, ctx.server.port);
 
     const preToolUseEvent = {
-      session_id: "test-session-001",
-      transcript_path: "/tmp/transcript.jsonl",
-      cwd: "/home/user/project",
-      permission_mode: "default",
+      ...GENERIC_EVENT_BASE,
       hook_event_name: "PreToolUse",
       tool_name: "Bash",
       tool_use_id: "toolu_01ABC123",
@@ -243,10 +246,7 @@ describe("systemMessage in hook stdout", () => {
     writePortFile(xdgHome, ctx.server.port);
 
     const stopEvent = {
-      session_id: "test-session-001",
-      transcript_path: "/tmp/transcript.jsonl",
-      cwd: "/home/user/project",
-      permission_mode: "default",
+      ...GENERIC_EVENT_BASE,
       hook_event_name: "Stop",
       stop_hook_active: false,
       last_assistant_message: "Done.",

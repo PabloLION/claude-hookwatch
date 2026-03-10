@@ -8,7 +8,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { closeTestDb, makeEvent, setupTestDb, type TestDbHandle } from "@/test/index.ts";
+import { closeTestDb, makeEvent, setupTestDb, type TestDbHandle } from "@/test";
 import type { openDb } from "./connection.ts";
 import { getDistinctSessions, insertEvent, queryEvents } from "./queries.ts";
 
