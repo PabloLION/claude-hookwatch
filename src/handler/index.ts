@@ -19,15 +19,20 @@
  * NEVER console.log().
  *
  * Exit codes:
- *   0 — success (event forwarded, hook output written to stdout)
- *   2 — fatal error (server unreachable, POST failed): JSON error to stdout
+ *   0 — always (hookwatch never exits non-zero in bare mode)
  *   In wrapped mode: child exit code is forwarded (pass-through)
  *   Never exits with code 1 — Claude Code shows generic "hook error" for exit 1
- *   and does not surface stderr. Exit 2 + JSON is strictly better.
+ *   and does not surface stderr.
+ *
+ * Fatal errors (server unreachable, POST fails, parse failure in bare mode):
+ *   exit 0 + JSON stdout with hookwatch_fatal + continue: true + systemMessage.
+ *   Claude Code only parses stdout JSON at exit 0 — exit 2 JSON is silently
+ *   ignored. Using exit 0 + systemMessage makes the error visible to the user
+ *   while never blocking Claude Code (passive observer principle).
  *
  * Error handling priority chain:
- *   Fatal (server unreachable / POST fails): exit 2 + JSON stdout (bare mode).
- *   Wrapped mode fatal: forward child exit code (best-effort — never exit 2).
+ *   Fatal (server unreachable / POST fails): exit 0 + JSON stdout (bare mode).
+ *   Wrapped mode fatal: forward child exit code (best-effort — never change it).
  *   Non-fatal error (server OK, hookwatch internal issue): hookwatch_log in DB.
  *   Warn: event captured, hookwatch_log with [warn] prefix.
  *   Never mutate wrapped command exit code.
@@ -44,24 +49,30 @@ import { runWrapped } from "./wrap.ts";
 const SLOW_THRESHOLD_MS = 100;
 
 // ---------------------------------------------------------------------------
-// Fatal error: exit 2 + JSON stdout
+// Fatal error: exit 0 + JSON stdout with hookwatch_fatal + systemMessage
 // ---------------------------------------------------------------------------
 
 /**
- * Writes a fatal error JSON to stdout and exits with code 2.
+ * Writes a fatal error JSON to stdout and exits with code 0.
  *
- * Claude Code displays exit 2 + stdout JSON to the user, making the hookwatch
- * error visible. Never exits with code 1 (shows only a generic "hook error").
+ * Claude Code only parses stdout JSON at exit 0 — at exit 2, stdout is
+ * silently ignored. By exiting 0 + JSON we make the hookwatch error visible
+ * to the user via systemMessage, while never blocking Claude Code (passive
+ * observer principle). continue: true ensures no pre/post tool use blocking.
  *
- * In bare mode this is the only non-zero exit path. In wrapped mode, exitFatal
- * is NOT called after the child exits — the child exit code is forwarded instead
- * (best-effort). exitFatal is only called in wrapped mode if an error occurs
- * before the child is spawned (e.g. stdin read failure at the process level).
+ * In bare mode this is always exit 0. In wrapped mode, exitFatal is NOT called
+ * after the child exits — the child exit code is forwarded instead (best-effort).
+ * exitFatal is only called in wrapped mode if an error occurs before the child
+ * is spawned (e.g. stdin read failure at the process level).
  */
 function exitFatal(message: string): never {
-  const errorOutput = JSON.stringify({ hookwatch_fatal: message });
+  const errorOutput = JSON.stringify({
+    hookwatch_fatal: message,
+    continue: true,
+    systemMessage: `[hookwatch fatal] ${message}`,
+  });
   process.stdout.write(errorOutput);
-  process.exit(2);
+  process.exit(0);
 }
 
 // ---------------------------------------------------------------------------
@@ -73,7 +84,7 @@ function exitFatal(message: string): never {
  * union schema. On any error, logs to stderr and terminates the process.
  *
  * The fallbackExitCode parameter controls error handling:
- *   - null (bare mode): calls exitFatal() → exit 2 + JSON stdout (fatal)
+ *   - null (bare mode): calls exitFatal() → exit 0 + JSON stdout (fatal)
  *   - non-null (wrapped mode): calls process.exit(fallbackExitCode) to forward
  *     the child's exit code even when event parsing fails (best-effort)
  *
@@ -130,7 +141,7 @@ function parseEventSafely(
  *   7. [Wrapped] Forward child exit code
  *
  * Error strategy:
- *   Fatal (server unreachable / POST fails): exitFatal() → exit 2 + JSON.
+ *   Fatal (server unreachable / POST fails): exitFatal() → exit 0 + JSON.
  *     In wrapped mode: best-effort — we still forward child code.
  *   Error (server OK, hookwatch internal issue): accumulate hookwatchLog.
  *   Normal: hookwatchLog null.
@@ -173,7 +184,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // parseEventSafely handles both try-catch blocks (JSON.parse + Zod validation).
   // In wrapped mode (fallbackExitCode = childExitCode): forwards child exit code
   // on parse failure (best-effort). In bare mode (fallbackExitCode = null):
-  // calls exitFatal() for a fatal error.
+  // calls exitFatal() → exit 0 + JSON stdout (fatal, non-blocking).
   const event = parseEventSafely(stdinJson, wrapArgs !== null ? childExitCode : null);
 
   // -------------------------------------------------------------------------
@@ -227,7 +238,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
       console.error("[hookwatch] Failed to POST wrapped event — continuing (best-effort)");
       process.exit(childExitCode);
     }
-    // Bare fatal: server unreachable — exit 2 + JSON, stdout stays empty before this
+    // Bare fatal: server unreachable — exit 0 + JSON, stdout stays empty before this
     exitFatal("Failed to POST event to server");
   }
 

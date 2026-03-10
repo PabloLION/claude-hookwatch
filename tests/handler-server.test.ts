@@ -178,7 +178,7 @@ describe("server already running", () => {
     }
   });
 
-  test("exits 2 with JSON error in stdout when server returns non-2xx", async () => {
+  test("exits 0 with hookwatch_fatal JSON in stdout when server returns non-2xx", async () => {
     const xdgHome = join(TMP_DIR, "server-error");
     mkdirSync(xdgHome, { recursive: true });
 
@@ -197,12 +197,16 @@ describe("server already running", () => {
         XDG_DATA_HOME: xdgHome,
       });
 
-      // P1 fatal: exit 2 + JSON with hookwatch_fatal field
-      expect(result.exitCode).toBe(2);
+      // Hookwatch fatal: exit 0 + JSON with hookwatch_fatal and systemMessage.
+      // Claude Code only parses stdout JSON at exit 0 — this makes the error
+      // visible via systemMessage without blocking Claude Code.
+      expect(result.exitCode).toBe(0);
       expect(result.stderr).toContain("500");
-      // stdout must contain JSON with hookwatch_fatal (not empty, not hook output)
+      // stdout must contain JSON with hookwatch_fatal + continue + systemMessage
       const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
       expect(typeof parsed.hookwatch_fatal).toBe("string");
+      expect(parsed.continue).toBe(true);
+      expect(typeof parsed.systemMessage).toBe("string");
     } finally {
       testServer.stop(true);
     }
@@ -252,7 +256,7 @@ describe("auto-start", () => {
     expect(result.stderr).toContain("[hookwatch]");
   }, 15000); // test timeout: 15s
 
-  test("exits 2 and reports error when health check times out", async () => {
+  test("exits 0 with hookwatch_fatal JSON when health check times out", async () => {
     const xdgHome = join(TMP_DIR, "auto-start-timeout");
     mkdirSync(xdgHome, { recursive: true });
 
@@ -282,7 +286,7 @@ describe("auto-start", () => {
     //
     // Strategy: we write port 9 → handler gets ECONNREFUSED → spawns server →
     // server starts on a different port → health probe reads port 9 (stale)
-    // and can't connect → times out → exit 2 + JSON.
+    // and can't connect → times out → exit 0 + JSON.
     //
     // This works because after spawn, the health probe reads the port file,
     // which still says 9 (the newly spawned server hasn't had time to overwrite
@@ -291,7 +295,7 @@ describe("auto-start", () => {
     // Simpler approach: test what the handler reports when spawnServer fails.
     // We can't easily make spawn fail without modifying code, so we test the
     // observable behavior: if no server starts (port 9 unreachable and any
-    // spawned server uses a different XDG path), the handler exits 2 with a
+    // spawned server uses a different XDG path), the handler exits 0 with a
     // hookwatch_fatal JSON in stdout.
 
     const result = await runHandlerWithTimeout(
@@ -305,14 +309,13 @@ describe("auto-start", () => {
 
     // Either the handler succeeds (if a real server started and answered on a
     // different port than 9 — unlikely since 9 is in the port file), or it
-    // fails with exit 2 + JSON. On P1 fatal failure, stdout contains hookwatch_fatal JSON.
-    if (result.exitCode === 2) {
-      const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
-      expect(typeof parsed.hookwatch_fatal).toBe("string");
-    } else if (result.exitCode !== 0) {
-      // Unexpected exit code — fail with diagnostic info
-      throw new Error(`Unexpected exit code ${result.exitCode}. Stdout: ${result.stdout}`);
-    }
+    // fails with exit 0 + hookwatch_fatal JSON. Hookwatch never exits non-zero
+    // in bare mode — Claude Code only parses stdout JSON at exit 0.
+    // On success OR failure, exit code is 0.
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    // Either success (continue: true, systemMessage) or fatal (hookwatch_fatal + continue: true)
+    expect(typeof parsed.continue).toBe("boolean");
 
     // Read the new port if the server started
     const port = readPortFile(xdgHome);
@@ -345,14 +348,11 @@ describe("hook output during auto-start", () => {
       usedPorts.push(port);
     }
 
-    if (result.exitCode === 0) {
-      // Success path: stdout must contain valid hook output JSON
-      const parsed = JSON.parse(result.stdout);
-      expect(parsed.continue).toBe(true);
-      expect(typeof parsed.systemMessage).toBe("string");
-    } else {
-      // Failure path (e.g. spawn failed): stdout must be empty
-      expect(result.stdout).toBe("");
-    }
+    // Hookwatch always exits 0 in bare mode. Success and fatal both produce
+    // JSON stdout with continue: boolean (and optionally hookwatch_fatal).
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.continue).toBe(true);
+    expect(typeof parsed.systemMessage).toBe("string");
   }, 15000);
 });

@@ -6,9 +6,9 @@
  * - Stdin parsing: valid JSON is parsed and forwarded
  * - Zod validation: known event → correct schema; unknown event → fallback schema
  * - Successful POST: event is forwarded and server receives it
- * - Error handling: invalid JSON and Zod failures cause exit 2 + JSON stdout
+ * - Error handling: invalid JSON and Zod failures cause exit 0 + JSON stdout with hookwatch_fatal
  * - Unknown event forwarding: unknown hook_event_name goes through fallback
- * - Exit legality: only exit 0 or exit 2 are valid; both have specific stdout contracts
+ * - Exit legality: exit 0 always (hookwatch never exits non-zero in bare mode)
  *
  * Strategy: run the handler as a child process via Bun.spawn(), feeding stdin
  * directly. This mirrors the real Claude Code hook invocation and avoids the
@@ -155,7 +155,7 @@ describe("stdin parsing", () => {
     expect(body?.session_id).toBe("test-session-001");
   });
 
-  test("invalid JSON stdin causes exit 2 with JSON error in stdout", async () => {
+  test("invalid JSON stdin causes exit 0 with hookwatch_fatal JSON in stdout", async () => {
     const xdgHome = join(ctx.tmpDir, "stdin-invalid");
     writePortFile(xdgHome, ctx.server.port);
 
@@ -164,14 +164,16 @@ describe("stdin parsing", () => {
     });
 
     assertExitLegality(result, "stdin-invalid");
-    expect(result.exitCode).toBe(2);
+    expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain("[hookwatch]");
     expect(ctx.server.events).toHaveLength(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe("string");
+    expect(parsed.continue).toBe(true);
+    expect(typeof parsed.systemMessage).toBe("string");
   });
 
-  test("empty stdin causes exit 2 with JSON error in stdout", async () => {
+  test("empty stdin causes exit 0 with hookwatch_fatal JSON in stdout", async () => {
     const xdgHome = join(ctx.tmpDir, "stdin-empty");
     writePortFile(xdgHome, ctx.server.port);
 
@@ -180,10 +182,12 @@ describe("stdin parsing", () => {
     });
 
     assertExitLegality(result, "stdin-empty");
-    expect(result.exitCode).toBe(2);
+    expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe("string");
+    expect(parsed.continue).toBe(true);
+    expect(typeof parsed.systemMessage).toBe("string");
   });
 });
 
@@ -207,7 +211,7 @@ describe("Zod validation", () => {
     expect(body?.model).toBe("claude-sonnet-4-6");
   });
 
-  test("missing required field causes exit 2 with JSON error in stdout", async () => {
+  test("missing required field causes exit 0 with hookwatch_fatal JSON in stdout", async () => {
     const xdgHome = join(ctx.tmpDir, "zod-missing-field");
     writePortFile(xdgHome, ctx.server.port);
 
@@ -226,14 +230,16 @@ describe("Zod validation", () => {
     });
 
     assertExitLegality(result, "zod-missing-field");
-    expect(result.exitCode).toBe(2);
+    expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain("[hookwatch]");
     expect(ctx.server.events).toHaveLength(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe("string");
+    expect(parsed.continue).toBe(true);
+    expect(typeof parsed.systemMessage).toBe("string");
   });
 
-  test("invalid enum value for known event causes exit 2 with JSON error in stdout", async () => {
+  test("invalid enum value for known event causes exit 0 with hookwatch_fatal JSON in stdout", async () => {
     const xdgHome = join(ctx.tmpDir, "zod-bad-enum");
     writePortFile(xdgHome, ctx.server.port);
 
@@ -247,10 +253,12 @@ describe("Zod validation", () => {
     });
 
     assertExitLegality(result, "zod-bad-enum");
-    expect(result.exitCode).toBe(2);
+    expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe("string");
+    expect(parsed.continue).toBe(true);
+    expect(typeof parsed.systemMessage).toBe("string");
   });
 });
 
@@ -275,7 +283,7 @@ describe("unknown event forwarding", () => {
     expect(body?.extra_field).toBe("preserved");
   });
 
-  test("unknown event with missing common fields causes exit 2 with JSON error in stdout", async () => {
+  test("unknown event with missing common fields causes exit 0 with hookwatch_fatal JSON in stdout", async () => {
     const xdgHome = join(ctx.tmpDir, "unknown-event-bad");
     writePortFile(xdgHome, ctx.server.port);
 
@@ -290,9 +298,11 @@ describe("unknown event forwarding", () => {
     });
 
     assertExitLegality(result, "unknown-event-bad");
-    expect(result.exitCode).toBe(2);
+    expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe("string");
+    expect(parsed.continue).toBe(true);
+    expect(typeof parsed.systemMessage).toBe("string");
   });
 });

@@ -11,12 +11,23 @@ import type { RunResult } from "./subprocess.ts";
 
 /**
  * Validates that a handler result obeys the exit code contract:
- *   - Exit code must be 0 or 2 (never 1 or other values)
- *   - Exit 0: stdout is either empty, valid hook JSON, or child-output prefix + hook JSON
- *     The hook JSON (if present) must have continue: boolean.
- *     In wrapped mode, child stdout precedes the hook JSON — the helper
- *     extracts the last JSON object from stdout before validating.
- *   - Exit 2: stdout must be valid JSON with a hookwatch_fatal field (fatal error)
+ *
+ * Bare mode (hookwatch itself):
+ *   - Always exits 0. Hookwatch never exits non-zero in bare mode.
+ *   - Exit 0 success: stdout is valid hook JSON with continue: boolean,
+ *     OR empty (if called very early before output was written).
+ *   - Exit 0 fatal (server unreachable, parse failure, etc.): stdout is JSON
+ *     with hookwatch_fatal: string AND continue: true.
+ *     Claude Code only parses stdout JSON at exit 0 — using exit 0 + systemMessage
+ *     makes errors visible without ever blocking Claude Code (passive observer).
+ *
+ * Wrapped mode (child pass-through):
+ *   - May exit with any code 0-255 (forwarding the child's exit code).
+ *   - Exit 0: stdout may contain child output prefix + hook JSON.
+ *   - Non-zero: stdout may contain child output only (hook JSON not written).
+ *
+ * In wrapped mode, child stdout precedes the hook JSON — the helper extracts
+ * the last JSON object from stdout before validating.
  *
  * Call this in every test that invokes runHandler() or runHandlerWrapped()
  * to enforce the contract globally.
@@ -24,10 +35,9 @@ import type { RunResult } from "./subprocess.ts";
 export function assertExitLegality(result: RunResult, context = ""): void {
   const tag = context ? ` [${context}]` : "";
 
-  // Exit code must be 0 or 2
-  expect(result.exitCode, `exit code must be 0 or 2${tag}`).toSatisfy(
-    (code: number | null) => code === 0 || code === 2,
-  );
+  // Exit code must be a valid unix value (0-255) — null means the process
+  // was killed without an exit code (only happens on unexpected SIGKILL).
+  expect(result.exitCode, `exit code must not be null${tag}`).not.toBeNull();
 
   if (result.exitCode === 0) {
     // Exit 0: stdout may be empty or contain hook JSON (optionally after child output)
@@ -57,17 +67,8 @@ export function assertExitLegality(result: RunResult, context = ""): void {
       const obj = parsed as Record<string, unknown>;
       expect(typeof obj.continue, `Exit 0 stdout.continue must be boolean${tag}`).toBe("boolean");
     }
-  } else if (result.exitCode === 2) {
-    // Exit 2: stdout must be valid JSON with hookwatch_fatal field
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(result.stdout);
-    } catch {
-      throw new Error(`Exit 2 stdout must be valid JSON${tag}. Got: ${result.stdout}`);
-    }
-    const obj = parsed as Record<string, unknown>;
-    expect(typeof obj.hookwatch_fatal, `Exit 2 stdout must have hookwatch_fatal string${tag}`).toBe(
-      "string",
-    );
   }
+  // Non-zero exit codes are valid in wrapped mode (child pass-through).
+  // No stdout contract enforced — child stdout may appear before any hook JSON,
+  // and if the server was unreachable the hook JSON was never written.
 }
