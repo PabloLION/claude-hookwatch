@@ -10,7 +10,7 @@
 
 import { afterEach, describe, expect, test } from "bun:test";
 import { broadcast, closeAll, handleStream } from "@/server/stream.ts";
-import { makeEventRow } from "@/test/index.ts";
+import { makeEventRow } from "@/test";
 
 /** Open a real SSE connection to the handleStream handler and return the
  *  stream reader so test code can pull chunks from it. */

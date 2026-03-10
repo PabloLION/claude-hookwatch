@@ -20,7 +20,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_PORT } from "@/paths.ts";
 import { startServer } from "@/server/index.ts";
-import { createTempXdgHome, type TempXdgHome } from "@/test/index.ts";
+import { createTempXdgHome, type TempXdgHome } from "@/test";
 import { isPortOccupied, isServerRunning, openBrowser, readPortFile } from "./ui.ts";
 
 // ---------------------------------------------------------------------------
