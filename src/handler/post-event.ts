@@ -33,8 +33,10 @@ export interface EventPostPayload {
  * Returns true if the error indicates the server is not reachable (connection
  * refused, network error, etc.) — these are the cases where we should attempt
  * to auto-start the server and retry.
+ *
+ * Exported for unit testing. Not part of the public module API.
  */
-function isConnectionError(err: unknown): boolean {
+export function isConnectionError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   // Bun surfaces connection refusals with code "ConnectionRefused" and a
   // message like "Unable to connect. Is the computer able to access the url?"
