@@ -16,8 +16,8 @@ let db: Database | null = null;
  *   5. Checks schema version:
  *      - version=0 (fresh): applies schema, stamps CURRENT_VERSION.
  *      - version=CURRENT_VERSION: nothing to do.
- *      - version mismatch: closes DB, renames file to <path>.bak, opens a
- *        fresh DB, applies schema. Logs warning to stderr.
+ *      - version mismatch: closes DB, renames file to <path>.v<old_version>,
+ *        opens a fresh DB, applies schema. Logs warning to stderr.
  */
 export function openDb(dbPath?: string): Database {
   if (db !== null) return db;
@@ -62,10 +62,11 @@ function openAndInit(path: string): Database {
   }
 
   // status === "mismatch": backup old DB, open fresh one
-  const backupPath = `${path}.bak`;
   const versionRow = conn.query("PRAGMA user_version;").get() as { user_version: number };
+  const oldVersion = versionRow.user_version;
+  const backupPath = `${path}.v${oldVersion}`;
   process.stderr.write(
-    `[hookwatch] WARNING: DB schema version ${versionRow.user_version} does not match expected ${CURRENT_VERSION}. ` +
+    `[hookwatch] WARNING: DB schema version ${oldVersion} does not match expected ${CURRENT_VERSION}. ` +
       `Backing up to ${backupPath} and creating fresh database.\n`,
   );
 
@@ -73,13 +74,22 @@ function openAndInit(path: string): Database {
   conn.exec("PRAGMA wal_checkpoint(TRUNCATE);");
   conn.close();
 
-  renameSync(path, backupPath);
+  try {
+    renameSync(path, backupPath);
 
-  // Open a brand-new database at the original path
-  conn = new Database(path);
-  chmodSync(path, 0o600);
-  conn.exec("PRAGMA journal_mode=wal;");
-  applyFreshSchema(conn);
+    // Open a brand-new database at the original path
+    conn = new Database(path);
+    chmodSync(path, 0o600);
+    conn.exec("PRAGMA journal_mode=wal;");
+    applyFreshSchema(conn);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    process.stderr.write(
+      `[hookwatch] ERROR: Failed to create new database after version mismatch backup. ` +
+        `Old data preserved at ${backupPath}. Error: ${message}\n`,
+    );
+    throw err;
+  }
 
   return conn;
 }
