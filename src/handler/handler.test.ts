@@ -30,6 +30,7 @@ import {
   BASE_SESSION_START,
   createHandlerTestContext,
   firstEventBody,
+  killProcessOnPort,
   runHandler,
   writePortFile,
 } from "@/test";
@@ -54,26 +55,10 @@ beforeAll(() => {
 });
 
 afterAll(async () => {
+  // Kill server processes BEFORE removing temp dirs — the spawned server may
+  // still reference files in the temp directory while it is running.
+  await killProcessOnPort();
   ctx.cleanup();
-  // Kill any server processes spawned by auto-start tests on the hookwatch
-  // default port (6004). Best-effort — ignore errors.
-  try {
-    const proc = Bun.spawn(["lsof", "-ti", "tcp:6004"], {
-      stdout: "pipe",
-      stderr: "ignore",
-    });
-    const output = await new Response(proc.stdout).text();
-    const pids = output.trim().split("\n").filter(Boolean);
-    for (const pid of pids) {
-      try {
-        process.kill(Number(pid), "SIGTERM");
-      } catch {
-        // Already gone
-      }
-    }
-  } catch {
-    // lsof may be unavailable or range may be unused
-  }
 });
 
 afterEach(() => {
