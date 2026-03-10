@@ -2,7 +2,7 @@
  * Tests for src/handler/post-event.ts
  *
  * Coverage:
- * - postEvent(): non-201 response from server causes exit 2 + hookwatch_fatal JSON
+ * - postEvent(): non-201 response from server causes exit 0 + hookwatch_fatal JSON
  * - postEvent(): server unavailable triggers auto-start (Story 1.5)
  * - postEvent(): connection error → spawn → health probe → retry succeeds
  * - postEvent(): server down in wrapped mode — child exit code still forwarded
@@ -71,7 +71,7 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("server non-2xx response", () => {
-  test("non-201 response causes exit 2 with hookwatch_fatal JSON in stdout", async () => {
+  test("non-201 response causes exit 0 with hookwatch_fatal JSON in stdout", async () => {
     const xdgHome = join(ctx.tmpDir, "server-error");
     writePortFile(xdgHome, ctx.server.port);
 
@@ -82,10 +82,12 @@ describe("server non-2xx response", () => {
     });
 
     assertExitLegality(result, "server-error");
-    expect(result.exitCode).toBe(2);
+    expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain("500");
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe("string");
+    expect(parsed.continue).toBe(true);
+    expect(typeof parsed.systemMessage).toBe("string");
   });
 
   test("non-201 response logs status to stderr", async () => {
@@ -101,7 +103,7 @@ describe("server non-2xx response", () => {
     expect(result.stderr).toContain("503");
   });
 
-  test("POST failure produces exit 2 with hookwatch_fatal JSON in stdout", async () => {
+  test("POST failure produces exit 0 with hookwatch_fatal JSON in stdout", async () => {
     const xdgHome = join(ctx.tmpDir, "stdout-post-failure");
     writePortFile(xdgHome, ctx.server.port);
 
@@ -112,9 +114,11 @@ describe("server non-2xx response", () => {
     });
 
     assertExitLegality(result, "stdout-post-failure");
-    expect(result.exitCode).toBe(2);
+    expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe("string");
+    expect(parsed.continue).toBe(true);
+    expect(typeof parsed.systemMessage).toBe("string");
   });
 });
 
