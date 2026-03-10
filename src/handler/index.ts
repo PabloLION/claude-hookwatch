@@ -292,9 +292,8 @@ export async function runHandler(wrappedCommand?: string[]): Promise<void> {
 if (import.meta.main) {
   const trailingArgs = process.argv.slice(2);
   const wrapArgs = trailingArgs.length > 0 ? trailingArgs : undefined;
-  runHandler(wrapArgs).catch((err) => {
-    const msg = errorMsg(err);
-    console.error(`[hookwatch] Unexpected error: ${msg}`);
-    exitFatal(`Unexpected error: ${msg}`);
-  });
+  // No .catch() here: runHandler() already has an inner .catch() that calls
+  // exitFatal() → process.exit(0), so the process terminates before any outer
+  // catch could fire. A second catch would be dead code.
+  runHandler(wrapArgs);
 }

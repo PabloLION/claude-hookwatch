@@ -130,6 +130,25 @@ describe("getEventSubtype", () => {
     const event = { hook_event_name: "WorktreeRemove" } as unknown as HookEvent;
     expect(getEventSubtype(event)).toBeNull();
   });
+
+  // Runtime guard tests: missing fields must return null, not "undefined"
+  test("SessionStart with missing source returns null, not 'undefined'", () => {
+    const event = { hook_event_name: "SessionStart" } as unknown as HookEvent;
+    expect(getEventSubtype(event)).toBeNull();
+  });
+
+  test("PreToolUse with missing tool_name returns null, not 'undefined'", () => {
+    const event = { hook_event_name: "PreToolUse" } as unknown as HookEvent;
+    expect(getEventSubtype(event)).toBeNull();
+  });
+
+  test("Notification with non-string notification_type returns null", () => {
+    const event = {
+      hook_event_name: "Notification",
+      notification_type: 42,
+    } as unknown as HookEvent;
+    expect(getEventSubtype(event)).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
