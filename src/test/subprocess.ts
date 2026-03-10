@@ -15,6 +15,7 @@
  */
 
 import { join } from "node:path";
+import { DEFAULT_PORT } from "@/paths.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,6 +43,45 @@ export interface RunnerOutput {
   wrapResult: WrapResult | null;
   /** Non-result stderr lines (child's tee'd stderr + any errors). */
   runnerStderr: string;
+}
+
+// ---------------------------------------------------------------------------
+// Process cleanup
+// ---------------------------------------------------------------------------
+
+/**
+ * Kills any server process listening on the given port.
+ * Best-effort: ignores errors (lsof unavailable, port already unused, etc.).
+ *
+ * Used in afterAll blocks to clean up auto-started hookwatch server processes
+ * that survive past individual tests. Always call this BEFORE removing temp
+ * directories so the server is not still referencing files being deleted.
+ *
+ * Default port is DEFAULT_PORT (6004).
+ * TODO: configurable via config.toml (ch-1ex5.1)
+ */
+export async function killProcessOnPort(port: number = DEFAULT_PORT): Promise<void> {
+  try {
+    const proc = Bun.spawn(["lsof", "-ti", `tcp:${port}`], {
+      stdout: "pipe",
+      stderr: "ignore",
+    });
+    const output = await new Response(proc.stdout).text();
+    const pids = output.trim().split("\n").filter(Boolean);
+    for (const pid of pids) {
+      try {
+        process.kill(Number(pid), "SIGTERM");
+      } catch {
+        // Process may already be gone
+      }
+    }
+    // Give the process a moment to terminate
+    if (pids.length > 0) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 200));
+    }
+  } catch {
+    // lsof may not be available or port may be unused
+  }
 }
 
 // ---------------------------------------------------------------------------
