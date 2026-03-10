@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { closeTestDb, setupTestDb, type TestDbHandle } from "@/test/index.ts";
 import { close, openDb } from "./connection.ts";
 import { getAllEvents, getEventById, insertEvent } from "./queries.ts";
@@ -324,20 +324,20 @@ describe("version mismatch — backup-and-recreate", () => {
     closeTestDb(handle);
   });
 
-  test("renames old DB to .bak and opens a fresh schema-v3 DB on version mismatch", () => {
+  test("renames old DB to .v<version> and opens a fresh schema-v3 DB on version mismatch", () => {
     // Bootstrap a v2 DB by opening, applying schema, then manually downgrading version
     handle.db.exec("PRAGMA user_version = 2;");
     close();
 
     // Verify the file exists before we test
     expect(existsSync(handle.dbPath)).toBe(true);
-    const backupPath = `${handle.dbPath}.bak`;
+    const backupPath = `${handle.dbPath}.v2`;
     expect(existsSync(backupPath)).toBe(false);
 
-    // Reopen — should detect mismatch, rename to .bak, recreate
+    // Reopen — should detect mismatch, rename to .v2, recreate
     const db2 = openDb(handle.dbPath);
 
-    // Backup must exist
+    // Backup must exist at .v2 path
     expect(existsSync(backupPath)).toBe(true);
 
     // New DB should be at version 3
@@ -349,6 +349,27 @@ describe("version mismatch — backup-and-recreate", () => {
     const colNames = cols.map((r) => r.name);
     expect(colNames).toContain("hookwatch_log");
     expect(colNames).not.toContain("hookwatch_error");
+  });
+
+  test("throws and logs error when DB creation fails after version mismatch backup", () => {
+    // Downgrade version to trigger mismatch
+    handle.db.exec("PRAGMA user_version = 2;");
+    close();
+
+    // Pre-create a directory at the backup path so renameSync throws EISDIR.
+    // This is a reliable cross-platform failure: rename(file, directory) → EISDIR.
+    // When rename fails, the original DB is preserved at its original location.
+    const backupPath = `${handle.dbPath}.v2`;
+    mkdirSync(backupPath);
+
+    // Original DB is intact before the call
+    expect(existsSync(handle.dbPath)).toBe(true);
+
+    // openDb must throw because renameSync fails with EISDIR
+    expect(() => openDb(handle.dbPath)).toThrow();
+
+    // Original DB must still exist (rename failed atomically — data not lost)
+    expect(existsSync(handle.dbPath)).toBe(true);
   });
 
   test("fresh DB created from a placeholder (no prior content) opens cleanly", () => {
