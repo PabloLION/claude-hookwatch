@@ -8,32 +8,42 @@
 import type { HookEvent } from "@/schemas/events.ts";
 
 /**
+ * Reads a string field from an unknown record. Returns null if the field is
+ * absent or not a string, preventing "undefined" from leaking into the output.
+ */
+function stringField(event: HookEvent, field: string): string | null {
+  const value = (event as Record<string, unknown>)[field];
+  return typeof value === "string" ? value : null;
+}
+
+/**
  * Extracts a subtype string from the event based on the event type.
- * Returns null for event types that have no meaningful subtype.
+ * Returns null for event types that have no meaningful subtype, or when the
+ * expected field is absent or not a string.
  */
 export function getEventSubtype(event: HookEvent): string | null {
   const name = event.hook_event_name;
   switch (name) {
     case "SessionStart":
-      return (event as { source: string }).source;
+      return stringField(event, "source");
     case "SessionEnd":
-      return (event as { reason: string }).reason;
+      return stringField(event, "reason");
     case "PreToolUse":
     case "PostToolUse":
     case "PostToolUseFailure":
     case "PermissionRequest":
-      return (event as { tool_name: string }).tool_name;
+      return stringField(event, "tool_name");
     case "Notification":
-      return (event as { notification_type: string }).notification_type;
+      return stringField(event, "notification_type");
     case "SubagentStart":
     case "SubagentStop":
-      return (event as { agent_type: string }).agent_type;
+      return stringField(event, "agent_type");
     case "PreCompact":
-      return (event as { trigger: string }).trigger;
+      return stringField(event, "trigger");
     case "ConfigChange":
-      return (event as { source: string }).source;
+      return stringField(event, "source");
     case "InstructionsLoaded":
-      return (event as { trigger: string }).trigger;
+      return stringField(event, "trigger");
     default:
       // Stop, UserPromptSubmit, TeammateIdle, TaskCompleted, WorktreeCreate,
       // WorktreeRemove — no subtype
