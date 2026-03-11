@@ -12,23 +12,44 @@ import { spawnServer } from "./spawn.ts";
 
 const FETCH_TIMEOUT_MS = 5000;
 
-/** Payload for postEvent — extends the base event with optional wrap metadata. */
-export interface EventPostPayload {
-  port: number;
+/** Common fields shared by both bare and wrapped event payloads. */
+interface BaseEventPayload {
   event: ReturnType<typeof parseHookEvent>;
-  /** Command string to store in wrapped_command column; null for bare mode. */
-  wrappedCommand: string | null;
-  /** Captured child stdout; null for bare mode. */
-  stdout: string | null;
-  /** Captured child stderr; null for bare mode. */
-  stderr: string | null;
-  /** Child exit code; 0 for bare mode. */
-  exitCode: number;
   /** Hookwatch processing overhead in ms (excludes child process wall time). */
   hookDurationMs: number | null;
   /** Accumulated non-fatal hookwatch log entries; null = no entries. */
   hookwatchLog: string | null;
 }
+
+/**
+ * Payload for bare mode: no child process was spawned.
+ * stdout stores the hook output JSON (what Claude Code sees).
+ * exit_code is always 0 (bare mode never exits non-zero).
+ */
+export interface BareEventPayload extends BaseEventPayload {
+  mode: "bare";
+  /** Hook output JSON written to stdout — what Claude Code sees. */
+  stdout: string;
+}
+
+/**
+ * Payload for wrapped mode: a child process was spawned and its I/O captured.
+ * exit_code reflects the child's actual exit code.
+ */
+export interface WrappedEventPayload extends BaseEventPayload {
+  mode: "wrapped";
+  /** Command string to store in wrapped_command column. */
+  wrappedCommand: string;
+  /** Captured child stdout. */
+  stdout: string;
+  /** Captured child stderr. */
+  stderr: string;
+  /** Child exit code (pass-through from wrapped command). */
+  exitCode: number;
+}
+
+/** Discriminated union for postEvent() payload — bare vs wrapped mode. */
+export type EventPostPayload = BareEventPayload | WrappedEventPayload;
 
 /**
  * Returns true if the error indicates the server is not reachable (connection
@@ -83,7 +104,35 @@ function checkVersionHeader(res: Response): string | undefined {
 }
 
 /**
+ * Builds the JSON body for the /api/events POST request from the typed payload.
+ * Port is transport-level — not included in the body.
+ */
+function buildRequestBody(opts: EventPostPayload): string {
+  const body: Record<string, unknown> = { ...opts.event };
+  if (opts.mode === "wrapped") {
+    body.wrapped_command = opts.wrappedCommand;
+    body.stdout = opts.stdout;
+    body.stderr = opts.stderr;
+    body.exit_code = opts.exitCode;
+  } else {
+    // Bare mode: stdout is the hook output JSON; exit_code is always 0
+    body.stdout = opts.stdout;
+    body.exit_code = 0;
+  }
+  if (opts.hookDurationMs !== null) {
+    body.hook_duration_ms = opts.hookDurationMs;
+  }
+  if (opts.hookwatchLog !== null) {
+    body.hookwatch_log = opts.hookwatchLog;
+  }
+  return JSON.stringify(body);
+}
+
+/**
  * POSTs the event to the server at the given port.
+ *
+ * Port is passed separately from the payload — it belongs to transport, not
+ * to the event data.
  *
  * If the server is not reachable, attempts to spawn it automatically, then
  * retries the POST with the discovered port.
@@ -95,29 +144,12 @@ function checkVersionHeader(res: Response): string | undefined {
  * When ok: true, versionMismatchLog may also be set if the server's version
  * differs from the handler's — caller should push it into logEntries.
  */
-export async function postEvent(opts: EventPostPayload): Promise<PostEventResult> {
-  const body: Record<string, unknown> = { ...opts.event };
-  if (opts.wrappedCommand !== null) {
-    body.wrapped_command = opts.wrappedCommand;
-  }
-  if (opts.stdout !== null) {
-    body.stdout = opts.stdout;
-  }
-  if (opts.stderr !== null) {
-    body.stderr = opts.stderr;
-  }
-  body.exit_code = opts.exitCode;
-  if (opts.hookDurationMs !== null) {
-    body.hook_duration_ms = opts.hookDurationMs;
-  }
-  if (opts.hookwatchLog !== null) {
-    body.hookwatch_log = opts.hookwatchLog;
-  }
-  const payload = JSON.stringify(body);
+export async function postEvent(port: number, opts: EventPostPayload): Promise<PostEventResult> {
+  const payload = buildRequestBody(opts);
 
   // First attempt
   try {
-    const res = await fetch(`http://127.0.0.1:${opts.port}/api/events`, {
+    const res = await fetch(`http://127.0.0.1:${port}/api/events`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: payload,
