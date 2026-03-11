@@ -2,7 +2,7 @@
  * hookwatch ui command.
  *
  * Checks if the server is running (reads port file). If not running, spawns
- * it using spawnServer() from src/handler/spawn.ts. Then opens the web UI
+ * it using spawnServer() from src/server-spawn.ts. Then opens the web UI
  * in the system browser.
  *
  * Platform detection:
@@ -18,8 +18,8 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { defineCommand } from "citty";
-import { spawnServer } from "@/handler/spawn.ts";
 import { DEFAULT_PORT, portFilePath } from "@/paths.ts";
+import { spawnServer } from "@/server-spawn.ts";
 
 const HEALTH_FETCH_TIMEOUT_MS = 1000;
 const PORT_PROBE_TIMEOUT_MS = 500;

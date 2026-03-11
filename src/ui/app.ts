@@ -13,8 +13,6 @@ import { SessionFilter } from "./sessions/session-filter.ts";
 import { html } from "./shared/html.ts";
 import { startSseClient } from "./shared/sse-client.ts";
 
-export type { EventRow };
-
 // Cross-component signal — owns the current event list
 // TODO: configurable via config.toml (ch-1ex5.1) — default query limit
 export const eventList = signal<EventRow[]>([]);
