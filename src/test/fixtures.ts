@@ -7,7 +7,7 @@
  *   - makeEvent(overrides): factory for EventRow-like DB insert params
  */
 
-import type { EventRow, InsertEventParams } from "@/db/queries.ts";
+import type { EventRow, InsertEventParams } from "@/types.ts";
 
 // ---------------------------------------------------------------------------
 // Hook input payloads (stdin to the handler)

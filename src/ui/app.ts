@@ -7,28 +7,13 @@
 
 import { signal } from "@preact/signals";
 import { render } from "preact";
+import type { EventRow } from "@/types.ts";
 import { EventList } from "./events/event-list.ts";
 import { SessionFilter } from "./sessions/session-filter.ts";
 import { html } from "./shared/html.ts";
 import { startSseClient } from "./shared/sse-client.ts";
 
-export interface EventRow {
-  id: number;
-  timestamp: number;
-  session_id: string;
-  event: string;
-  stdin: string;
-  stdout: string | null;
-  stderr: string | null;
-  /** NOT NULL DEFAULT 0 — Unix processes always exit 0-255. */
-  exit_code: number;
-  wrapped_command: string | null;
-  /**
-   * Hookwatch-internal diagnostics with severity prefix.
-   * Format: "[error] msg" or "[warn] msg". NULL = no issues.
-   */
-  hookwatch_log: string | null;
-}
+export type { EventRow };
 
 // Cross-component signal — owns the current event list
 // TODO: configurable via config.toml (ch-1ex5.1) — default query limit

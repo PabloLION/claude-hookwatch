@@ -24,16 +24,10 @@
  * (console.error / process.stderr.write) — NEVER console.log().
  */
 
+import type { WrapResult } from "@/types.ts";
 import { errorMsg } from "./errors.ts";
 
-/** Result returned by runWrapped() after the child process exits. */
-export interface WrapResult {
-  exitCode: number;
-  /** Raw stdin content (the Claude Code event JSON) — for the caller to parse. */
-  stdin: string;
-  stdout: string;
-  stderr: string;
-}
+export type { WrapResult };
 
 /**
  * Runs the given command as a child process with tee behaviour:

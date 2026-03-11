@@ -16,6 +16,9 @@
 
 import { join } from "node:path";
 import { DEFAULT_PORT } from "@/paths.ts";
+import type { WrapResult } from "@/types.ts";
+
+export type { WrapResult };
 
 // ---------------------------------------------------------------------------
 // Types
@@ -23,13 +26,6 @@ import { DEFAULT_PORT } from "@/paths.ts";
 
 export interface RunResult {
   exitCode: number | null;
-  stdout: string;
-  stderr: string;
-}
-
-export interface WrapResult {
-  exitCode: number;
-  stdin: string;
   stdout: string;
   stderr: string;
 }
