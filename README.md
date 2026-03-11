@@ -97,6 +97,28 @@ InstructionsLoaded is the 18th — present in the
 [Agent SDK types](https://platform.claude.com/docs/en/agent-sdk/typescript)
 (`@anthropic-ai/claude-agent-sdk`) but not yet in the hooks reference.
 
+## Known Limitations
+
+hookwatch is v0 software under active development. These are upstream behaviors,
+not hookwatch bugs.
+
+**Plugin system:** The Claude Code plugin system has known issues
+([#28540](https://github.com/anthropics/claude-code/issues/28540)) that may
+affect installation or operation. If `claude plugin install` fails, use the
+`--plugin-dir` flag instead:
+
+```sh
+claude --plugin-dir /path/to/claude-hookwatch
+```
+
+**Non-interactive mode:** SessionStart does not fire when Claude Code runs in
+non-interactive mode (`--print` flag, piped input, or SDK usage). hookwatch will
+miss session-start events from these invocations. This is upstream Claude Code
+behavior, confirmed with Claude Code 2.1.72.
+
+**Early development:** hookwatch is v0. Feedback and contributions are welcome
+— open an issue or PR.
+
 ## Querying
 
 SQL queries against the SQLite database:
