@@ -11,3 +11,4 @@ export * from "./handler-assertions.ts";
 export * from "./setup.ts";
 export * from "./subprocess.ts";
 export * from "./test-server.ts";
+export * from "./types.ts";

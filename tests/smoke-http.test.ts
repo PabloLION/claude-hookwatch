@@ -24,6 +24,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { ServerHandle } from "@/test";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -34,14 +35,6 @@ const SERVER_PATH = new URL("../src/server/index.ts", import.meta.url).pathname;
 // ---------------------------------------------------------------------------
 // Server lifecycle helpers
 // ---------------------------------------------------------------------------
-
-interface ServerHandle {
-  port: number;
-  xdgDataHome: string;
-  proc: ReturnType<typeof Bun.spawn>;
-  baseUrl: string;
-  stop: () => void;
-}
 
 function readPortFile(xdgDataHome: string): number | null {
   try {
@@ -67,7 +60,10 @@ async function waitForHealth(port: number, timeoutMs = 8000): Promise<boolean> {
   return false;
 }
 
-async function startServer(tmpBase: string, label: string): Promise<ServerHandle> {
+async function startServer(
+  tmpBase: string,
+  label: string,
+): Promise<ServerHandle<ReturnType<typeof Bun.spawn>>> {
   const xdgDataHome = join(tmpBase, label);
   mkdirSync(xdgDataHome, { recursive: true });
 
@@ -176,7 +172,7 @@ const PRE_TOOL_USE = {
 // ---------------------------------------------------------------------------
 
 const tmpRoot = join(tmpdir(), `hookwatch-smoke-http-${Date.now()}`);
-let server: ServerHandle;
+let server: ServerHandle<ReturnType<typeof Bun.spawn>>;
 
 beforeAll(async () => {
   mkdirSync(tmpRoot, { recursive: true });
