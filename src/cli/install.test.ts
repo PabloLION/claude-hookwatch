@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, it } from 'bun:test';
-import { EVENT_TYPES } from './events.ts';
+import { EVENT_TYPES, type EventType } from './events.ts';
 
 // ---------------------------------------------------------------------------
 // EVENT_TYPES sanity checks
@@ -27,11 +27,11 @@ describe('EVENT_TYPES', () => {
   });
 
   it('ends with WorktreeRemove (alphabetical order from EVENT_NAMES)', () => {
-    expect(EVENT_TYPES[EVENT_TYPES.length - 1]).toBe('WorktreeRemove');
+    expect(EVENT_TYPES.at(-1)).toBe('WorktreeRemove');
   });
 
   it('contains all documented event types', () => {
-    const expected = [
+    const expected: EventType[] = [
       'ConfigChange',
       'InstructionsLoaded',
       'Notification',
@@ -125,6 +125,7 @@ describe('buildHooksJson', () => {
     for (const eventType of EVENT_TYPES) {
       const entries = hooks[eventType];
       expect(entries).toHaveLength(1);
+      if (entries === undefined) continue;
       const inner = entries[0]?.hooks;
       expect(inner).toHaveLength(1);
       expect(inner?.[0]?.type).toBe('command');

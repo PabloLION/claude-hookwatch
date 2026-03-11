@@ -176,6 +176,16 @@ describe('isPortOccupied', () => {
 // openBrowser — platform dispatch (spy on Bun.spawn)
 // ---------------------------------------------------------------------------
 
+const TEST_UI_URL = 'http://localhost:6004';
+
+/** Minimal Bun.spawn mock: captures the cmd array, returns a resolved subprocess stub. */
+function makeSpawnMock(spawnedCommands: string[][]): typeof Bun.spawn {
+  return ((cmd: string[]) => {
+    spawnedCommands.push(cmd);
+    return { exited: Promise.resolve(0) } as ReturnType<typeof Bun.spawn>;
+  }) as unknown as typeof Bun.spawn;
+}
+
 describe('openBrowser', () => {
   it("calls 'open' on darwin", async () => {
     const originalPlatform = process.platform;
@@ -183,17 +193,13 @@ describe('openBrowser', () => {
     Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
 
     const spawnedCommands: string[][] = [];
-    const spawnSpy = spyOn(Bun, 'spawn').mockImplementation((cmd: string[]) => {
-      spawnedCommands.push(cmd);
-      // Return a minimal mock process
-      return { exited: Promise.resolve(0) } as ReturnType<typeof Bun.spawn>;
-    });
+    const spawnSpy = spyOn(Bun, 'spawn').mockImplementation(makeSpawnMock(spawnedCommands));
 
-    await openBrowser('http://localhost:6004');
+    await openBrowser(TEST_UI_URL);
 
     expect(spawnedCommands).toHaveLength(1);
     expect(spawnedCommands[0]?.[0]).toBe('open');
-    expect(spawnedCommands[0]?.[1]).toBe('http://localhost:6004');
+    expect(spawnedCommands[0]?.[1]).toBe(TEST_UI_URL);
 
     spawnSpy.mockRestore();
     Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
@@ -204,12 +210,9 @@ describe('openBrowser', () => {
     Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
 
     const spawnedCommands: string[][] = [];
-    const spawnSpy = spyOn(Bun, 'spawn').mockImplementation((cmd: string[]) => {
-      spawnedCommands.push(cmd);
-      return { exited: Promise.resolve(0) } as ReturnType<typeof Bun.spawn>;
-    });
+    const spawnSpy = spyOn(Bun, 'spawn').mockImplementation(makeSpawnMock(spawnedCommands));
 
-    await openBrowser('http://localhost:6004');
+    await openBrowser(TEST_UI_URL);
 
     expect(spawnedCommands).toHaveLength(1);
     expect(spawnedCommands[0]?.[0]).toBe('xdg-open');
@@ -223,13 +226,10 @@ describe('openBrowser', () => {
     Object.defineProperty(process, 'platform', { value: 'freebsd', configurable: true });
 
     const spawnedCommands: string[][] = [];
-    const spawnSpy = spyOn(Bun, 'spawn').mockImplementation((cmd: string[]) => {
-      spawnedCommands.push(cmd);
-      return { exited: Promise.resolve(0) } as ReturnType<typeof Bun.spawn>;
-    });
+    const spawnSpy = spyOn(Bun, 'spawn').mockImplementation(makeSpawnMock(spawnedCommands));
 
     // Should not throw, and should not spawn
-    await openBrowser('http://localhost:6004');
+    await openBrowser(TEST_UI_URL);
     expect(spawnedCommands).toHaveLength(0);
 
     spawnSpy.mockRestore();

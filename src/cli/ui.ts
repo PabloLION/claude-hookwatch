@@ -23,6 +23,8 @@ import { spawnServer } from '@/server-spawn.ts';
 
 const HEALTH_FETCH_TIMEOUT_MS = 1000;
 const PORT_PROBE_TIMEOUT_MS = 500;
+/** Maximum valid TCP port number. */
+const MAX_PORT = 65535;
 
 /**
  * Reads the port from the port file, or returns null if absent/invalid.
@@ -34,7 +36,7 @@ export function readPortFile(): number | null {
   try {
     const content = readFileSync(path, 'utf8').trim();
     const port = Number.parseInt(content, 10);
-    if (Number.isNaN(port) || port <= 0 || port > 65535) return null;
+    if (Number.isNaN(port) || port <= 0 || port > MAX_PORT) return null;
     return port;
   } catch {
     return null;
@@ -125,9 +127,9 @@ export const uiCommand = defineCommand({
 
     if (storedPort !== null && (await isServerRunning(storedPort))) {
       console.log(`Server already running on port ${storedPort}.`);
-      const url = `http://localhost:${storedPort}`;
-      console.log(`Opening ${url} ...`);
-      await openBrowser(url);
+      const existingUrl = `http://localhost:${storedPort}`;
+      console.log(`Opening ${existingUrl} ...`);
+      await openBrowser(existingUrl);
       return;
     }
 
