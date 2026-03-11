@@ -13,6 +13,7 @@
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { EVENT_NAMES } from "../src/types.ts";
 
 // Resolve package root (one level up from scripts/)
 const PACKAGE_ROOT = resolve(import.meta.dir, "..");
@@ -22,27 +23,8 @@ const pkgJson = (await Bun.file(join(PACKAGE_ROOT, "package.json")).json()) as {
   description: string;
 };
 
-/** All 18 PascalCase event types registered in hooks.json. */
-const EVENT_TYPES = [
-  "SessionStart",
-  "SessionEnd",
-  "UserPromptSubmit",
-  "PreToolUse",
-  "PostToolUse",
-  "PostToolUseFailure",
-  "PermissionRequest",
-  "Notification",
-  "SubagentStart",
-  "SubagentStop",
-  "Stop",
-  "TeammateIdle",
-  "TaskCompleted",
-  "InstructionsLoaded",
-  "ConfigChange",
-  "WorktreeCreate",
-  "WorktreeRemove",
-  "PreCompact",
-] as const;
+/** All PascalCase event types registered in hooks.json. Single source of truth: src/types.ts. */
+const EVENT_TYPES = EVENT_NAMES;
 
 /**
  * Writes a file, creating parent directories as needed.

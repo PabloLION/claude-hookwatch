@@ -1,41 +1,41 @@
 {
   "hooks": {
-    "SessionStart": [
+    "ConfigChange": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "hookwatch SessionStart"
+            "command": "hookwatch ConfigChange"
           }
         ]
       }
     ],
-    "SessionEnd": [
+    "InstructionsLoaded": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "hookwatch SessionEnd"
+            "command": "hookwatch InstructionsLoaded"
           }
         ]
       }
     ],
-    "UserPromptSubmit": [
+    "Notification": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "hookwatch UserPromptSubmit"
+            "command": "hookwatch Notification"
           }
         ]
       }
     ],
-    "PreToolUse": [
+    "PermissionRequest": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "hookwatch PreToolUse"
+            "command": "hookwatch PermissionRequest"
           }
         ]
       }
@@ -60,22 +60,52 @@
         ]
       }
     ],
-    "PermissionRequest": [
+    "PreCompact": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "hookwatch PermissionRequest"
+            "command": "hookwatch PreCompact"
           }
         ]
       }
     ],
-    "Notification": [
+    "PreToolUse": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "hookwatch Notification"
+            "command": "hookwatch PreToolUse"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hookwatch SessionEnd"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hookwatch SessionStart"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hookwatch Stop"
           }
         ]
       }
@@ -100,12 +130,12 @@
         ]
       }
     ],
-    "Stop": [
+    "TaskCompleted": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "hookwatch Stop"
+            "command": "hookwatch TaskCompleted"
           }
         ]
       }
@@ -120,32 +150,12 @@
         ]
       }
     ],
-    "TaskCompleted": [
+    "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "hookwatch TaskCompleted"
-          }
-        ]
-      }
-    ],
-    "InstructionsLoaded": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "hookwatch InstructionsLoaded"
-          }
-        ]
-      }
-    ],
-    "ConfigChange": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "hookwatch ConfigChange"
+            "command": "hookwatch UserPromptSubmit"
           }
         ]
       }
@@ -166,16 +176,6 @@
           {
             "type": "command",
             "command": "hookwatch WorktreeRemove"
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "hookwatch PreCompact"
           }
         ]
       }
