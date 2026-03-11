@@ -3,29 +3,15 @@
  *
  * Kept in a separate file so tests can import EVENT_TYPES without triggering
  * the citty runMain() call in index.ts.
+ *
+ * EVENT_TYPES is derived from EVENT_NAMES in src/types.ts — single source of
+ * truth. Adding a new event type requires editing only src/types.ts.
  */
 
-/** All 18 PascalCase event types that hookwatch handles. */
-export const EVENT_TYPES = [
-  "SessionStart",
-  "SessionEnd",
-  "UserPromptSubmit",
-  "PreToolUse",
-  "PostToolUse",
-  "PostToolUseFailure",
-  "PermissionRequest",
-  "Notification",
-  "SubagentStart",
-  "SubagentStop",
-  "Stop",
-  "TeammateIdle",
-  "TaskCompleted",
-  "InstructionsLoaded",
-  "ConfigChange",
-  "WorktreeCreate",
-  "WorktreeRemove",
-  "PreCompact",
-] as const;
+import { EVENT_NAMES } from "@/types.ts";
+
+/** All 18 PascalCase event types that hookwatch handles. Same set as EVENT_NAMES. */
+export const EVENT_TYPES = EVENT_NAMES;
 
 export type EventType = (typeof EVENT_TYPES)[number];
 

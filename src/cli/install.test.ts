@@ -22,34 +22,34 @@ describe("EVENT_TYPES", () => {
     expect(EVENT_TYPES).toHaveLength(18);
   });
 
-  it("starts with SessionStart", () => {
-    expect(EVENT_TYPES[0]).toBe("SessionStart");
+  it("starts with ConfigChange (alphabetical order from EVENT_NAMES)", () => {
+    expect(EVENT_TYPES[0]).toBe("ConfigChange");
   });
 
-  it("ends with PreCompact", () => {
-    expect(EVENT_TYPES[EVENT_TYPES.length - 1]).toBe("PreCompact");
+  it("ends with WorktreeRemove (alphabetical order from EVENT_NAMES)", () => {
+    expect(EVENT_TYPES[EVENT_TYPES.length - 1]).toBe("WorktreeRemove");
   });
 
   it("contains all documented event types", () => {
     const expected = [
-      "SessionStart",
-      "SessionEnd",
-      "UserPromptSubmit",
-      "PreToolUse",
+      "ConfigChange",
+      "InstructionsLoaded",
+      "Notification",
+      "PermissionRequest",
       "PostToolUse",
       "PostToolUseFailure",
-      "PermissionRequest",
-      "Notification",
+      "PreCompact",
+      "PreToolUse",
+      "SessionEnd",
+      "SessionStart",
+      "Stop",
       "SubagentStart",
       "SubagentStop",
-      "Stop",
-      "TeammateIdle",
       "TaskCompleted",
-      "InstructionsLoaded",
-      "ConfigChange",
+      "TeammateIdle",
+      "UserPromptSubmit",
       "WorktreeCreate",
       "WorktreeRemove",
-      "PreCompact",
     ];
     expect([...EVENT_TYPES]).toEqual(expected);
   });
