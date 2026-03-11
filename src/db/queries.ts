@@ -2,7 +2,7 @@ import type { Database } from 'bun:sqlite';
 import type { QueryFilter } from '@/schemas/query.ts';
 import type { EventRow, InsertEventParams } from '@/types.ts';
 
-export type { EventRow, InsertEventParams };
+export type { EventRow, InsertEventParams } from '@/types.ts';
 
 /**
  * Insert a new event row using a parameterized query.

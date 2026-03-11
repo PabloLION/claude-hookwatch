@@ -4,6 +4,9 @@ import { dirname } from 'node:path';
 import { dbPath as resolveDbPath } from '@/paths.ts';
 import { applyFreshSchema, CURRENT_VERSION, checkVersion } from './schema.ts';
 
+/** File permission mode: owner read+write only (no group/other access). */
+const DB_FILE_MODE = 0o600;
+
 let db: Database | null = null;
 
 /**
@@ -44,7 +47,7 @@ function openAndInit(path: string): Database {
 
   if (isNew) {
     // Set 0600 immediately after file creation
-    chmodSync(path, 0o600);
+    chmodSync(path, DB_FILE_MODE);
   }
 
   // Enable WAL mode on every connection open
@@ -79,7 +82,7 @@ function openAndInit(path: string): Database {
 
     // Open a brand-new database at the original path
     conn = new Database(path);
-    chmodSync(path, 0o600);
+    chmodSync(path, DB_FILE_MODE);
     conn.exec('PRAGMA journal_mode=wal;');
     applyFreshSchema(conn);
   } catch (err) {
