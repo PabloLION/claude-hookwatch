@@ -24,16 +24,19 @@
  *   Never exits with code 1 — Claude Code shows generic "hook error" for exit 1
  *   and does not surface stderr.
  *
- * Fatal errors (server unreachable, POST fails, parse failure in bare mode):
+ * Fatal errors (schema parse failure in bare mode):
  *   exit 0 + JSON stdout with hookwatch_fatal + continue: true + systemMessage.
  *   Claude Code only parses stdout JSON at exit 0 — exit 2 JSON is silently
  *   ignored. Using exit 0 + systemMessage makes the error visible to the user
  *   while never blocking Claude Code (passive observer principle).
  *
  * Error handling priority chain:
- *   Fatal (server unreachable / POST fails): exit 0 + JSON stdout (bare mode).
- *   Wrapped mode fatal: forward child exit code (best-effort — never change it).
- *   Non-fatal error (server OK, hookwatch internal issue): hookwatch_log in DB.
+ *   Fatal (stdin parse failure): exit 0 + JSON stdout with hookwatch_fatal.
+ *   POST failure (server unreachable / HTTP error): non-fatal — failure reason
+ *     appears in the systemMessage written to stdout. Claude Code is informed
+ *     but never blocked (passive observer principle).
+ *   Wrapped mode: forward child exit code (best-effort — never change it).
+ *   Non-fatal error (hookwatch internal issue): hookwatch_log in DB.
  *   Warn: event captured, hookwatch_log with [warn] prefix.
  *   Never mutate wrapped command exit code.
  */
@@ -43,6 +46,7 @@ import { parseHookEvent } from "@/schemas/events.ts";
 import { hookOutputSchema } from "@/schemas/output.ts";
 import { buildSystemMessage } from "./context.ts";
 import { errorMsg } from "./errors.ts";
+import type { PostEventResult } from "./post-event.ts";
 import { postEvent } from "./post-event.ts";
 import { runWrapped } from "./wrap.ts";
 
@@ -141,10 +145,11 @@ function parseEventSafely(
  *   7. [Wrapped] Forward child exit code
  *
  * Error strategy:
- *   Fatal (server unreachable / POST fails): exitFatal() → exit 0 + JSON.
- *     In wrapped mode: best-effort — we still forward child code.
- *   Error (server OK, hookwatch internal issue): accumulate hookwatchLog.
- *   Normal: hookwatchLog null.
+ *   Fatal (stdin parse failure): exitFatal() → exit 0 + JSON with hookwatch_fatal.
+ *   POST failure (server unreachable / HTTP error): non-fatal — failure reason
+ *     appended to logEntries and surfaced in the systemMessage written to stdout.
+ *   Error (hookwatch internal issue): accumulate in hookwatchLog for DB storage.
+ *   Normal: logEntries empty, hookwatchLog null.
  */
 async function handleHook(wrapArgs: string[] | null): Promise<void> {
   const wrappedCommand = wrapArgs !== null ? wrapArgs.join(" ") : null;
@@ -197,12 +202,15 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   }
 
   // -------------------------------------------------------------------------
-  // Build hook output JSON (before POST so we can store it as bare stdout)
+  // Build preliminary hook output JSON (for bare mode POST body storage)
   // -------------------------------------------------------------------------
 
-  let hookOutput: ReturnType<typeof hookOutputSchema.parse>;
+  // Build with the event's base systemMessage. This is the value stored in the
+  // DB as "stdout" (what Claude Code would see in the normal case). The final
+  // hook output written to stdout may differ if the POST fails — see Step 6.
+  let preliminaryHookOutput: ReturnType<typeof hookOutputSchema.parse>;
   try {
-    hookOutput = hookOutputSchema.parse({
+    preliminaryHookOutput = hookOutputSchema.parse({
       continue: true,
       systemMessage: buildSystemMessage(event),
     });
@@ -210,7 +218,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
     const msg = errorMsg(err);
     exitFatal(`Failed to build hook output JSON: ${msg}`);
   }
-  const hookOutputJson = JSON.stringify(hookOutput);
+  const preliminaryHookOutputJson = JSON.stringify(preliminaryHookOutput);
 
   // -------------------------------------------------------------------------
   // Step 5: POST event to server
@@ -219,32 +227,48 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   const elapsedMs = Date.now() - startMs;
   const hookwatchLog = logEntries.length > 0 ? logEntries.join("; ") : null;
 
-  const eventPosted = await postEvent({
+  const postResult: PostEventResult = await postEvent({
     port,
     event,
     wrappedCommand,
-    stdout: wrapArgs !== null ? childStdout : hookOutputJson,
+    stdout: wrapArgs !== null ? childStdout : preliminaryHookOutputJson,
     stderr: wrapArgs !== null ? childStderr : null,
     exitCode: wrapArgs !== null ? childExitCode : 0,
     hookDurationMs: elapsedMs,
     hookwatchLog,
   });
 
-  if (!eventPosted) {
+  if (!postResult.ok) {
+    // postEvent failures are non-fatal — record the reason so it appears in the
+    // systemMessage written to stdout, informing the user while never blocking
+    // Claude Code (passive observer principle).
+    const reason = postResult.failureReason ?? "Failed to POST event to server";
+    const detail = postResult.detail ? `: ${postResult.detail}` : "";
+    logEntries.push(`[error] ${reason}${detail}`);
+
     if (wrapArgs !== null) {
-      // Wrapped fatal: server unreachable after child exited — best-effort.
-      // Log the failure and continue to forward child exit code.
-      // The hook output JSON is NOT written (server couldn't record the event).
-      console.error("[hookwatch] Failed to POST wrapped event — continuing (best-effort)");
-      process.exit(childExitCode);
+      console.error(
+        `[hookwatch] Failed to POST wrapped event (${reason}) — continuing (best-effort)`,
+      );
     }
-    // Bare fatal: server unreachable — exit 0 + JSON, stdout stays empty before this
-    exitFatal("Failed to POST event to server");
   }
 
   // -------------------------------------------------------------------------
-  // Step 6: Write hook output JSON to stdout (context injection)
+  // Step 6: Build final hook output JSON and write to stdout (context injection)
   // -------------------------------------------------------------------------
+
+  // Rebuild with the final logEntries so any POST failure reason appears in
+  // systemMessage. If no failures occurred, logEntries matches the preliminary
+  // build and the result is identical.
+  let hookOutput: ReturnType<typeof hookOutputSchema.parse>;
+  try {
+    const systemMessage = buildSystemMessage(event, logEntries);
+    hookOutput = hookOutputSchema.parse({ continue: true, systemMessage });
+  } catch (err) {
+    const msg = errorMsg(err);
+    exitFatal(`Failed to build final hook output JSON: ${msg}`);
+  }
+  const hookOutputJson = JSON.stringify(hookOutput);
 
   // In wrapped mode, child stdout was already written by teeStream.
   // The hook JSON is appended after it.

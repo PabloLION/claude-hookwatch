@@ -54,15 +54,24 @@ export function isConnectionError(err: unknown): boolean {
   );
 }
 
+/** Result returned by postEvent(). */
+export interface PostEventResult {
+  ok: boolean;
+  failureReason?: string;
+  detail?: string;
+}
+
 /**
  * POSTs the event to the server at the given port.
  *
  * If the server is not reachable, attempts to spawn it automatically, then
  * retries the POST with the discovered port.
  *
- * Returns true on success, false on any unrecoverable error (fatal).
+ * Returns { ok: true } on success or { ok: false, failureReason, detail } on
+ * any unrecoverable error. Never throws. Failures are non-fatal — the caller
+ * stores failureReason in hookwatch_log and systemMessage and continues.
  */
-export async function postEvent(opts: EventPostPayload): Promise<boolean> {
+export async function postEvent(opts: EventPostPayload): Promise<PostEventResult> {
   const body: Record<string, unknown> = { ...opts.event };
   if (opts.wrappedCommand !== null) {
     body.wrapped_command = opts.wrappedCommand;
@@ -93,17 +102,19 @@ export async function postEvent(opts: EventPostPayload): Promise<boolean> {
 
     if (!res.ok) {
       const text = await res.text().catch(() => "(unreadable)");
-      console.error(`[hookwatch] Server returned ${res.status}: ${text}`);
-      return false;
+      const failureReason = `Server returned HTTP ${res.status}`;
+      console.error(`[hookwatch] ${failureReason}: ${text}`);
+      return { ok: false, failureReason, detail: text };
     }
 
-    return true;
+    return { ok: true };
   } catch (err) {
     if (!isConnectionError(err)) {
       // Non-connection error (e.g. timeout, abort) — don't attempt spawn
-      const msg = errorMsg(err);
-      console.error(`[hookwatch] Failed to POST event to server: ${msg}`);
-      return false;
+      const detail = errorMsg(err);
+      const failureReason = "Failed to POST event to server";
+      console.error(`[hookwatch] ${failureReason}: ${detail}`);
+      return { ok: false, failureReason, detail };
     }
   }
 
@@ -112,8 +123,9 @@ export async function postEvent(opts: EventPostPayload): Promise<boolean> {
   const spawnedPort = await spawnServer();
 
   if (spawnedPort === null) {
-    console.error("[hookwatch] Failed to start server — dropping event");
-    return false;
+    const failureReason = "Spawn failed — server did not start";
+    console.error(`[hookwatch] ${failureReason}`);
+    return { ok: false, failureReason };
   }
 
   // Retry POST with the port returned by the health check
@@ -127,14 +139,16 @@ export async function postEvent(opts: EventPostPayload): Promise<boolean> {
 
     if (!res.ok) {
       const text = await res.text().catch(() => "(unreadable)");
-      console.error(`[hookwatch] Server returned ${res.status} on retry: ${text}`);
-      return false;
+      const failureReason = `Retry exhausted — server returned HTTP ${res.status}`;
+      console.error(`[hookwatch] ${failureReason}: ${text}`);
+      return { ok: false, failureReason, detail: text };
     }
 
-    return true;
+    return { ok: true };
   } catch (err) {
-    const msg = errorMsg(err);
-    console.error(`[hookwatch] Failed to POST event to server after spawn: ${msg}`);
-    return false;
+    const detail = errorMsg(err);
+    const failureReason = "Retry exhausted — failed to POST event to server after spawn";
+    console.error(`[hookwatch] ${failureReason}: ${detail}`);
+    return { ok: false, failureReason, detail };
   }
 }
