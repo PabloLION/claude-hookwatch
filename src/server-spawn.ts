@@ -12,19 +12,19 @@
 
 import { mkdirSync, openSync } from "node:fs";
 import { dirname } from "node:path";
+import { errorMsg } from "@/handler/errors.ts";
 import { readPort, serverLogPath } from "@/paths.ts";
-import { errorMsg } from "./errors.ts";
 
 const HEALTH_POLL_INTERVAL_MS = 100;
 const HEALTH_MAX_ATTEMPTS = 20; // 20 * 100ms = 2s max
 const HEALTH_FETCH_TIMEOUT_MS = 500;
 
 /** Absolute path to the server entry point.
- * import.meta.url is file:///…/src/handler/spawn.ts
- * One level up (../): src/handler/ → src/
+ * import.meta.url is file:///…/src/server-spawn.ts
+ * Same directory (./): src/
  * Then server/index.ts → src/server/index.ts
  */
-const SERVER_ENTRY = new URL("../server/index.ts", import.meta.url).pathname;
+const SERVER_ENTRY = new URL("./server/index.ts", import.meta.url).pathname;
 
 /**
  * Waits for the server to respond to GET /health.

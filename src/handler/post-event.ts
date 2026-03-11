@@ -6,10 +6,10 @@
  */
 
 import type { parseHookEvent } from "@/schemas/events.ts";
+import type { SpawnResult } from "@/server-spawn.ts";
+import { spawnServer } from "@/server-spawn.ts";
 import { VERSION } from "@/version.ts";
 import { errorMsg } from "./errors.ts";
-import type { SpawnResult } from "./spawn.ts";
-import { spawnServer } from "./spawn.ts";
 
 const FETCH_TIMEOUT_MS = 5000;
 

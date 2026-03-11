@@ -16,7 +16,7 @@
  */
 
 import type { Signal } from "@preact/signals";
-import type { EventRow } from "../app.ts";
+import type { EventRow } from "@/types.ts";
 
 const SSE_ENDPOINT = "/api/events/stream";
 

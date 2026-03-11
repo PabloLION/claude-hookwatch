@@ -16,7 +16,7 @@
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
-import type { EventRow } from "../app.ts";
+import type { EventRow } from "@/types.ts";
 import { html } from "../shared/html.ts";
 
 interface WrapViewerProps {

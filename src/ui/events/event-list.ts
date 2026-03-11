@@ -18,7 +18,7 @@
 
 import type { Signal } from "@preact/signals";
 import { useEffect, useState } from "preact/hooks";
-import type { EventRow } from "../app.ts";
+import type { EventRow } from "@/types.ts";
 import { html } from "../shared/html.ts";
 import { EventDetail } from "./event-detail.ts";
 
