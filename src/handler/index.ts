@@ -46,7 +46,7 @@ import { parseHookEvent } from "@/schemas/events.ts";
 import { hookOutputSchema } from "@/schemas/output.ts";
 import { buildSystemMessage } from "./context.ts";
 import { errorMsg } from "./errors.ts";
-import type { PostEventResult } from "./post-event.ts";
+import type { EventPostPayload, PostEventResult } from "./post-event.ts";
 import { postEvent } from "./post-event.ts";
 import { runWrapped } from "./wrap.ts";
 
@@ -152,8 +152,6 @@ function parseEventSafely(
  *   Normal: logEntries empty, hookwatchLog null.
  */
 async function handleHook(wrapArgs: string[] | null): Promise<void> {
-  const wrappedCommand = wrapArgs !== null ? wrapArgs.join(" ") : null;
-
   // Accumulated non-fatal hookwatch log entries; joined with "; " if multiple
   const logEntries: string[] = [];
 
@@ -227,16 +225,26 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   const elapsedMs = Date.now() - startMs;
   const hookwatchLog = logEntries.length > 0 ? logEntries.join("; ") : null;
 
-  const postResult: PostEventResult = await postEvent({
-    port,
-    event,
-    wrappedCommand,
-    stdout: wrapArgs !== null ? childStdout : preliminaryHookOutputJson,
-    stderr: wrapArgs !== null ? childStderr : null,
-    exitCode: wrapArgs !== null ? childExitCode : 0,
-    hookDurationMs: elapsedMs,
-    hookwatchLog,
-  });
+  const postPayload: EventPostPayload =
+    wrapArgs !== null
+      ? {
+          mode: "wrapped",
+          event,
+          wrappedCommand: wrapArgs.join(" "),
+          stdout: childStdout as string,
+          stderr: childStderr as string,
+          exitCode: childExitCode,
+          hookDurationMs: elapsedMs,
+          hookwatchLog,
+        }
+      : {
+          mode: "bare",
+          event,
+          stdout: preliminaryHookOutputJson,
+          hookDurationMs: elapsedMs,
+          hookwatchLog,
+        };
+  const postResult: PostEventResult = await postEvent(port, postPayload);
 
   if (!postResult.ok) {
     // postEvent failures are non-fatal — record the reason so it appears in the
