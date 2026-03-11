@@ -6,8 +6,8 @@
  * Response body: { status: "ok", app: "hookwatch", version: "<semver>" }
  */
 
-import { VERSION } from "@/version.ts";
+import { VERSION } from '@/version.ts';
 
 export function handleHealth(_req: Request): Response {
-  return Response.json({ status: "ok", app: "hookwatch", version: VERSION }, { status: 200 });
+  return Response.json({ status: 'ok', app: 'hookwatch', version: VERSION }, { status: 200 });
 }

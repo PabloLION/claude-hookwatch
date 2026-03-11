@@ -11,13 +11,13 @@
  * Called automatically by the `generate` npm script.
  */
 
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { EVENT_NAMES } from "../src/types.ts";
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { EVENT_NAMES } from '../src/types.ts';
 
 // Resolve package root (one level up from scripts/)
-const PACKAGE_ROOT = resolve(import.meta.dir, "..");
-const pkgJson = (await Bun.file(join(PACKAGE_ROOT, "package.json")).json()) as {
+const PACKAGE_ROOT = resolve(import.meta.dir, '..');
+const pkgJson = (await Bun.file(join(PACKAGE_ROOT, 'package.json')).json()) as {
   name: string;
   version: string;
   description: string;
@@ -34,7 +34,7 @@ function writeFile(filePath: string, content: string): void {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
-  writeFileSync(filePath, content, "utf8");
+  writeFileSync(filePath, content, 'utf8');
   console.log(`Generated: ${filePath}`);
 }
 
@@ -46,11 +46,11 @@ const pluginJson = {
   name: pkgJson.name,
   version: pkgJson.version,
   description: pkgJson.description,
-  author: { name: "PabloLION" },
+  author: { name: 'PabloLION' },
 };
 
 writeFile(
-  join(PACKAGE_ROOT, ".claude-plugin", "plugin.json"),
+  join(PACKAGE_ROOT, '.claude-plugin', 'plugin.json'),
   `${JSON.stringify(pluginJson, null, 2)}\n`,
 );
 
@@ -65,7 +65,7 @@ for (const eventType of EVENT_TYPES) {
     {
       hooks: [
         {
-          type: "command",
+          type: 'command',
           command: `hookwatch ${eventType}`,
         },
       ],
@@ -75,6 +75,6 @@ for (const eventType of EVENT_TYPES) {
 
 const hooksJson = { hooks: hooksRecord };
 
-writeFile(join(PACKAGE_ROOT, "hooks", "hooks.json"), `${JSON.stringify(hooksJson, null, 2)}\n`);
+writeFile(join(PACKAGE_ROOT, 'hooks', 'hooks.json'), `${JSON.stringify(hooksJson, null, 2)}\n`);
 
-console.log("Plugin files generated successfully.");
+console.log('Plugin files generated successfully.');

@@ -10,10 +10,10 @@
  *   spawnServer() — also reused by cli/ui.ts (Story 2.5)
  */
 
-import { mkdirSync, openSync } from "node:fs";
-import { dirname } from "node:path";
-import { errorMsg } from "@/handler/errors.ts";
-import { readPort, serverLogPath } from "@/paths.ts";
+import { mkdirSync, openSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { errorMsg } from '@/handler/errors.ts';
+import { readPort, serverLogPath } from '@/paths.ts';
 
 const HEALTH_POLL_INTERVAL_MS = 100;
 const HEALTH_MAX_ATTEMPTS = 20; // 20 * 100ms = 2s max
@@ -24,7 +24,7 @@ const HEALTH_FETCH_TIMEOUT_MS = 500;
  * Same directory (./): src/
  * Then server/index.ts → src/server/index.ts
  */
-const SERVER_ENTRY = new URL("./server/index.ts", import.meta.url).pathname;
+const SERVER_ENTRY = new URL('./server/index.ts', import.meta.url).pathname;
 
 /**
  * Waits for the server to respond to GET /health.
@@ -66,7 +66,7 @@ async function waitForHealth(): Promise<number | null> {
  */
 export type SpawnResult =
   | { ok: true; port: number }
-  | { ok: false; failureKind: "spawn" | "retry" };
+  | { ok: false; failureKind: 'spawn' | 'retry' };
 
 /**
  * Spawns the hookwatch server as a detached background process.
@@ -92,7 +92,7 @@ export async function spawnServer(): Promise<SpawnResult> {
   // Open log file for append (create if absent)
   let logFd = -1;
   try {
-    logFd = openSync(logPath, "a");
+    logFd = openSync(logPath, 'a');
   } catch (err) {
     const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to open server log file ${logPath}: ${msg}`);
@@ -100,13 +100,13 @@ export async function spawnServer(): Promise<SpawnResult> {
   }
 
   // Build stdio target: use the fd if we opened it, otherwise inherit stderr
-  const stdioTarget = logFd >= 0 ? logFd : "inherit";
+  const stdioTarget = logFd >= 0 ? logFd : 'inherit';
 
   // Spawn the server detached so it outlives the handler process
   let child: ReturnType<typeof Bun.spawn>;
   try {
-    child = Bun.spawn(["bun", "--bun", SERVER_ENTRY], {
-      stdin: "ignore",
+    child = Bun.spawn(['bun', '--bun', SERVER_ENTRY], {
+      stdin: 'ignore',
       stdout: stdioTarget,
       stderr: stdioTarget,
       detached: true,
@@ -114,13 +114,13 @@ export async function spawnServer(): Promise<SpawnResult> {
   } catch (err) {
     const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to spawn server: ${msg}`);
-    return { ok: false, failureKind: "spawn" };
+    return { ok: false, failureKind: 'spawn' };
   }
 
   // Unref immediately — the handler must not wait for the server process
   child.unref();
 
-  console.error("[hookwatch] Server spawned, polling health endpoint...");
+  console.error('[hookwatch] Server spawned, polling health endpoint...');
 
   // Poll until the server is ready or timeout
   const port = await waitForHealth();
@@ -129,7 +129,7 @@ export async function spawnServer(): Promise<SpawnResult> {
     console.error(
       `[hookwatch] Server health check timed out after ${(HEALTH_MAX_ATTEMPTS * HEALTH_POLL_INTERVAL_MS) / 1000}s`,
     );
-    return { ok: false, failureKind: "retry" };
+    return { ok: false, failureKind: 'retry' };
   }
 
   console.error(`[hookwatch] Server ready on port ${port}`);

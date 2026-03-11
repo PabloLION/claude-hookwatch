@@ -20,38 +20,38 @@
  * Run with: bun run test:e2e
  */
 
-import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
-import type { ServerHandle } from "@/test";
+import { spawn } from 'node:child_process';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { type BrowserContext, chromium, expect, type Page, test } from '@playwright/test';
+import type { ServerHandle } from '@/test';
 
 // ---------------------------------------------------------------------------
 // Shared constants
 // ---------------------------------------------------------------------------
 
-const SERVER_PATH = new URL("../src/server/index.ts", import.meta.url).pathname;
+const SERVER_PATH = new URL('../src/server/index.ts', import.meta.url).pathname;
 
 const SESSION_START_EVENT = {
-  session_id: "detail-test-session-001",
-  transcript_path: "/tmp/transcript.jsonl",
-  cwd: "/home/user/project",
-  permission_mode: "default",
-  hook_event_name: "SessionStart",
-  source: "startup",
-  model: "claude-sonnet-4-6",
+  session_id: 'detail-test-session-001',
+  transcript_path: '/tmp/transcript.jsonl',
+  cwd: '/home/user/project',
+  permission_mode: 'default',
+  hook_event_name: 'SessionStart',
+  source: 'startup',
+  model: 'claude-sonnet-4-6',
 };
 
 const PRE_TOOL_USE_EVENT = {
-  session_id: "detail-test-session-002",
-  transcript_path: "/tmp/transcript.jsonl",
-  cwd: "/home/user/project",
-  permission_mode: "default",
-  hook_event_name: "PreToolUse",
-  tool_name: "Bash",
-  tool_use_id: "toolu_detail_test",
-  tool_input: { command: "echo hello", description: "greet the world" },
+  session_id: 'detail-test-session-002',
+  transcript_path: '/tmp/transcript.jsonl',
+  cwd: '/home/user/project',
+  permission_mode: 'default',
+  hook_event_name: 'PreToolUse',
+  tool_name: 'Bash',
+  tool_use_id: 'toolu_detail_test',
+  tool_input: { command: 'echo hello', description: 'greet the world' },
 };
 
 // ---------------------------------------------------------------------------
@@ -60,7 +60,7 @@ const PRE_TOOL_USE_EVENT = {
 
 function readPortFile(xdgDataHome: string): number | null {
   try {
-    const content = readFileSync(join(xdgDataHome, "hookwatch", "hookwatch.port"), "utf8").trim();
+    const content = readFileSync(join(xdgDataHome, 'hookwatch', 'hookwatch.port'), 'utf8').trim();
     const port = Number.parseInt(content, 10);
     return Number.isNaN(port) ? null : port;
   } catch {
@@ -86,9 +86,9 @@ async function startServer(tmpBase: string, label: string): Promise<ServerHandle
   const xdgDataHome = join(tmpBase, label);
   mkdirSync(xdgDataHome, { recursive: true });
 
-  const proc = spawn("bun", ["--bun", SERVER_PATH], {
+  const proc = spawn('bun', ['--bun', SERVER_PATH], {
     env: { ...process.env, XDG_DATA_HOME: xdgDataHome },
-    stdio: "pipe",
+    stdio: 'pipe',
     detached: false,
   });
 
@@ -113,7 +113,7 @@ async function startServer(tmpBase: string, label: string): Promise<ServerHandle
 
   const stop = (): void => {
     try {
-      proc.kill("SIGTERM");
+      proc.kill('SIGTERM');
     } catch {
       // Already dead
     }
@@ -129,8 +129,8 @@ async function startServer(tmpBase: string, label: string): Promise<ServerHandle
 
 async function seedEvent(baseUrl: string, payload: Record<string, unknown>): Promise<void> {
   const res = await fetch(`${baseUrl}/api/events`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (res.status !== 201) {
@@ -170,9 +170,9 @@ async function freshPage(): Promise<{ context: BrowserContext; page: Page }> {
 // ---------------------------------------------------------------------------
 
 test(
-  "clicking a row expands the detail view; clicking again collapses it",
+  'clicking a row expands the detail view; clicking again collapses it',
   async () => {
-    const server = await startServer(tmpRoot, "expand-collapse-test");
+    const server = await startServer(tmpRoot, 'expand-collapse-test');
     const { context, page } = await freshPage();
 
     try {
@@ -180,15 +180,15 @@ test(
       await page.goto(server.baseUrl);
 
       // Wait for the table to appear
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
       // The detail row should not be visible before clicking
-      const detailRow = page.locator("[data-detail-for]");
+      const detailRow = page.locator('[data-detail-for]');
       await expect(detailRow).not.toBeVisible();
 
       // Click the first row to expand it
-      const firstRow = page.locator("tbody tr").first();
+      const firstRow = page.locator('tbody tr').first();
       await firstRow.click();
 
       // The detail view should now be visible
@@ -212,31 +212,31 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "detail view shows the full payload as formatted JSON inside pre/code",
+  'detail view shows the full payload as formatted JSON inside pre/code',
   async () => {
-    const server = await startServer(tmpRoot, "json-format-test");
+    const server = await startServer(tmpRoot, 'json-format-test');
     const { context, page } = await freshPage();
 
     try {
       await seedEvent(server.baseUrl, SESSION_START_EVENT);
       await page.goto(server.baseUrl);
 
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
       // Expand the first row
-      await page.locator("tbody tr").first().click();
+      await page.locator('tbody tr').first().click();
 
       // The detail section should contain a <details> with <pre><code> payload
-      const detailContainer = page.locator("[data-detail-for] .event-detail");
+      const detailContainer = page.locator('[data-detail-for] .event-detail');
       await expect(detailContainer).toBeVisible({ timeout: 5000 });
 
-      const preCode = detailContainer.locator("details pre code");
+      const preCode = detailContainer.locator('details pre code');
       await expect(preCode).toBeVisible();
 
       // The JSON should contain the session_id from the seeded event
       const codeText = await preCode.textContent();
-      expect(codeText).toContain("detail-test-session-001");
+      expect(codeText).toContain('detail-test-session-001');
       // Formatted JSON should contain indented key-value pairs
       expect(codeText).toContain('"session_id"');
     } finally {
@@ -252,38 +252,38 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "tool-related event (PreToolUse) shows tool_name and tool_input in detail header",
+  'tool-related event (PreToolUse) shows tool_name and tool_input in detail header',
   async () => {
-    const server = await startServer(tmpRoot, "tool-info-test");
+    const server = await startServer(tmpRoot, 'tool-info-test');
     const { context, page } = await freshPage();
 
     try {
       await seedEvent(server.baseUrl, PRE_TOOL_USE_EVENT);
       await page.goto(server.baseUrl);
 
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
       // Click the PreToolUse row to expand it
-      await page.locator("tbody tr").first().click();
+      await page.locator('tbody tr').first().click();
 
-      const detailContainer = page.locator("[data-detail-for] .event-detail");
+      const detailContainer = page.locator('[data-detail-for] .event-detail');
       await expect(detailContainer).toBeVisible({ timeout: 5000 });
 
       // Should show a <dl> definition list with tool_name
-      const dl = detailContainer.locator("dl");
+      const dl = detailContainer.locator('dl');
       await expect(dl).toBeVisible();
 
       // The dl should contain "Tool name" and "Bash"
-      await expect(dl.locator("dt", { hasText: "Tool name" })).toBeVisible();
-      await expect(dl.locator("dd", { hasText: "Bash" })).toBeVisible();
+      await expect(dl.locator('dt', { hasText: 'Tool name' })).toBeVisible();
+      await expect(dl.locator('dd', { hasText: 'Bash' })).toBeVisible();
 
       // The dl should contain "Tool input" with the JSON-formatted tool_input
-      await expect(dl.locator("dt", { hasText: "Tool input" })).toBeVisible();
-      const toolInputCode = dl.locator("pre code");
+      await expect(dl.locator('dt', { hasText: 'Tool input' })).toBeVisible();
+      const toolInputCode = dl.locator('pre code');
       await expect(toolInputCode).toBeVisible();
       const toolInputText = await toolInputCode.textContent();
-      expect(toolInputText).toContain("echo hello");
+      expect(toolInputText).toContain('echo hello');
       expect(toolInputText).toContain('"command"');
     } finally {
       await context.close();
@@ -298,30 +298,30 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "non-tool event (SessionStart) does NOT show the tool info header",
+  'non-tool event (SessionStart) does NOT show the tool info header',
   async () => {
-    const server = await startServer(tmpRoot, "no-tool-header-test");
+    const server = await startServer(tmpRoot, 'no-tool-header-test');
     const { context, page } = await freshPage();
 
     try {
       await seedEvent(server.baseUrl, SESSION_START_EVENT);
       await page.goto(server.baseUrl);
 
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
       // Expand the SessionStart row
-      await page.locator("tbody tr").first().click();
+      await page.locator('tbody tr').first().click();
 
-      const detailContainer = page.locator("[data-detail-for] .event-detail");
+      const detailContainer = page.locator('[data-detail-for] .event-detail');
       await expect(detailContainer).toBeVisible({ timeout: 5000 });
 
       // The <dl> with tool info should NOT appear for SessionStart
-      const dl = detailContainer.locator("dl");
+      const dl = detailContainer.locator('dl');
       await expect(dl).not.toBeVisible();
 
       // But the payload <details> section should still appear
-      const details = detailContainer.locator("details");
+      const details = detailContainer.locator('details');
       await expect(details).toBeVisible();
     } finally {
       await context.close();
@@ -336,9 +336,9 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "multiple rows can be expanded simultaneously (not exclusive accordion)",
+  'multiple rows can be expanded simultaneously (not exclusive accordion)',
   async () => {
-    const server = await startServer(tmpRoot, "multi-expand-test");
+    const server = await startServer(tmpRoot, 'multi-expand-test');
     const { context, page } = await freshPage();
 
     try {
@@ -349,17 +349,17 @@ test(
 
       await page.goto(server.baseUrl);
 
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
-      await expect(page.locator("tbody tr[data-event-id]")).toHaveCount(2, { timeout: 10000 });
+      await expect(page.locator('tbody tr[data-event-id]')).toHaveCount(2, { timeout: 10000 });
 
       // Click the first event row
-      await page.locator("tbody tr[data-event-id]").nth(0).click();
+      await page.locator('tbody tr[data-event-id]').nth(0).click();
       // Click the second event row
-      await page.locator("tbody tr[data-event-id]").nth(1).click();
+      await page.locator('tbody tr[data-event-id]').nth(1).click();
 
       // Both detail rows should be visible at the same time
-      const detailRows = page.locator("[data-detail-for]");
+      const detailRows = page.locator('[data-detail-for]');
       await expect(detailRows).toHaveCount(2, { timeout: 5000 });
     } finally {
       await context.close();

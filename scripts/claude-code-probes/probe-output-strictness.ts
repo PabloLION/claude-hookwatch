@@ -32,13 +32,13 @@
  *   - Result file absent: hook never ran (Claude startup issue)
  */
 
-import { appendFileSync, existsSync, readFileSync, unlinkSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { appendFileSync, existsSync, readFileSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-const IS_WINDOWS = process.platform === "win32";
+const IS_WINDOWS = process.platform === 'win32';
 const OUT_DIR = tmpdir();
-const PREFIX = "hookwatch-probe-output-strictness";
+const PREFIX = 'hookwatch-probe-output-strictness';
 const REPORT_FILE = join(OUT_DIR, `${PREFIX}-report.txt`);
 const RESULT_FILE = join(OUT_DIR, `${PREFIX}-result.txt`);
 
@@ -63,7 +63,7 @@ function buildHookCommand(): string {
   const json = JSON.stringify({
     continue: true,
     suppressOutput: true,
-    hookwatch_version: "0.1.0",
+    hookwatch_version: '0.1.0',
     debug: true,
   });
 
@@ -95,7 +95,7 @@ async function runProbe(): Promise<ProbeResult> {
       {
         continue: true,
         suppressOutput: true,
-        hookwatch_version: "0.1.0",
+        hookwatch_version: '0.1.0',
         debug: true,
       },
       null,
@@ -105,7 +105,7 @@ async function runProbe(): Promise<ProbeResult> {
 
   const settings = JSON.stringify({
     hooks: {
-      SessionStart: [{ hooks: [{ type: "command", command: hookCommand }] }],
+      SessionStart: [{ hooks: [{ type: 'command', command: hookCommand }] }],
     },
   });
 
@@ -113,66 +113,66 @@ async function runProbe(): Promise<ProbeResult> {
   // stdout: "ignore" — we don't need claude's conversation output;
   // unread pipes can deadlock if buffer fills.
   const args = IS_WINDOWS
-    ? ["claude", "--print", "--settings", settings, "--dangerously-skip-permissions", "say hi"]
+    ? ['claude', '--print', '--settings', settings, '--dangerously-skip-permissions', 'say hi']
     : [
-        "env",
-        "-u",
-        "CLAUDECODE",
-        "claude",
-        "--print",
-        "--settings",
+        'env',
+        '-u',
+        'CLAUDECODE',
+        'claude',
+        '--print',
+        '--settings',
         settings,
-        "--dangerously-skip-permissions",
-        "say hi",
+        '--dangerously-skip-permissions',
+        'say hi',
       ];
 
   const env = IS_WINDOWS
-    ? Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== "CLAUDECODE"))
+    ? Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== 'CLAUDECODE'))
     : undefined;
 
-  log("Spawning claude...");
+  log('Spawning claude...');
   const proc = Bun.spawn(args, {
-    stdout: "ignore",
-    stderr: "ignore",
+    stdout: 'ignore',
+    stderr: 'ignore',
     ...(env ? { env } : {}),
   });
 
   const claudeExitCode = await proc.exited;
   const hookRan = existsSync(RESULT_FILE);
-  const resultContent = hookRan ? readFileSync(RESULT_FILE, "utf-8").trim() : null;
+  const resultContent = hookRan ? readFileSync(RESULT_FILE, 'utf-8').trim() : null;
 
   return { claudeExitCode, hookRan, resultContent };
 }
 
 function interpret(result: ProbeResult): void {
-  log("\n=== Interpretation ===\n");
+  log('\n=== Interpretation ===\n');
 
   if (!result.hookRan) {
-    log("INCONCLUSIVE: Hook did not run (result file absent).");
-    log("  Possible causes: Claude startup failed, API key missing,");
-    log("  or hook command itself errored before writing result.");
+    log('INCONCLUSIVE: Hook did not run (result file absent).');
+    log('  Possible causes: Claude startup failed, API key missing,');
+    log('  or hook command itself errored before writing result.');
     log(`  Claude exit code: ${result.claudeExitCode}`);
     return;
   }
 
   log(`Claude exit code: ${result.claudeExitCode}`);
-  log("Hook ran: yes");
+  log('Hook ran: yes');
   log(`Result file content: ${result.resultContent}`);
 
-  if (result.claudeExitCode === 0 && result.resultContent?.includes("success=true")) {
-    log("\nFINDING: Extra fields ACCEPTED by Claude Code.");
-    log("  The session completed successfully with extra fields in hook stdout.");
-    log("  .passthrough() in our output schemas is empirically confirmed safe.");
-    log("  Claude Code ignores unknown fields in hook stdout.");
+  if (result.claudeExitCode === 0 && result.resultContent?.includes('success=true')) {
+    log('\nFINDING: Extra fields ACCEPTED by Claude Code.');
+    log('  The session completed successfully with extra fields in hook stdout.');
+    log('  .passthrough() in our output schemas is empirically confirmed safe.');
+    log('  Claude Code ignores unknown fields in hook stdout.');
   } else if (result.claudeExitCode !== 0) {
-    log("\nFINDING: Claude exited non-zero — extra fields may be REJECTED.");
-    log("  Review stderr or Claude output for error details.");
-    log("  Consider switching output schemas from .passthrough() to default");
-    log("  z.object() (which strips extra fields before output).");
+    log('\nFINDING: Claude exited non-zero — extra fields may be REJECTED.');
+    log('  Review stderr or Claude output for error details.');
+    log('  Consider switching output schemas from .passthrough() to default');
+    log('  z.object() (which strips extra fields before output).');
   } else {
-    log("\nFINDING: Ambiguous — hook ran but Claude exit code is unexpected.");
+    log('\nFINDING: Ambiguous — hook ran but Claude exit code is unexpected.');
     log(`  Exit code: ${result.claudeExitCode}`);
-    log("  Manual review required.");
+    log('  Manual review required.');
   }
 }
 
@@ -180,39 +180,39 @@ async function main(): Promise<void> {
   if (existsSync(REPORT_FILE)) unlinkSync(REPORT_FILE);
   if (existsSync(RESULT_FILE)) unlinkSync(RESULT_FILE);
 
-  log("=== probe-output-strictness ===");
+  log('=== probe-output-strictness ===');
   log(`Platform: ${process.platform}`);
   log(`Temp dir: ${OUT_DIR}`);
-  log("Claude Code version: (will be determined by running claude --version)");
-  log("");
-  log("Question: Does Claude Code reject hook stdout with extra JSON fields?");
-  log("Extra fields tested: hookwatch_version, debug");
-  log("Standard fields included: continue (true), suppressOutput (true)");
-  log("");
+  log('Claude Code version: (will be determined by running claude --version)');
+  log('');
+  log('Question: Does Claude Code reject hook stdout with extra JSON fields?');
+  log('Extra fields tested: hookwatch_version, debug');
+  log('Standard fields included: continue (true), suppressOutput (true)');
+  log('');
 
   // Capture claude version separately for the report
-  const versionProc = Bun.spawn(["claude", "--version"], {
-    stdout: "pipe",
-    stderr: "ignore",
+  const versionProc = Bun.spawn(['claude', '--version'], {
+    stdout: 'pipe',
+    stderr: 'ignore',
   });
   const versionText = await new Response(versionProc.stdout).text();
   await versionProc.exited;
   log(`Claude version: ${versionText.trim()}`);
-  log("");
+  log('');
 
   let result: ProbeResult;
   try {
     result = await runProbe();
   } catch (err) {
     log(`ERROR running probe: ${err}`);
-    log("Cannot determine strictness — manual testing required.");
+    log('Cannot determine strictness — manual testing required.');
     log(`\nReport saved to: ${REPORT_FILE}`);
     return;
   }
 
   log(`\nclaude exit code: ${result.claudeExitCode}`);
   log(`hook ran (result file exists): ${result.hookRan}`);
-  log(`result file content: ${result.resultContent ?? "(absent)"}`);
+  log(`result file content: ${result.resultContent ?? '(absent)'}`);
 
   interpret(result);
 

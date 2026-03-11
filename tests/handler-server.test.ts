@@ -15,19 +15,19 @@
  * processes. Each test that triggers an auto-start may take up to 2s.
  */
 
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import type { RunResult } from "@/test";
-import { BASE_SESSION_START, writePortFile } from "@/test";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import type { RunResult } from '@/test';
+import { BASE_SESSION_START, writePortFile } from '@/test';
 
 // ---------------------------------------------------------------------------
 // Shared test fixtures
 // ---------------------------------------------------------------------------
 
 const TMP_DIR = join(tmpdir(), `hookwatch-handler-server-test-${Date.now()}`);
-const HANDLER_PATH = new URL("../src/handler/index.ts", import.meta.url).pathname;
+const HANDLER_PATH = new URL('../src/handler/index.ts', import.meta.url).pathname;
 
 /**
  * Runs the hookwatch handler with a subprocess kill guard.
@@ -40,10 +40,10 @@ async function runHandlerWithTimeout(
   env: Record<string, string> = {},
   timeoutMs = 8000,
 ): Promise<RunResult> {
-  const proc = Bun.spawn(["bun", "--bun", HANDLER_PATH], {
+  const proc = Bun.spawn(['bun', '--bun', HANDLER_PATH], {
     stdin: new TextEncoder().encode(stdinPayload),
-    stdout: "pipe",
-    stderr: "pipe",
+    stdout: 'pipe',
+    stderr: 'pipe',
     env: { ...process.env, ...env },
   });
 
@@ -69,7 +69,7 @@ async function runHandlerWithTimeout(
  */
 function readPortFile(xdgDataHome: string): number | null {
   try {
-    const content = readFileSync(join(xdgDataHome, "hookwatch", "hookwatch.port"), "utf8").trim();
+    const content = readFileSync(join(xdgDataHome, 'hookwatch', 'hookwatch.port'), 'utf8').trim();
     const port = Number.parseInt(content, 10);
     return Number.isNaN(port) ? null : port;
   } catch {
@@ -83,15 +83,15 @@ function readPortFile(xdgDataHome: string): number | null {
  */
 async function killServerOnPort(port: number): Promise<void> {
   try {
-    const proc = Bun.spawn(["lsof", "-ti", `tcp:${port}`], {
-      stdout: "pipe",
-      stderr: "ignore",
+    const proc = Bun.spawn(['lsof', '-ti', `tcp:${port}`], {
+      stdout: 'pipe',
+      stderr: 'ignore',
     });
     const output = await new Response(proc.stdout).text();
-    const pids = output.trim().split("\n").filter(Boolean);
+    const pids = output.trim().split('\n').filter(Boolean);
     for (const pid of pids) {
       try {
-        process.kill(Number(pid), "SIGTERM");
+        process.kill(Number(pid), 'SIGTERM');
       } catch {
         // Process may already be gone
       }
@@ -132,9 +132,9 @@ afterEach(async () => {
 // Server already running (no spawn needed)
 // ---------------------------------------------------------------------------
 
-describe("server already running", () => {
-  test("forwards event when server is already up", async () => {
-    const xdgHome = join(TMP_DIR, "already-running");
+describe('server already running', () => {
+  test('forwards event when server is already up', async () => {
+    const xdgHome = join(TMP_DIR, 'already-running');
     mkdirSync(xdgHome, { recursive: true });
 
     // Start a minimal test server to receive the event
@@ -142,18 +142,18 @@ describe("server already running", () => {
     const testServer = Bun.serve({
       port: 0,
       async fetch(req) {
-        if (req.method === "GET" && new URL(req.url).pathname === "/health") {
-          return new Response(JSON.stringify({ status: "ok" }), {
+        if (req.method === 'GET' && new URL(req.url).pathname === '/health') {
+          return new Response(JSON.stringify({ status: 'ok' }), {
             status: 200,
-            headers: { "Content-Type": "application/json" },
+            headers: { 'Content-Type': 'application/json' },
           });
         }
-        if (req.method === "POST" && new URL(req.url).pathname === "/api/events") {
+        if (req.method === 'POST' && new URL(req.url).pathname === '/api/events') {
           const body = await req.json().catch(() => null);
           receivedBodies.push(body);
           return new Response(JSON.stringify({ id: 1 }), { status: 201 });
         }
-        return new Response("not found", { status: 404 });
+        return new Response('not found', { status: 404 });
       },
     });
 
@@ -169,23 +169,23 @@ describe("server already running", () => {
       // stdout must be valid hook output JSON (context injection — Story 4.2)
       const parsed = JSON.parse(result.stdout);
       expect(parsed.continue).toBe(true);
-      expect(parsed.systemMessage).toBe("hookwatch captured SessionStart (startup)");
+      expect(parsed.systemMessage).toBe('hookwatch captured SessionStart (startup)');
       expect(receivedBodies).toHaveLength(1);
       const body = receivedBodies[0] as Record<string, unknown>;
-      expect(body?.hook_event_name).toBe("SessionStart");
+      expect(body?.hook_event_name).toBe('SessionStart');
     } finally {
       testServer.stop(true);
     }
   });
 
-  test("exits 0 with hook output JSON when server returns non-2xx (non-fatal)", async () => {
-    const xdgHome = join(TMP_DIR, "server-error");
+  test('exits 0 with hook output JSON when server returns non-2xx (non-fatal)', async () => {
+    const xdgHome = join(TMP_DIR, 'server-error');
     mkdirSync(xdgHome, { recursive: true });
 
     const testServer = Bun.serve({
       port: 0,
       fetch() {
-        return new Response("internal error", { status: 500 });
+        return new Response('internal error', { status: 500 });
       },
     });
 
@@ -201,14 +201,14 @@ describe("server already running", () => {
       // Failure reason appears in systemMessage so user is informed without
       // blocking Claude Code (passive observer principle).
       expect(result.exitCode).toBe(0);
-      expect(result.stderr).toContain("500");
+      expect(result.stderr).toContain('500');
       // stdout must contain hook output JSON with continue: true and systemMessage
       const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
       expect(parsed.hookwatch_fatal).toBeUndefined();
       expect(parsed.continue).toBe(true);
-      expect(typeof parsed.systemMessage).toBe("string");
+      expect(typeof parsed.systemMessage).toBe('string');
       // systemMessage must include the HTTP status for user visibility
-      expect(parsed.systemMessage as string).toContain("500");
+      expect(parsed.systemMessage as string).toContain('500');
     } finally {
       testServer.stop(true);
     }
@@ -219,10 +219,10 @@ describe("server already running", () => {
 // Auto-start: no server running → spawn → health probe → POST
 // ---------------------------------------------------------------------------
 
-describe("auto-start", () => {
-  test("spawns server when connection refused, then delivers event", async () => {
+describe('auto-start', () => {
+  test('spawns server when connection refused, then delivers event', async () => {
     // Use a unique XDG_DATA_HOME to isolate this test's database and port file
-    const xdgHome = join(TMP_DIR, "auto-start-spawn");
+    const xdgHome = join(TMP_DIR, 'auto-start-spawn');
     mkdirSync(xdgHome, { recursive: true });
 
     // Ensure no port file exists — handler will fall back to default and get
@@ -234,7 +234,7 @@ describe("auto-start", () => {
       {
         XDG_DATA_HOME: xdgHome,
         // XDG_CONFIG_HOME isolated to prevent reading user's real config
-        XDG_CONFIG_HOME: join(xdgHome, "config"),
+        XDG_CONFIG_HOME: join(xdgHome, 'config'),
       },
       10000, // allow up to 10s for this test (spawn + health + POST)
     );
@@ -244,7 +244,7 @@ describe("auto-start", () => {
     // stdout must contain valid hook output JSON (context injection — Story 4.2)
     const parsed = JSON.parse(result.stdout);
     expect(parsed.continue).toBe(true);
-    expect(typeof parsed.systemMessage).toBe("string");
+    expect(typeof parsed.systemMessage).toBe('string');
 
     // The server should have written a port file
     const port = readPortFile(xdgHome);
@@ -255,11 +255,11 @@ describe("auto-start", () => {
     }
 
     // Stderr should mention the spawn attempt
-    expect(result.stderr).toContain("[hookwatch]");
+    expect(result.stderr).toContain('[hookwatch]');
   }, 15000); // test timeout: 15s
 
-  test("exits 0 with hookwatch_fatal JSON when health check times out", async () => {
-    const xdgHome = join(TMP_DIR, "auto-start-timeout");
+  test('exits 0 with hookwatch_fatal JSON when health check times out', async () => {
+    const xdgHome = join(TMP_DIR, 'auto-start-timeout');
     mkdirSync(xdgHome, { recursive: true });
 
     // Point at a port where nothing is listening — any spawn attempt will
@@ -304,7 +304,7 @@ describe("auto-start", () => {
       JSON.stringify(BASE_SESSION_START),
       {
         XDG_DATA_HOME: xdgHome,
-        XDG_CONFIG_HOME: join(xdgHome, "config"),
+        XDG_CONFIG_HOME: join(xdgHome, 'config'),
       },
       12000, // allow enough time for the health timeout + any spawn
     );
@@ -317,7 +317,7 @@ describe("auto-start", () => {
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     // Either success (continue: true, systemMessage) or fatal (hookwatch_fatal + continue: true)
-    expect(typeof parsed.continue).toBe("boolean");
+    expect(typeof parsed.continue).toBe('boolean');
 
     // Read the new port if the server started
     const port = readPortFile(xdgHome);
@@ -331,16 +331,16 @@ describe("auto-start", () => {
 // Hook output during auto-start (Story 4.2)
 // ---------------------------------------------------------------------------
 
-describe("hook output during auto-start", () => {
-  test("valid JSON hook output written to stdout after auto-start success", async () => {
-    const xdgHome = join(TMP_DIR, "auto-start-stdout");
+describe('hook output during auto-start', () => {
+  test('valid JSON hook output written to stdout after auto-start success', async () => {
+    const xdgHome = join(TMP_DIR, 'auto-start-stdout');
     mkdirSync(xdgHome, { recursive: true });
 
     const result = await runHandlerWithTimeout(
       JSON.stringify(BASE_SESSION_START),
       {
         XDG_DATA_HOME: xdgHome,
-        XDG_CONFIG_HOME: join(xdgHome, "config"),
+        XDG_CONFIG_HOME: join(xdgHome, 'config'),
       },
       10000,
     );
@@ -355,6 +355,6 @@ describe("hook output during auto-start", () => {
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout);
     expect(parsed.continue).toBe(true);
-    expect(typeof parsed.systemMessage).toBe("string");
+    expect(typeof parsed.systemMessage).toBe('string');
   }, 15000);
 });

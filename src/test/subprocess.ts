@@ -14,9 +14,9 @@
  * common Bun.spawn pattern.
  */
 
-import { join } from "node:path";
-import { DEFAULT_PORT } from "@/paths.ts";
-import type { WrapResult } from "@/types.ts";
+import { join } from 'node:path';
+import { DEFAULT_PORT } from '@/paths.ts';
+import type { WrapResult } from '@/types.ts';
 
 export type { WrapResult };
 
@@ -58,15 +58,15 @@ export interface RunnerOutput {
  */
 export async function killProcessOnPort(port: number = DEFAULT_PORT): Promise<void> {
   try {
-    const proc = Bun.spawn(["lsof", "-ti", `tcp:${port}`], {
-      stdout: "pipe",
-      stderr: "ignore",
+    const proc = Bun.spawn(['lsof', '-ti', `tcp:${port}`], {
+      stdout: 'pipe',
+      stderr: 'ignore',
     });
     const output = await new Response(proc.stdout).text();
-    const pids = output.trim().split("\n").filter(Boolean);
+    const pids = output.trim().split('\n').filter(Boolean);
     for (const pid of pids) {
       try {
-        process.kill(Number(pid), "SIGTERM");
+        process.kill(Number(pid), 'SIGTERM');
       } catch {
         // Process may already be gone
       }
@@ -98,10 +98,10 @@ export async function runSubprocess(
   env: Record<string, string> = {},
   extraArgs: string[] = [],
 ): Promise<RunResult> {
-  const proc = Bun.spawn(["bun", "--bun", scriptPath, ...extraArgs], {
+  const proc = Bun.spawn(['bun', '--bun', scriptPath, ...extraArgs], {
     stdin: new TextEncoder().encode(stdinPayload),
-    stdout: "pipe",
-    stderr: "pipe",
+    stdout: 'pipe',
+    stderr: 'pipe',
     env: { ...process.env, ...env },
   });
 
@@ -118,7 +118,7 @@ export async function runSubprocess(
 // runHandler — bare mode
 // ---------------------------------------------------------------------------
 
-const HANDLER_PATH = new URL("../handler/index.ts", import.meta.url).pathname;
+const HANDLER_PATH = new URL('../handler/index.ts', import.meta.url).pathname;
 
 /**
  * Runs the hookwatch handler in bare mode (no wrapped command).
@@ -143,7 +143,7 @@ export async function runHandlerWrapped(
   wrapArgs: string[],
   env: Record<string, string> = {},
 ): Promise<RunResult> {
-  return runSubprocess(HANDLER_PATH, stdinPayload, env, ["--", ...wrapArgs]);
+  return runSubprocess(HANDLER_PATH, stdinPayload, env, ['--', ...wrapArgs]);
 }
 
 // ---------------------------------------------------------------------------
@@ -151,8 +151,8 @@ export async function runHandlerWrapped(
 // ---------------------------------------------------------------------------
 
 const WRAP_RUNNER_PATH = join(
-  new URL("../handler", import.meta.url).pathname,
-  "wrap-runner.fixture.ts",
+  new URL('../handler', import.meta.url).pathname,
+  'wrap-runner.fixture.ts',
 );
 
 /**
@@ -164,13 +164,13 @@ const WRAP_RUNNER_PATH = join(
  */
 export async function runWrapRunner(
   childCmd: string[],
-  stdinInput = "",
+  stdinInput = '',
   timeoutMs = 5000,
 ): Promise<RunnerOutput> {
-  const proc = Bun.spawn(["bun", "--bun", WRAP_RUNNER_PATH, ...childCmd], {
+  const proc = Bun.spawn(['bun', '--bun', WRAP_RUNNER_PATH, ...childCmd], {
     stdin: new TextEncoder().encode(stdinInput),
-    stdout: "pipe",
-    stderr: "pipe",
+    stdout: 'pipe',
+    stderr: 'pipe',
   });
 
   const timeoutHandle = setTimeout(() => proc.kill(), timeoutMs);
@@ -184,24 +184,24 @@ export async function runWrapRunner(
   clearTimeout(timeoutHandle);
 
   // Extract WRAP_RESULT line from stderr
-  const lines = stderrRaw.split("\n");
-  const resultLine = lines.find((l) => l.startsWith("WRAP_RESULT:"));
+  const lines = stderrRaw.split('\n');
+  const resultLine = lines.find((l) => l.startsWith('WRAP_RESULT:'));
   let wrapResult: WrapResult | null = null;
   if (resultLine) {
     try {
-      wrapResult = JSON.parse(resultLine.slice("WRAP_RESULT:".length)) as WrapResult;
+      wrapResult = JSON.parse(resultLine.slice('WRAP_RESULT:'.length)) as WrapResult;
     } catch (err) {
       console.error(
-        "[subprocess] WRAP_RESULT JSON parse failed. Raw line:",
+        '[subprocess] WRAP_RESULT JSON parse failed. Raw line:',
         resultLine,
-        "Error:",
+        'Error:',
         err,
       );
       // wrapResult stays null
     }
   }
 
-  const runnerStderr = lines.filter((l) => !l.startsWith("WRAP_RESULT:")).join("\n");
+  const runnerStderr = lines.filter((l) => !l.startsWith('WRAP_RESULT:')).join('\n');
 
   return { runnerExitCode, runnerStdout, wrapResult, runnerStderr };
 }

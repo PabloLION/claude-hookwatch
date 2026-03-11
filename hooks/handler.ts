@@ -8,4 +8,4 @@
  * The actual handler reads stdin, validates the event, and POSTs to the server.
  */
 
-import "../src/handler/index.ts";
+import '../src/handler/index.ts';

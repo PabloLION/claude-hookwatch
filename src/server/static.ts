@@ -13,22 +13,22 @@
  * text, never interpolates path values into HTML.
  */
 
-import { statSync } from "node:fs";
-import { resolve } from "node:path";
-import { errorResponse } from "@/server/errors.ts";
+import { statSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { errorResponse } from '@/server/errors.ts';
 
 // Resolve src/ui/ relative to this file's directory (src/server/ → ../ui/)
-const UI_DIR = resolve(import.meta.dir, "../ui");
+const UI_DIR = resolve(import.meta.dir, '../ui');
 
 const CONTENT_TYPES: Record<string, string> = {
-  ".html": "text/html; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".js": "application/javascript; charset=utf-8",
-  ".ts": "application/javascript; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml",
-  ".png": "image/png",
-  ".ico": "image/x-icon",
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'application/javascript; charset=utf-8',
+  '.ts': 'application/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
 };
 
 interface CacheEntry {
@@ -39,7 +39,7 @@ interface CacheEntry {
 // In-memory transpile cache — keyed by resolved file path
 const transpileCache = new Map<string, CacheEntry>();
 
-const transpiler = new Bun.Transpiler({ loader: "tsx" });
+const transpiler = new Bun.Transpiler({ loader: 'tsx' });
 
 /**
  * Resolve the URL pathname to a file path inside UI_DIR.
@@ -47,7 +47,7 @@ const transpiler = new Bun.Transpiler({ loader: "tsx" });
  */
 function resolveUiPath(pathname: string): string | null {
   // Strip leading slash so resolve() stays inside UI_DIR
-  const relative = pathname.replace(/^\//, "");
+  const relative = pathname.replace(/^\//, '');
   const resolved = resolve(UI_DIR, relative);
 
   // Guard: resolved path must remain inside UI_DIR
@@ -62,8 +62,8 @@ function resolveUiPath(pathname: string): string | null {
  * Derive the file extension from a path.
  */
 function extname(filePath: string): string {
-  const dot = filePath.lastIndexOf(".");
-  if (dot === -1) return "";
+  const dot = filePath.lastIndexOf('.');
+  if (dot === -1) return '';
   return filePath.slice(dot);
 }
 
@@ -73,11 +73,11 @@ function extname(filePath: string): string {
  */
 export async function handleStatic(pathname: string): Promise<Response> {
   // Default / to index.html
-  const normalised = pathname === "/" ? "/index.html" : pathname;
+  const normalised = pathname === '/' ? '/index.html' : pathname;
 
   const filePath = resolveUiPath(normalised);
   if (filePath === null) {
-    return errorResponse("NOT_FOUND", "Path not allowed", 404);
+    return errorResponse('NOT_FOUND', 'Path not allowed', 404);
   }
 
   // Check file existence
@@ -85,14 +85,14 @@ export async function handleStatic(pathname: string): Promise<Response> {
   try {
     stat = statSync(filePath);
   } catch {
-    return errorResponse("NOT_FOUND", `File not found: ${normalised}`, 404);
+    return errorResponse('NOT_FOUND', `File not found: ${normalised}`, 404);
   }
 
   const mtime = stat.mtimeMs;
   const ext = extname(filePath);
 
   // TypeScript files — transpile and cache
-  if (ext === ".ts" || ext === ".tsx") {
+  if (ext === '.ts' || ext === '.tsx') {
     const cached = transpileCache.get(filePath);
     let content: string;
 
@@ -107,16 +107,16 @@ export async function handleStatic(pathname: string): Promise<Response> {
 
     return new Response(content, {
       status: 200,
-      headers: { "Content-Type": "application/javascript; charset=utf-8" },
+      headers: { 'Content-Type': 'application/javascript; charset=utf-8' },
     });
   }
 
   // All other files — serve directly
-  const contentType = CONTENT_TYPES[ext] ?? "application/octet-stream";
+  const contentType = CONTENT_TYPES[ext] ?? 'application/octet-stream';
   const file = Bun.file(filePath);
   return new Response(file, {
     status: 200,
-    headers: { "Content-Type": contentType },
+    headers: { 'Content-Type': contentType },
   });
 }
 

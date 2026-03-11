@@ -5,7 +5,7 @@
  * Exported via @/test barrel (src/test/index.ts).
  */
 
-import type { ChildProcess } from "node:child_process";
+import type { ChildProcess } from 'node:child_process';
 
 /**
  * A handle to a running hookwatch server subprocess.

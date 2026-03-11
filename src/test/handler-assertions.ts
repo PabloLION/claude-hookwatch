@@ -18,8 +18,8 @@
  * - POST failures are non-fatal (ch-6k4y): bare mode still exits 0.
  */
 
-import { expect } from "bun:test";
-import type { RunResult } from "./subprocess.ts";
+import { expect } from 'bun:test';
+import type { RunResult } from './subprocess.ts';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -36,7 +36,7 @@ import type { RunResult } from "./subprocess.ts";
  * 'continue' boolean.
  */
 function validateHookOutputJson(stdout: string, tag: string): void {
-  if (stdout === "") return;
+  if (stdout === '') return;
 
   // Try full parse first; if that fails, extract the last '{...}' block
   // (handles wrapped mode where child stdout precedes hook JSON).
@@ -45,7 +45,7 @@ function validateHookOutputJson(stdout: string, tag: string): void {
   try {
     parsed = JSON.parse(stdout);
   } catch {
-    const lastBrace = stdout.lastIndexOf("{");
+    const lastBrace = stdout.lastIndexOf('{');
     if (lastBrace !== -1) {
       try {
         parsed = JSON.parse(stdout.slice(lastBrace));
@@ -60,7 +60,7 @@ function validateHookOutputJson(stdout: string, tag: string): void {
     throw new Error(`Exit 0 stdout must be valid JSON or empty${tag}. Got: ${parseError}`);
   }
   const obj = parsed as Record<string, unknown>;
-  expect(typeof obj.continue, `Exit 0 stdout.continue must be boolean${tag}`).toBe("boolean");
+  expect(typeof obj.continue, `Exit 0 stdout.continue must be boolean${tag}`).toBe('boolean');
 }
 
 // ---------------------------------------------------------------------------
@@ -85,8 +85,8 @@ function validateHookOutputJson(stdout: string, tag: string): void {
  * @param result - The RunResult from runHandler()
  * @param label  - Optional context label for assertion messages
  */
-export function assertBareExitLegality(result: RunResult, label = ""): void {
-  const tag = label ? ` [${label}]` : "";
+export function assertBareExitLegality(result: RunResult, label = ''): void {
+  const tag = label ? ` [${label}]` : '';
 
   expect(result.exitCode, `exit code must not be null${tag}`).not.toBeNull();
   expect(result.exitCode, `bare mode must always exit 0${tag}`).toBe(0);
@@ -114,8 +114,8 @@ export function assertBareExitLegality(result: RunResult, label = ""): void {
  * @param result - The RunResult from runHandlerWrapped()
  * @param label  - Optional context label for assertion messages
  */
-export function assertWrappedExitLegality(result: RunResult, label = ""): void {
-  const tag = label ? ` [${label}]` : "";
+export function assertWrappedExitLegality(result: RunResult, label = ''): void {
+  const tag = label ? ` [${label}]` : '';
 
   // Exit code must be a valid unix value (0-255) — null means the process
   // was killed without an exit code (only happens on unexpected SIGKILL).

@@ -1,4 +1,4 @@
-import type { Database } from "bun:sqlite";
+import type { Database } from 'bun:sqlite';
 
 /**
  * Current schema version. Increment when making breaking schema changes.
@@ -61,18 +61,18 @@ export const CREATE_INDEXES = `
  *               close the DB, rename the file, open a fresh DB, then call
  *               applyFreshSchema() on the new connection
  */
-export type VersionStatus = "ok" | "fresh" | "mismatch";
+export type VersionStatus = 'ok' | 'fresh' | 'mismatch';
 
 /**
  * Read user_version from an open database and classify it.
  * Does NOT modify the database.
  */
 export function checkVersion(db: Database): VersionStatus {
-  const row = db.query("PRAGMA user_version;").get() as { user_version: number };
+  const row = db.query('PRAGMA user_version;').get() as { user_version: number };
   const version = row.user_version;
-  if (version === CURRENT_VERSION) return "ok";
-  if (version === 0) return "fresh";
-  return "mismatch";
+  if (version === CURRENT_VERSION) return 'ok';
+  if (version === 0) return 'fresh';
+  return 'mismatch';
 }
 
 /**

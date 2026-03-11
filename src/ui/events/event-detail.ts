@@ -13,15 +13,15 @@
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
-import type { EventRow } from "@/types.ts";
-import { html } from "../shared/html.ts";
-import { WrapViewer } from "../wrap/wrap-viewer.ts";
+import type { EventRow } from '@/types.ts';
+import { html } from '../shared/html.ts';
+import { WrapViewer } from '../wrap/wrap-viewer.ts';
 
 /**
  * Event types that carry tool information and warrant the tool info header.
  * PermissionRequest is NOT included — it is not a tool-use event.
  */
-const TOOL_EVENT_TYPES = new Set(["PreToolUse", "PostToolUse", "PostToolUseFailure"]);
+const TOOL_EVENT_TYPES = new Set(['PreToolUse', 'PostToolUse', 'PostToolUseFailure']);
 
 /**
  * Check whether an event type is a tool-related event.
@@ -46,9 +46,9 @@ function parseStdin(stdinJson: string): unknown {
  * Returns null when the field is absent or not a string.
  */
 function extractStringField(parsed: unknown, field: string): string | null {
-  if (parsed !== null && typeof parsed === "object" && field in parsed) {
+  if (parsed !== null && typeof parsed === 'object' && field in parsed) {
     const value = (parsed as Record<string, unknown>)[field];
-    if (typeof value === "string") return value;
+    if (typeof value === 'string') return value;
   }
   return null;
 }
@@ -58,7 +58,7 @@ function extractStringField(parsed: unknown, field: string): string | null {
  * Returns null when absent.
  */
 function extractToolInput(parsed: unknown): unknown {
-  if (parsed !== null && typeof parsed === "object" && "tool_input" in parsed) {
+  if (parsed !== null && typeof parsed === 'object' && 'tool_input' in parsed) {
     return (parsed as Record<string, unknown>).tool_input;
   }
   return null;
@@ -79,7 +79,7 @@ export function EventDetail({ event }: EventDetailProps): ReturnType<typeof html
   const formattedStdin = parsed !== null ? JSON.stringify(parsed, null, 2) : event.stdin; // Fallback: display raw string if not valid JSON
 
   const showToolInfo = isToolEvent(event.event);
-  const toolName = showToolInfo ? extractStringField(parsed, "tool_name") : null;
+  const toolName = showToolInfo ? extractStringField(parsed, 'tool_name') : null;
   const toolInput = showToolInfo ? extractToolInput(parsed) : null;
   const formattedToolInput =
     toolInput !== null && toolInput !== undefined ? JSON.stringify(toolInput, null, 2) : null;
@@ -91,7 +91,7 @@ export function EventDetail({ event }: EventDetailProps): ReturnType<typeof html
         html`
         <dl>
           <dt>Tool name</dt>
-          <dd>${toolName ?? "\u2014"}</dd>
+          <dd>${toolName ?? '\u2014'}</dd>
           ${
             formattedToolInput !== null &&
             html`
@@ -140,8 +140,8 @@ export function EventDetail({ event }: EventDetailProps): ReturnType<typeof html
               style=${{
                 color:
                   event.exit_code === 0
-                    ? "var(--pico-ins-color, #2d9a2d)"
-                    : "var(--pico-del-color, #c0392b)",
+                    ? 'var(--pico-ins-color, #2d9a2d)'
+                    : 'var(--pico-del-color, #c0392b)',
               }}
             >${event.exit_code}</strong>
           </p>

@@ -8,7 +8,7 @@
  * truth. Adding a new event type requires editing only src/types.ts.
  */
 
-import { EVENT_NAMES } from "@/types.ts";
+import { EVENT_NAMES } from '@/types.ts';
 
 /** All 18 PascalCase event types that hookwatch handles. Same set as EVENT_NAMES. */
 export const EVENT_TYPES = EVENT_NAMES;

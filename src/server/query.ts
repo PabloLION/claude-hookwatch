@@ -13,12 +13,12 @@
  * no SQL string concatenation in this handler.
  */
 
-import { ZodError } from "zod";
-import { openDb } from "@/db/connection.ts";
-import { isSqliteBusy } from "@/db/errors.ts";
-import { getDistinctSessions, queryEvents } from "@/db/queries.ts";
-import { queryFilterSchema } from "@/schemas/query.ts";
-import { errorResponse } from "@/server/errors.ts";
+import { ZodError } from 'zod';
+import { openDb } from '@/db/connection.ts';
+import { isSqliteBusy } from '@/db/errors.ts';
+import { getDistinctSessions, queryEvents } from '@/db/queries.ts';
+import { queryFilterSchema } from '@/schemas/query.ts';
+import { errorResponse } from '@/server/errors.ts';
 
 export async function handleQuery(req: Request): Promise<Response> {
   // Parse JSON body
@@ -26,7 +26,7 @@ export async function handleQuery(req: Request): Promise<Response> {
   try {
     raw = await req.json();
   } catch {
-    return errorResponse("INVALID_QUERY", "Request body is not valid JSON", 400);
+    return errorResponse('INVALID_QUERY', 'Request body is not valid JSON', 400);
   }
 
   // Validate with Zod (applies defaults for limit/offset)
@@ -36,18 +36,18 @@ export async function handleQuery(req: Request): Promise<Response> {
   } catch (err) {
     if (err instanceof ZodError) {
       return errorResponse(
-        "INVALID_QUERY",
-        `Validation failed: ${err.issues.map((i) => i.message).join("; ")}`,
+        'INVALID_QUERY',
+        `Validation failed: ${err.issues.map((i) => i.message).join('; ')}`,
         400,
       );
     }
-    return errorResponse("INVALID_QUERY", "Payload validation failed", 400);
+    return errorResponse('INVALID_QUERY', 'Payload validation failed', 400);
   }
 
   // Query the database — route on queryType discriminator
   try {
     const db = openDb();
-    if (filter.queryType === "sessions") {
+    if (filter.queryType === 'sessions') {
       const sessions = getDistinctSessions(db);
       return Response.json(sessions, { status: 200 });
     }
@@ -55,9 +55,9 @@ export async function handleQuery(req: Request): Promise<Response> {
     return Response.json(events, { status: 200 });
   } catch (err) {
     if (isSqliteBusy(err)) {
-      return errorResponse("DB_LOCKED", "Database is busy, retry shortly", 503);
+      return errorResponse('DB_LOCKED', 'Database is busy, retry shortly', 503);
     }
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return errorResponse("INTERNAL", message, 500);
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return errorResponse('INTERNAL', message, 500);
   }
 }

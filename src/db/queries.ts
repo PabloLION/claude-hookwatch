@@ -1,6 +1,6 @@
-import type { Database } from "bun:sqlite";
-import type { QueryFilter } from "@/schemas/query.ts";
-import type { EventRow, InsertEventParams } from "@/types.ts";
+import type { Database } from 'bun:sqlite';
+import type { QueryFilter } from '@/schemas/query.ts';
+import type { EventRow, InsertEventParams } from '@/types.ts';
 
 export type { EventRow, InsertEventParams };
 
@@ -91,16 +91,16 @@ export function queryEvents(db: Database, filter: QueryFilter): EventRow[] {
   const bindings: (string | number)[] = [];
 
   if (filter.session_id !== undefined) {
-    conditions.push("session_id = ?");
+    conditions.push('session_id = ?');
     bindings.push(filter.session_id);
   }
 
   if (filter.hook_event_name !== undefined) {
-    conditions.push("event = ?");
+    conditions.push('event = ?');
     bindings.push(filter.hook_event_name);
   }
 
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   // LIMIT and OFFSET have Zod defaults (100 and 0), so they are always present.
   const sql = `SELECT * FROM events ${where} ORDER BY timestamp DESC LIMIT ? OFFSET ?`;

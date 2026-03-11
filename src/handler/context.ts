@@ -5,7 +5,7 @@
  * hookwatch context into the agent's conversation.
  */
 
-import type { HookEvent } from "@/schemas/events.ts";
+import type { HookEvent } from '@/schemas/events.ts';
 
 /**
  * Reads a string field from an unknown record. Returns null if the field is
@@ -13,7 +13,7 @@ import type { HookEvent } from "@/schemas/events.ts";
  */
 function stringField(event: HookEvent, field: string): string | null {
   const value = (event as Record<string, unknown>)[field];
-  return typeof value === "string" ? value : null;
+  return typeof value === 'string' ? value : null;
 }
 
 /**
@@ -24,26 +24,26 @@ function stringField(event: HookEvent, field: string): string | null {
 export function getEventSubtype(event: HookEvent): string | null {
   const name = event.hook_event_name;
   switch (name) {
-    case "SessionStart":
-      return stringField(event, "source");
-    case "SessionEnd":
-      return stringField(event, "reason");
-    case "PreToolUse":
-    case "PostToolUse":
-    case "PostToolUseFailure":
-    case "PermissionRequest":
-      return stringField(event, "tool_name");
-    case "Notification":
-      return stringField(event, "notification_type");
-    case "SubagentStart":
-    case "SubagentStop":
-      return stringField(event, "agent_type");
-    case "PreCompact":
-      return stringField(event, "trigger");
-    case "ConfigChange":
-      return stringField(event, "source");
-    case "InstructionsLoaded":
-      return stringField(event, "trigger");
+    case 'SessionStart':
+      return stringField(event, 'source');
+    case 'SessionEnd':
+      return stringField(event, 'reason');
+    case 'PreToolUse':
+    case 'PostToolUse':
+    case 'PostToolUseFailure':
+    case 'PermissionRequest':
+      return stringField(event, 'tool_name');
+    case 'Notification':
+      return stringField(event, 'notification_type');
+    case 'SubagentStart':
+    case 'SubagentStop':
+      return stringField(event, 'agent_type');
+    case 'PreCompact':
+      return stringField(event, 'trigger');
+    case 'ConfigChange':
+      return stringField(event, 'source');
+    case 'InstructionsLoaded':
+      return stringField(event, 'trigger');
     default:
       // Stop, UserPromptSubmit, TeammateIdle, TaskCompleted, WorktreeCreate,
       // WorktreeRemove — no subtype
@@ -71,7 +71,7 @@ export function buildSystemMessage(event: HookEvent, logEntries?: string[]): str
       ? `hookwatch captured ${event.hook_event_name} (${subtype})`
       : `hookwatch captured ${event.hook_event_name}`;
   if (logEntries && logEntries.length > 0) {
-    return `${base} — ${logEntries.join("; ")}`;
+    return `${base} — ${logEntries.join('; ')}`;
   }
   return base;
 }

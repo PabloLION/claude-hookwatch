@@ -20,17 +20,17 @@
  * NOTE: This is a bun:test file — it uses Bun.spawn, not child_process.spawn.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import type { ServerHandle } from "@/test";
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import type { ServerHandle } from '@/test';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const SERVER_PATH = new URL("../src/server/index.ts", import.meta.url).pathname;
+const SERVER_PATH = new URL('../src/server/index.ts', import.meta.url).pathname;
 
 // ---------------------------------------------------------------------------
 // Server lifecycle helpers
@@ -38,7 +38,7 @@ const SERVER_PATH = new URL("../src/server/index.ts", import.meta.url).pathname;
 
 function readPortFile(xdgDataHome: string): number | null {
   try {
-    const content = readFileSync(join(xdgDataHome, "hookwatch", "hookwatch.port"), "utf8").trim();
+    const content = readFileSync(join(xdgDataHome, 'hookwatch', 'hookwatch.port'), 'utf8').trim();
     const port = Number.parseInt(content, 10);
     return Number.isNaN(port) ? null : port;
   } catch {
@@ -67,10 +67,10 @@ async function startServer(
   const xdgDataHome = join(tmpBase, label);
   mkdirSync(xdgDataHome, { recursive: true });
 
-  const proc = Bun.spawn(["bun", "--bun", SERVER_PATH], {
+  const proc = Bun.spawn(['bun', '--bun', SERVER_PATH], {
     env: { ...process.env, XDG_DATA_HOME: xdgDataHome },
-    stdout: "pipe",
-    stderr: "pipe",
+    stdout: 'pipe',
+    stderr: 'pipe',
   });
 
   // Poll port file, then health
@@ -116,8 +116,8 @@ async function startServer(
  */
 async function postEvent(baseUrl: string, payload: Record<string, unknown>): Promise<Response> {
   return fetch(`${baseUrl}/api/events`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
 }
@@ -130,8 +130,8 @@ async function queryEvents(
   filter: Record<string, unknown> = {},
 ): Promise<Record<string, unknown>[]> {
   const res = await fetch(`${baseUrl}/api/query`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(filter),
   });
   if (!res.ok) {
@@ -146,25 +146,25 @@ async function queryEvents(
 
 /** Minimal valid SessionStart event. */
 const SESSION_START = {
-  hook_event_name: "SessionStart",
-  session_id: "smoke-session-001",
-  transcript_path: "/tmp/transcript.jsonl",
-  cwd: "/home/user/project",
-  permission_mode: "default",
-  source: "startup",
-  model: "claude-sonnet-4-6",
+  hook_event_name: 'SessionStart',
+  session_id: 'smoke-session-001',
+  transcript_path: '/tmp/transcript.jsonl',
+  cwd: '/home/user/project',
+  permission_mode: 'default',
+  source: 'startup',
+  model: 'claude-sonnet-4-6',
 };
 
 /** Minimal valid PreToolUse event. */
 const PRE_TOOL_USE = {
-  hook_event_name: "PreToolUse",
-  session_id: "smoke-session-002",
-  transcript_path: "/tmp/transcript.jsonl",
-  cwd: "/home/user/project",
-  permission_mode: "default",
-  tool_name: "Bash",
-  tool_use_id: "toolu_smoke_001",
-  tool_input: { command: "echo hello", description: "greet" },
+  hook_event_name: 'PreToolUse',
+  session_id: 'smoke-session-002',
+  transcript_path: '/tmp/transcript.jsonl',
+  cwd: '/home/user/project',
+  permission_mode: 'default',
+  tool_name: 'Bash',
+  tool_use_id: 'toolu_smoke_001',
+  tool_input: { command: 'echo hello', description: 'greet' },
 };
 
 // ---------------------------------------------------------------------------
@@ -176,7 +176,7 @@ let server: ServerHandle<ReturnType<typeof Bun.spawn>>;
 
 beforeAll(async () => {
   mkdirSync(tmpRoot, { recursive: true });
-  server = await startServer(tmpRoot, "shared");
+  server = await startServer(tmpRoot, 'shared');
 }, 20000);
 
 afterAll(() => {
@@ -192,27 +192,27 @@ afterAll(() => {
 // Test 1: Valid SessionStart → 201, verify via /api/query
 // ---------------------------------------------------------------------------
 
-describe("valid SessionStart event", () => {
-  test("returns 201 and the event is retrievable via /api/query", async () => {
+describe('valid SessionStart event', () => {
+  test('returns 201 and the event is retrievable via /api/query', async () => {
     const res = await postEvent(server.baseUrl, SESSION_START);
     expect(res.status).toBe(201);
 
     const body = (await res.json()) as { id: number };
-    expect(typeof body.id).toBe("number");
+    expect(typeof body.id).toBe('number');
 
     // Verify the event is in the DB
     const rows = await queryEvents(server.baseUrl, {
-      session_id: "smoke-session-001",
+      session_id: 'smoke-session-001',
     });
     expect(rows.length).toBeGreaterThan(0);
     const row = rows[0];
-    expect(row.event).toBe("SessionStart");
-    expect(row.session_id).toBe("smoke-session-001");
-    expect(row.cwd).toBe("/home/user/project");
+    expect(row.event).toBe('SessionStart');
+    expect(row.session_id).toBe('smoke-session-001');
+    expect(row.cwd).toBe('/home/user/project');
     // stdin must be valid JSON containing the original payload
     const stdin = JSON.parse(row.stdin as string) as Record<string, unknown>;
-    expect(stdin.hook_event_name).toBe("SessionStart");
-    expect(stdin.source).toBe("startup");
+    expect(stdin.hook_event_name).toBe('SessionStart');
+    expect(stdin.source).toBe('startup');
   });
 });
 
@@ -220,18 +220,18 @@ describe("valid SessionStart event", () => {
 // Test 2: Valid PreToolUse → 201, verify tool_name stored
 // ---------------------------------------------------------------------------
 
-describe("valid PreToolUse event", () => {
-  test("returns 201 and tool_name is stored in the events table", async () => {
+describe('valid PreToolUse event', () => {
+  test('returns 201 and tool_name is stored in the events table', async () => {
     const res = await postEvent(server.baseUrl, PRE_TOOL_USE);
     expect(res.status).toBe(201);
 
     const rows = await queryEvents(server.baseUrl, {
-      session_id: "smoke-session-002",
+      session_id: 'smoke-session-002',
     });
     expect(rows.length).toBeGreaterThan(0);
     const row = rows[0];
-    expect(row.event).toBe("PreToolUse");
-    expect(row.tool_name).toBe("Bash");
+    expect(row.event).toBe('PreToolUse');
+    expect(row.tool_name).toBe('Bash');
   });
 });
 
@@ -239,17 +239,17 @@ describe("valid PreToolUse event", () => {
 // Test 3: Invalid JSON body → 400 INVALID_QUERY
 // ---------------------------------------------------------------------------
 
-describe("invalid JSON body", () => {
-  test("returns 400 with INVALID_QUERY error code", async () => {
+describe('invalid JSON body', () => {
+  test('returns 400 with INVALID_QUERY error code', async () => {
     const res = await fetch(`${server.baseUrl}/api/events`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "this is not json {{{",
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: 'this is not json {{{',
     });
     expect(res.status).toBe(400);
 
     const body = (await res.json()) as { error: { code: string; message: string } };
-    expect(body.error.code).toBe("INVALID_QUERY");
+    expect(body.error.code).toBe('INVALID_QUERY');
   });
 });
 
@@ -257,19 +257,19 @@ describe("invalid JSON body", () => {
 // Test 4: Valid JSON but missing hook_event_name → 400
 // ---------------------------------------------------------------------------
 
-describe("valid JSON but missing hook_event_name", () => {
-  test("returns 400 when hook_event_name is absent", async () => {
+describe('valid JSON but missing hook_event_name', () => {
+  test('returns 400 when hook_event_name is absent', async () => {
     const res = await postEvent(server.baseUrl, {
-      session_id: "smoke-missing-event-name",
-      transcript_path: "/tmp/t.jsonl",
-      cwd: "/home/user",
-      permission_mode: "default",
+      session_id: 'smoke-missing-event-name',
+      transcript_path: '/tmp/t.jsonl',
+      cwd: '/home/user',
+      permission_mode: 'default',
       // hook_event_name intentionally omitted
     });
     expect(res.status).toBe(400);
 
     const body = (await res.json()) as { error: { code: string; message: string } };
-    expect(body.error.code).toBe("INVALID_QUERY");
+    expect(body.error.code).toBe('INVALID_QUERY');
   });
 });
 
@@ -277,24 +277,24 @@ describe("valid JSON but missing hook_event_name", () => {
 // Test 5: Extra unknown fields pass through (.passthrough())
 // ---------------------------------------------------------------------------
 
-describe("extra unknown fields", () => {
-  test("returns 201 when extra fields are present (passthrough schema)", async () => {
+describe('extra unknown fields', () => {
+  test('returns 201 when extra fields are present (passthrough schema)', async () => {
     const res = await postEvent(server.baseUrl, {
       ...SESSION_START,
-      session_id: "smoke-session-passthrough",
-      unknown_future_field: "some-value",
+      session_id: 'smoke-session-passthrough',
+      unknown_future_field: 'some-value',
       another_extra_field: 42,
-      nested_extra: { key: "value" },
+      nested_extra: { key: 'value' },
     });
     expect(res.status).toBe(201);
 
     const rows = await queryEvents(server.baseUrl, {
-      session_id: "smoke-session-passthrough",
+      session_id: 'smoke-session-passthrough',
     });
     expect(rows.length).toBeGreaterThan(0);
     // Extra fields are preserved in stdin JSON
     const stdin = JSON.parse(rows[0].stdin as string) as Record<string, unknown>;
-    expect(stdin.unknown_future_field).toBe("some-value");
+    expect(stdin.unknown_future_field).toBe('some-value');
   });
 });
 
@@ -302,22 +302,22 @@ describe("extra unknown fields", () => {
 // Test 6: Very long stdin payload (10KB+) succeeds
 // ---------------------------------------------------------------------------
 
-describe("very long stdin payload", () => {
-  test("returns 201 for a 10KB+ payload", async () => {
+describe('very long stdin payload', () => {
+  test('returns 201 for a 10KB+ payload', async () => {
     // Build a large tool_input object to push the payload over 10KB
     const largeData: Record<string, string> = {};
     for (let i = 0; i < 200; i++) {
-      largeData[`key_${i}`] = `value_${"x".repeat(50)}_${i}`;
+      largeData[`key_${i}`] = `value_${'x'.repeat(50)}_${i}`;
     }
 
     const largePayload = {
-      hook_event_name: "PreToolUse",
-      session_id: "smoke-session-large",
-      transcript_path: "/tmp/transcript.jsonl",
-      cwd: "/home/user/project",
-      permission_mode: "default",
-      tool_name: "Write",
-      tool_use_id: "toolu_large_001",
+      hook_event_name: 'PreToolUse',
+      session_id: 'smoke-session-large',
+      transcript_path: '/tmp/transcript.jsonl',
+      cwd: '/home/user/project',
+      permission_mode: 'default',
+      tool_name: 'Write',
+      tool_use_id: 'toolu_large_001',
       tool_input: largeData,
     };
 
@@ -328,10 +328,10 @@ describe("very long stdin payload", () => {
     expect(res.status).toBe(201);
 
     const rows = await queryEvents(server.baseUrl, {
-      session_id: "smoke-session-large",
+      session_id: 'smoke-session-large',
     });
     expect(rows.length).toBeGreaterThan(0);
-    expect(rows[0].event).toBe("PreToolUse");
+    expect(rows[0].event).toBe('PreToolUse');
   });
 });
 
@@ -339,21 +339,21 @@ describe("very long stdin payload", () => {
 // Test 7: Wrapped event with wrapped_command + stdout + stderr + exit_code → 201
 // ---------------------------------------------------------------------------
 
-describe("wrapped event fields", () => {
-  test("returns 201 and all wrap fields are stored correctly", async () => {
+describe('wrapped event fields', () => {
+  test('returns 201 and all wrap fields are stored correctly', async () => {
     const wrappedPayload = {
-      hook_event_name: "PreToolUse",
-      session_id: "smoke-session-wrapped",
-      transcript_path: "/tmp/transcript.jsonl",
-      cwd: "/home/user/project",
-      permission_mode: "default",
-      tool_name: "Bash",
-      tool_use_id: "toolu_wrapped_smoke",
-      tool_input: { command: "echo hello world" },
+      hook_event_name: 'PreToolUse',
+      session_id: 'smoke-session-wrapped',
+      transcript_path: '/tmp/transcript.jsonl',
+      cwd: '/home/user/project',
+      permission_mode: 'default',
+      tool_name: 'Bash',
+      tool_use_id: 'toolu_wrapped_smoke',
+      tool_input: { command: 'echo hello world' },
       // Top-level wrap fields
       wrapped_command: "sh -c 'echo hello world'",
-      stdout: "hello world\n",
-      stderr: "",
+      stdout: 'hello world\n',
+      stderr: '',
       exit_code: 0,
     };
 
@@ -361,29 +361,29 @@ describe("wrapped event fields", () => {
     expect(res.status).toBe(201);
 
     const rows = await queryEvents(server.baseUrl, {
-      session_id: "smoke-session-wrapped",
+      session_id: 'smoke-session-wrapped',
     });
     expect(rows.length).toBeGreaterThan(0);
 
     const row = rows[0];
     expect(row.wrapped_command).toBe("sh -c 'echo hello world'");
-    expect(row.stdout).toBe("hello world\n");
-    expect(row.stderr).toBe("");
+    expect(row.stdout).toBe('hello world\n');
+    expect(row.stderr).toBe('');
     expect(row.exit_code).toBe(0);
     // Bare-handler nulls should NOT appear
     expect(row.wrapped_command).not.toBeNull();
   });
 
-  test("bare event (no wrap fields) has null wrapped_command/stdout/stderr and exit_code 0", async () => {
+  test('bare event (no wrap fields) has null wrapped_command/stdout/stderr and exit_code 0', async () => {
     const res = await postEvent(server.baseUrl, {
       ...PRE_TOOL_USE,
-      session_id: "smoke-session-bare-verify",
-      tool_use_id: "toolu_bare_verify",
+      session_id: 'smoke-session-bare-verify',
+      tool_use_id: 'toolu_bare_verify',
     });
     expect(res.status).toBe(201);
 
     const rows = await queryEvents(server.baseUrl, {
-      session_id: "smoke-session-bare-verify",
+      session_id: 'smoke-session-bare-verify',
     });
     expect(rows.length).toBeGreaterThan(0);
 
@@ -400,31 +400,31 @@ describe("wrapped event fields", () => {
 // Test 8: Event with hook_duration_ms → 201, verify stored
 // ---------------------------------------------------------------------------
 
-describe("hook_duration_ms field", () => {
-  test("returns 201 and hook_duration_ms is stored (not null)", async () => {
+describe('hook_duration_ms field', () => {
+  test('returns 201 and hook_duration_ms is stored (not null)', async () => {
     const res = await postEvent(server.baseUrl, {
       ...SESSION_START,
-      session_id: "smoke-session-duration",
+      session_id: 'smoke-session-duration',
       hook_duration_ms: 137,
     });
     expect(res.status).toBe(201);
 
     const rows = await queryEvents(server.baseUrl, {
-      session_id: "smoke-session-duration",
+      session_id: 'smoke-session-duration',
     });
     expect(rows.length).toBeGreaterThan(0);
     expect(rows[0].hook_duration_ms).toBe(137);
   });
 
-  test("hook_duration_ms is null when not provided", async () => {
+  test('hook_duration_ms is null when not provided', async () => {
     const res = await postEvent(server.baseUrl, {
       ...SESSION_START,
-      session_id: "smoke-session-no-duration",
+      session_id: 'smoke-session-no-duration',
     });
     expect(res.status).toBe(201);
 
     const rows = await queryEvents(server.baseUrl, {
-      session_id: "smoke-session-no-duration",
+      session_id: 'smoke-session-no-duration',
     });
     expect(rows.length).toBeGreaterThan(0);
     expect(rows[0].hook_duration_ms).toBeNull();

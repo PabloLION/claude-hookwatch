@@ -12,19 +12,19 @@
  * Error codes used in responses: DB_LOCKED, NOT_FOUND, INVALID_QUERY, INTERNAL
  */
 
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
-import { close as closeDb } from "@/db/connection.ts";
-import { DEFAULT_PORT, portFilePath } from "@/paths.ts";
-import { errorResponse } from "@/server/errors.ts";
-import { handleHealth } from "@/server/health.ts";
-import { handleIngest } from "@/server/ingest.ts";
-import { handleQuery } from "@/server/query.ts";
-import { handleStatic } from "@/server/static.ts";
-import { closeAll as closeSseClients, handleStream } from "@/server/stream.ts";
-import { VERSION } from "@/version.ts";
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { close as closeDb } from '@/db/connection.ts';
+import { DEFAULT_PORT, portFilePath } from '@/paths.ts';
+import { errorResponse } from '@/server/errors.ts';
+import { handleHealth } from '@/server/health.ts';
+import { handleIngest } from '@/server/ingest.ts';
+import { handleQuery } from '@/server/query.ts';
+import { handleStatic } from '@/server/static.ts';
+import { closeAll as closeSseClients, handleStream } from '@/server/stream.ts';
+import { VERSION } from '@/version.ts';
 
-const HOSTNAME = "127.0.0.1";
+const HOSTNAME = '127.0.0.1';
 
 // ---------------------------------------------------------------------------
 // Idle timeout
@@ -46,7 +46,7 @@ let shutdownCallback: (() => void) | null = null;
 export function resetIdleTimer(): void {
   if (idleTimer !== null) clearTimeout(idleTimer);
   idleTimer = setTimeout(() => {
-    process.stderr.write("[hookwatch] Idle timeout reached — shutting down server\n");
+    process.stderr.write('[hookwatch] Idle timeout reached — shutting down server\n');
     if (shutdownCallback !== null) shutdownCallback();
     closeSseClients();
     closeDb();
@@ -57,7 +57,7 @@ export function resetIdleTimer(): void {
   // Without this, Node/Bun keeps the event loop alive indefinitely.
   // .unref() is a Bun/Node extension that prevents the timer from keeping the
   // process alive. It may not be present when setTimeout is mocked in tests.
-  if (typeof (idleTimer as { unref?: () => void }).unref === "function") {
+  if (typeof (idleTimer as { unref?: () => void }).unref === 'function') {
     (idleTimer as { unref: () => void }).unref();
   }
 }
@@ -82,7 +82,7 @@ function writePortFile(port: number): void {
   const portFile = portFilePath();
   try {
     mkdirSync(dirname(portFile), { recursive: true });
-    writeFileSync(portFile, String(port), { encoding: "utf8" });
+    writeFileSync(portFile, String(port), { encoding: 'utf8' });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     process.stderr.write(
@@ -113,7 +113,7 @@ function removePortFile(): void {
 async function withVersionHeader(res: Response | Promise<Response>): Promise<Response> {
   const resolved = await res;
   const headers = new Headers(resolved.headers);
-  headers.set("X-Hookwatch-Version", VERSION);
+  headers.set('X-Hookwatch-Version', VERSION);
   return new Response(resolved.body, {
     status: resolved.status,
     statusText: resolved.statusText,
@@ -138,28 +138,28 @@ function dispatch(req: Request): Promise<Response> {
   resetIdleTimer();
   const url = new URL(req.url);
 
-  if (req.method === "GET" && url.pathname === "/health") {
+  if (req.method === 'GET' && url.pathname === '/health') {
     return withVersionHeader(handleHealth(req));
   }
 
-  if (req.method === "POST" && url.pathname === "/api/events") {
+  if (req.method === 'POST' && url.pathname === '/api/events') {
     return withVersionHeader(handleIngest(req));
   }
 
-  if (req.method === "POST" && url.pathname === "/api/query") {
+  if (req.method === 'POST' && url.pathname === '/api/query') {
     return withVersionHeader(handleQuery(req));
   }
 
-  if (req.method === "GET" && url.pathname === "/api/events/stream") {
+  if (req.method === 'GET' && url.pathname === '/api/events/stream') {
     return withVersionHeader(handleStream(req));
   }
 
-  if (req.method === "GET") {
+  if (req.method === 'GET') {
     return withVersionHeader(handleStatic(url.pathname));
   }
 
   return withVersionHeader(
-    errorResponse("NOT_FOUND", `No route for ${req.method} ${url.pathname}`, 404),
+    errorResponse('NOT_FOUND', `No route for ${req.method} ${url.pathname}`, 404),
   );
 }
 
@@ -167,7 +167,7 @@ function dispatch(req: Request): Promise<Response> {
 export class PortInUseError extends Error {
   constructor(public readonly port: number) {
     super(`Port ${port} is already in use — is another hookwatch server running?`);
-    this.name = "PortInUseError";
+    this.name = 'PortInUseError';
   }
 }
 
@@ -188,8 +188,8 @@ export async function startServer(): Promise<{ port: number; stop: () => void }>
     const isAddrInUse =
       err instanceof Error &&
       // Bun exposes .code on the error object; message text varies by platform
-      ((err as NodeJS.ErrnoException).code === "EADDRINUSE" ||
-        err.message.includes("address already in use"));
+      ((err as NodeJS.ErrnoException).code === 'EADDRINUSE' ||
+        err.message.includes('address already in use'));
 
     if (isAddrInUse) {
       throw new PortInUseError(DEFAULT_PORT);
@@ -237,11 +237,11 @@ if (import.meta.main) {
   const { port, stop } = serverRef;
   console.log(`hookwatch server listening on http://${HOSTNAME}:${port}`);
 
-  process.on("SIGINT", () => {
+  process.on('SIGINT', () => {
     stop();
     process.exit(0);
   });
-  process.on("SIGTERM", () => {
+  process.on('SIGTERM', () => {
     stop();
     process.exit(0);
   });

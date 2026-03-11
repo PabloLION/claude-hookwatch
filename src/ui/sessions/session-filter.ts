@@ -14,10 +14,10 @@
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
-import type { Signal } from "@preact/signals";
-import { useEffect, useState } from "preact/hooks";
-import { html } from "../shared/html.ts";
-import { fetchSessions, formatSessionId } from "./session-list.ts";
+import type { Signal } from '@preact/signals';
+import { useEffect, useState } from 'preact/hooks';
+import { html } from '../shared/html.ts';
+import { fetchSessions, formatSessionId } from './session-list.ts';
 
 interface SessionFilterProps {
   activeSession: Signal<string | null>;
@@ -38,10 +38,10 @@ export function SessionFilter({ activeSession }: SessionFilterProps) {
   function handleChange(e: Event): void {
     const select = e.target as HTMLSelectElement;
     const value = select.value;
-    activeSession.value = value === "" ? null : value;
+    activeSession.value = value === '' ? null : value;
   }
 
-  const selectValue = activeSession.value ?? "";
+  const selectValue = activeSession.value ?? '';
 
   return html`
     <div>

@@ -14,35 +14,35 @@
  * This approach avoids polluting the test process's own streams.
  */
 
-import { describe, expect, test } from "bun:test";
-import { runWrapRunner } from "@/test";
+import { describe, expect, test } from 'bun:test';
+import { runWrapRunner } from '@/test';
 
 // ---------------------------------------------------------------------------
 // Tests: tee and capture
 // ---------------------------------------------------------------------------
 
-describe("runWrapped — tee and capture", () => {
-  test("child stdout is passed through to runner stdout and captured", async () => {
-    const result = await runWrapRunner(["sh", "-c", "echo hello"], "event-json");
+describe('runWrapped — tee and capture', () => {
+  test('child stdout is passed through to runner stdout and captured', async () => {
+    const result = await runWrapRunner(['sh', '-c', 'echo hello'], 'event-json');
 
     expect(result.wrapResult).not.toBeNull();
-    expect(result.wrapResult?.stdout.trim()).toBe("hello");
+    expect(result.wrapResult?.stdout.trim()).toBe('hello');
     // Tee: the child's stdout also appears as the runner's own stdout
-    expect(result.runnerStdout.trim()).toBe("hello");
+    expect(result.runnerStdout.trim()).toBe('hello');
   });
 
-  test("child stderr is passed through to runner stderr and captured", async () => {
-    const result = await runWrapRunner(["sh", "-c", "echo error-msg >&2"], "event-json");
+  test('child stderr is passed through to runner stderr and captured', async () => {
+    const result = await runWrapRunner(['sh', '-c', 'echo error-msg >&2'], 'event-json');
 
     expect(result.wrapResult).not.toBeNull();
-    expect(result.wrapResult?.stderr.trim()).toBe("error-msg");
+    expect(result.wrapResult?.stderr.trim()).toBe('error-msg');
     // Tee: child stderr appears in the runner's stderr output
-    expect(result.runnerStderr).toContain("error-msg");
+    expect(result.runnerStderr).toContain('error-msg');
   });
 
-  test("stdin input is read into stdin and forwarded to child", async () => {
+  test('stdin input is read into stdin and forwarded to child', async () => {
     const stdinInput = '{"hook_event_name":"SessionStart"}';
-    const result = await runWrapRunner(["sh", "-c", "cat"], stdinInput);
+    const result = await runWrapRunner(['sh', '-c', 'cat'], stdinInput);
 
     expect(result.wrapResult).not.toBeNull();
     // stdin should match what we sent
@@ -52,14 +52,14 @@ describe("runWrapped — tee and capture", () => {
     expect(result.runnerStdout).toBe(stdinInput);
   });
 
-  test("captures both stdout and stderr in a single run", async () => {
+  test('captures both stdout and stderr in a single run', async () => {
     const result = await runWrapRunner(
-      ["sh", "-c", "echo out-line; echo err-line >&2"],
-      "stdin-data",
+      ['sh', '-c', 'echo out-line; echo err-line >&2'],
+      'stdin-data',
     );
 
-    expect(result.wrapResult?.stdout.trim()).toBe("out-line");
-    expect(result.wrapResult?.stderr.trim()).toBe("err-line");
+    expect(result.wrapResult?.stdout.trim()).toBe('out-line');
+    expect(result.wrapResult?.stderr.trim()).toBe('err-line');
   });
 });
 
@@ -67,30 +67,30 @@ describe("runWrapped — tee and capture", () => {
 // Tests: exit code forwarding
 // ---------------------------------------------------------------------------
 
-describe("runWrapped — exit code forwarding", () => {
-  test("forwards exit code 0", async () => {
-    const result = await runWrapRunner(["sh", "-c", "exit 0"], "");
+describe('runWrapped — exit code forwarding', () => {
+  test('forwards exit code 0', async () => {
+    const result = await runWrapRunner(['sh', '-c', 'exit 0'], '');
 
     expect(result.runnerExitCode).toBe(0);
     expect(result.wrapResult?.exitCode).toBe(0);
   });
 
-  test("forwards non-zero exit code (1)", async () => {
-    const result = await runWrapRunner(["sh", "-c", "exit 1"], "");
+  test('forwards non-zero exit code (1)', async () => {
+    const result = await runWrapRunner(['sh', '-c', 'exit 1'], '');
 
     expect(result.runnerExitCode).toBe(1);
     expect(result.wrapResult?.exitCode).toBe(1);
   });
 
-  test("forwards exit code 2 (block action in Claude Code hooks)", async () => {
-    const result = await runWrapRunner(["sh", "-c", "exit 2"], "");
+  test('forwards exit code 2 (block action in Claude Code hooks)', async () => {
+    const result = await runWrapRunner(['sh', '-c', 'exit 2'], '');
 
     expect(result.runnerExitCode).toBe(2);
     expect(result.wrapResult?.exitCode).toBe(2);
   });
 
-  test("forwards arbitrary non-zero exit code (3)", async () => {
-    const result = await runWrapRunner(["sh", "-c", "exit 3"], "");
+  test('forwards arbitrary non-zero exit code (3)', async () => {
+    const result = await runWrapRunner(['sh', '-c', 'exit 3'], '');
 
     expect(result.runnerExitCode).toBe(3);
     expect(result.wrapResult?.exitCode).toBe(3);
@@ -101,14 +101,14 @@ describe("runWrapped — exit code forwarding", () => {
 // Tests: error cases
 // ---------------------------------------------------------------------------
 
-describe("runWrapped — error handling", () => {
-  test("returns exit 1 for non-existent command", async () => {
-    const result = await runWrapRunner(["/nonexistent-binary-that-does-not-exist"], "");
+describe('runWrapped — error handling', () => {
+  test('returns exit 1 for non-existent command', async () => {
+    const result = await runWrapRunner(['/nonexistent-binary-that-does-not-exist'], '');
 
     // runWrapped catches spawn failure and returns exitCode 1
     expect(result.wrapResult?.exitCode).toBe(1);
-    expect(result.wrapResult?.stdout).toBe("");
-    expect(result.wrapResult?.stderr).toBe("");
+    expect(result.wrapResult?.stdout).toBe('');
+    expect(result.wrapResult?.stderr).toBe('');
   });
 });
 
@@ -116,49 +116,49 @@ describe("runWrapped — error handling", () => {
 // Tests: signal handling (ch-qddi)
 // ---------------------------------------------------------------------------
 
-describe("runWrapped — signal-killed child", () => {
-  test("SIGKILL child returns exit code 137 (128+9)", async () => {
+describe('runWrapped — signal-killed child', () => {
+  test('SIGKILL child returns exit code 137 (128+9)', async () => {
     // `kill -9 $$` kills the shell with SIGKILL inside the child process
-    const result = await runWrapRunner(["sh", "-c", "kill -9 $$"], "");
+    const result = await runWrapRunner(['sh', '-c', 'kill -9 $$'], '');
 
     // exit code 137 = 128 + SIGKILL(9)
     expect(result.wrapResult?.exitCode).toBe(137);
   });
 
-  test("SIGKILL child: hookwatchLog contains [warn] with exit code", async () => {
-    const result = await runWrapRunner(["sh", "-c", "kill -9 $$"], "");
+  test('SIGKILL child: hookwatchLog contains [warn] with exit code', async () => {
+    const result = await runWrapRunner(['sh', '-c', 'kill -9 $$'], '');
 
     const log = result.wrapResult?.hookwatchLog;
-    expect(typeof log).toBe("string");
-    expect(log).toContain("[warn]");
-    expect(log).toContain("137");
+    expect(typeof log).toBe('string');
+    expect(log).toContain('[warn]');
+    expect(log).toContain('137');
   });
 
-  test("SIGKILL child: hookwatchLog describes likely SIGKILL", async () => {
-    const result = await runWrapRunner(["sh", "-c", "kill -9 $$"], "");
+  test('SIGKILL child: hookwatchLog describes likely SIGKILL', async () => {
+    const result = await runWrapRunner(['sh', '-c', 'kill -9 $$'], '');
 
     const log = result.wrapResult?.hookwatchLog;
-    expect(log).toContain("likely SIGKILL");
-    expect(log).toContain("forced termination");
+    expect(log).toContain('likely SIGKILL');
+    expect(log).toContain('forced termination');
   });
 
-  test("SIGKILL child: signal death is logged to stderr by runWrapped", async () => {
-    const result = await runWrapRunner(["sh", "-c", "kill -9 $$"], "");
+  test('SIGKILL child: signal death is logged to stderr by runWrapped', async () => {
+    const result = await runWrapRunner(['sh', '-c', 'kill -9 $$'], '');
 
     // runWrapped logs to console.error which appears in the runner's stderr
-    expect(result.runnerStderr).toContain("[hookwatch]");
-    expect(result.runnerStderr).toContain("signal");
+    expect(result.runnerStderr).toContain('[hookwatch]');
+    expect(result.runnerStderr).toContain('signal');
   });
 
-  test("normal exit: hookwatchLog is absent from WrapResult", async () => {
-    const result = await runWrapRunner(["sh", "-c", "exit 0"], "");
+  test('normal exit: hookwatchLog is absent from WrapResult', async () => {
+    const result = await runWrapRunner(['sh', '-c', 'exit 0'], '');
 
     // No signal death — hookwatchLog should be undefined (not present in JSON)
     expect(result.wrapResult?.hookwatchLog).toBeUndefined();
   });
 
-  test("non-zero clean exit: hookwatchLog is absent (not a signal death)", async () => {
-    const result = await runWrapRunner(["sh", "-c", "exit 42"], "");
+  test('non-zero clean exit: hookwatchLog is absent (not a signal death)', async () => {
+    const result = await runWrapRunner(['sh', '-c', 'exit 42'], '');
 
     expect(result.wrapResult?.exitCode).toBe(42);
     expect(result.wrapResult?.hookwatchLog).toBeUndefined();

@@ -16,10 +16,10 @@
  *   an error and exit 1.
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import { defineCommand } from "citty";
-import { DEFAULT_PORT, portFilePath } from "@/paths.ts";
-import { spawnServer } from "@/server-spawn.ts";
+import { existsSync, readFileSync } from 'node:fs';
+import { defineCommand } from 'citty';
+import { DEFAULT_PORT, portFilePath } from '@/paths.ts';
+import { spawnServer } from '@/server-spawn.ts';
 
 const HEALTH_FETCH_TIMEOUT_MS = 1000;
 const PORT_PROBE_TIMEOUT_MS = 500;
@@ -32,7 +32,7 @@ export function readPortFile(): number | null {
   if (!existsSync(path)) return null;
 
   try {
-    const content = readFileSync(path, "utf8").trim();
+    const content = readFileSync(path, 'utf8').trim();
     const port = Number.parseInt(content, 10);
     if (Number.isNaN(port) || port <= 0 || port > 65535) return null;
     return port;
@@ -75,7 +75,7 @@ export async function isPortOccupied(port: number): Promise<boolean> {
       : (err as NodeJS.ErrnoException).code;
     // If the fetch itself errored (not just a bad status), port is not occupied
     // unless the error is a non-connection error (e.g., timeout with something listening)
-    if (code === "ConnectionRefused" || code === "ECONNREFUSED") {
+    if (code === 'ConnectionRefused' || code === 'ECONNREFUSED') {
       return false;
     }
     // AbortError from timeout could mean something is slow but listening,
@@ -94,12 +94,12 @@ export async function openBrowser(url: string): Promise<void> {
   const platform = process.platform;
 
   let command: string;
-  if (platform === "darwin") {
-    command = "open";
-  } else if (platform === "linux") {
-    command = "xdg-open";
-  } else if (platform === "win32") {
-    command = "start";
+  if (platform === 'darwin') {
+    command = 'open';
+  } else if (platform === 'linux') {
+    command = 'xdg-open';
+  } else if (platform === 'win32') {
+    command = 'start';
   } else {
     console.warn(`[hookwatch] Unknown platform "${platform}" — cannot open browser automatically.`);
     console.log(`  Open manually: ${url}`);
@@ -107,8 +107,8 @@ export async function openBrowser(url: string): Promise<void> {
   }
 
   const proc = Bun.spawn([command, url], {
-    stdout: "inherit",
-    stderr: "inherit",
+    stdout: 'inherit',
+    stderr: 'inherit',
   });
 
   await proc.exited;
@@ -116,8 +116,8 @@ export async function openBrowser(url: string): Promise<void> {
 
 export const uiCommand = defineCommand({
   meta: {
-    name: "ui",
-    description: "Start the hookwatch server (if needed) and open the web UI",
+    name: 'ui',
+    description: 'Start the hookwatch server (if needed) and open the web UI',
   },
   async run() {
     // Check if server is already running by reading the port file
@@ -132,7 +132,7 @@ export const uiCommand = defineCommand({
     }
 
     // Server is not running — attempt to start it
-    console.log("Starting hookwatch server...");
+    console.log('Starting hookwatch server...');
     const spawnResult = await spawnServer();
 
     if (!spawnResult.ok) {
@@ -140,7 +140,7 @@ export const uiCommand = defineCommand({
       if (await isPortOccupied(DEFAULT_PORT)) {
         process.stderr.write(`[hookwatch] port ${DEFAULT_PORT} in use\n`);
       } else {
-        process.stderr.write("[hookwatch] Failed to start server — cannot open UI.\n");
+        process.stderr.write('[hookwatch] Failed to start server — cannot open UI.\n');
       }
       process.exit(1);
     }

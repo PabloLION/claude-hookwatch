@@ -21,55 +21,55 @@
  * Run with: playwright test tests/smoke-browser.test.ts
  */
 
-import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
-import type { ServerHandle } from "@/test";
+import { spawn } from 'node:child_process';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { type BrowserContext, chromium, expect, type Page, test } from '@playwright/test';
+import type { ServerHandle } from '@/test';
 
 // ---------------------------------------------------------------------------
 // Shared constants
 // ---------------------------------------------------------------------------
 
-const SERVER_PATH = new URL("../src/server/index.ts", import.meta.url).pathname;
+const SERVER_PATH = new URL('../src/server/index.ts', import.meta.url).pathname;
 
 /** A minimal valid SessionStart payload. */
 const SESSION_START_EVENT = {
-  hook_event_name: "SessionStart",
-  session_id: "smoke-browser-session-001",
-  transcript_path: "/tmp/transcript.jsonl",
-  cwd: "/home/user/project",
-  permission_mode: "default",
-  source: "startup",
-  model: "claude-sonnet-4-6",
+  hook_event_name: 'SessionStart',
+  session_id: 'smoke-browser-session-001',
+  transcript_path: '/tmp/transcript.jsonl',
+  cwd: '/home/user/project',
+  permission_mode: 'default',
+  source: 'startup',
+  model: 'claude-sonnet-4-6',
 };
 
 /** A bare (non-wrapped) PreToolUse event — no wrap fields. */
 const BARE_PRE_TOOL_USE = {
-  hook_event_name: "PreToolUse",
-  session_id: "smoke-browser-session-002",
-  transcript_path: "/tmp/transcript.jsonl",
-  cwd: "/home/user/project",
-  permission_mode: "default",
-  tool_name: "Bash",
-  tool_use_id: "toolu_smoke_bare_001",
-  tool_input: { command: "ls -la", description: "list files" },
+  hook_event_name: 'PreToolUse',
+  session_id: 'smoke-browser-session-002',
+  transcript_path: '/tmp/transcript.jsonl',
+  cwd: '/home/user/project',
+  permission_mode: 'default',
+  tool_name: 'Bash',
+  tool_use_id: 'toolu_smoke_bare_001',
+  tool_input: { command: 'ls -la', description: 'list files' },
 };
 
 /** A wrapped PreToolUse event with stdout, stderr, exit_code, wrapped_command. */
 const WRAPPED_PRE_TOOL_USE = {
-  hook_event_name: "PreToolUse",
-  session_id: "smoke-browser-session-003",
-  transcript_path: "/tmp/transcript.jsonl",
-  cwd: "/home/user/project",
-  permission_mode: "default",
-  tool_name: "Bash",
-  tool_use_id: "toolu_smoke_wrapped_001",
-  tool_input: { command: "echo smoke test", description: "smoke" },
+  hook_event_name: 'PreToolUse',
+  session_id: 'smoke-browser-session-003',
+  transcript_path: '/tmp/transcript.jsonl',
+  cwd: '/home/user/project',
+  permission_mode: 'default',
+  tool_name: 'Bash',
+  tool_use_id: 'toolu_smoke_wrapped_001',
+  tool_input: { command: 'echo smoke test', description: 'smoke' },
   wrapped_command: "sh -c 'echo smoke test'",
-  stdout: "smoke test\n",
-  stderr: "warning: minor issue\n",
+  stdout: 'smoke test\n',
+  stderr: 'warning: minor issue\n',
   exit_code: 0,
 };
 
@@ -79,7 +79,7 @@ const WRAPPED_PRE_TOOL_USE = {
 
 function readPortFile(xdgDataHome: string): number | null {
   try {
-    const content = readFileSync(join(xdgDataHome, "hookwatch", "hookwatch.port"), "utf8").trim();
+    const content = readFileSync(join(xdgDataHome, 'hookwatch', 'hookwatch.port'), 'utf8').trim();
     const port = Number.parseInt(content, 10);
     return Number.isNaN(port) ? null : port;
   } catch {
@@ -105,9 +105,9 @@ async function startServer(tmpBase: string, label: string): Promise<ServerHandle
   const xdgDataHome = join(tmpBase, label);
   mkdirSync(xdgDataHome, { recursive: true });
 
-  const proc = spawn("bun", ["--bun", SERVER_PATH], {
+  const proc = spawn('bun', ['--bun', SERVER_PATH], {
     env: { ...process.env, XDG_DATA_HOME: xdgDataHome },
-    stdio: "pipe",
+    stdio: 'pipe',
     detached: false,
   });
 
@@ -134,7 +134,7 @@ async function startServer(tmpBase: string, label: string): Promise<ServerHandle
 
   const stop = (): void => {
     try {
-      proc.kill("SIGTERM");
+      proc.kill('SIGTERM');
     } catch {
       // Already dead
     }
@@ -150,8 +150,8 @@ async function startServer(tmpBase: string, label: string): Promise<ServerHandle
 
 async function seedEvent(baseUrl: string, payload: Record<string, unknown>): Promise<void> {
   const res = await fetch(`${baseUrl}/api/events`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (res.status !== 201) {
@@ -191,9 +191,9 @@ async function freshPage(): Promise<{ context: BrowserContext; page: Page }> {
 // ---------------------------------------------------------------------------
 
 test(
-  "posted events appear in the event list table",
+  'posted events appear in the event list table',
   async () => {
-    const server = await startServer(tmpRoot, "event-list-test");
+    const server = await startServer(tmpRoot, 'event-list-test');
     const { context, page } = await freshPage();
 
     try {
@@ -205,20 +205,20 @@ test(
       await page.goto(server.baseUrl);
 
       // Wait for the table to appear
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
       // Both events must appear (reverse-chronological, so PreToolUse is first)
-      const eventRows = page.locator("tbody tr[data-event-id]");
+      const eventRows = page.locator('tbody tr[data-event-id]');
       await expect(eventRows).toHaveCount(2, { timeout: 10000 });
 
       // First row is PreToolUse (most recent)
       const firstRow = eventRows.nth(0);
-      await expect(firstRow.locator("td").nth(1)).toHaveText("PreToolUse");
+      await expect(firstRow.locator('td').nth(1)).toHaveText('PreToolUse');
 
       // Second row is SessionStart (oldest)
       const secondRow = eventRows.nth(1);
-      await expect(secondRow.locator("td").nth(1)).toHaveText("SessionStart");
+      await expect(secondRow.locator('td').nth(1)).toHaveText('SessionStart');
     } finally {
       await context.close();
       server.stop();
@@ -232,9 +232,9 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "clicking a row expands the event detail view",
+  'clicking a row expands the event detail view',
   async () => {
-    const server = await startServer(tmpRoot, "expand-detail-test");
+    const server = await startServer(tmpRoot, 'expand-detail-test');
     const { context, page } = await freshPage();
 
     try {
@@ -242,15 +242,15 @@ test(
 
       await page.goto(server.baseUrl);
 
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
       // Detail row should not be visible before clicking
-      const detailRow = page.locator("[data-detail-for]");
+      const detailRow = page.locator('[data-detail-for]');
       await expect(detailRow).not.toBeVisible();
 
       // Click the event row
-      const firstRow = page.locator("tbody tr[data-event-id]").first();
+      const firstRow = page.locator('tbody tr[data-event-id]').first();
       await firstRow.click();
 
       // The detail view should now be visible
@@ -272,9 +272,9 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "event detail shows Full stdin as formatted JSON inside pre/code",
+  'event detail shows Full stdin as formatted JSON inside pre/code',
   async () => {
-    const server = await startServer(tmpRoot, "stdin-json-test");
+    const server = await startServer(tmpRoot, 'stdin-json-test');
     const { context, page } = await freshPage();
 
     try {
@@ -282,26 +282,26 @@ test(
 
       await page.goto(server.baseUrl);
 
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
       // Click the first row to expand
-      await page.locator("tbody tr[data-event-id]").first().click();
+      await page.locator('tbody tr[data-event-id]').first().click();
 
-      const detailContainer = page.locator("[data-detail-for] .event-detail");
+      const detailContainer = page.locator('[data-detail-for] .event-detail');
       await expect(detailContainer).toBeVisible({ timeout: 5000 });
 
       // There should be a <details> with <pre><code> showing the JSON stdin
-      const preCode = detailContainer.locator("details pre code");
+      const preCode = detailContainer.locator('details pre code');
       await expect(preCode).toBeVisible();
 
       const codeText = await preCode.textContent();
       // The JSON must contain the session_id
-      expect(codeText).toContain("smoke-browser-session-001");
+      expect(codeText).toContain('smoke-browser-session-001');
       // The JSON must contain hook_event_name key
       expect(codeText).toContain('"hook_event_name"');
       // Formatted JSON has indentation (at least 2 spaces)
-      expect(codeText).toContain("  ");
+      expect(codeText).toContain('  ');
     } finally {
       await context.close();
       server.stop();
@@ -315,9 +315,9 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "wrapped event detail shows wrap-viewer with stdout and stderr panels",
+  'wrapped event detail shows wrap-viewer with stdout and stderr panels',
   async () => {
-    const server = await startServer(tmpRoot, "wrap-viewer-smoke-test");
+    const server = await startServer(tmpRoot, 'wrap-viewer-smoke-test');
     const { context, page } = await freshPage();
 
     try {
@@ -325,11 +325,11 @@ test(
 
       await page.goto(server.baseUrl);
 
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
       // Click the wrapped event row
-      await page.locator("tbody tr[data-event-id]").first().click();
+      await page.locator('tbody tr[data-event-id]').first().click();
 
       // The wrap-viewer component must appear
       const wrapViewer = page.locator("[data-testid='wrap-viewer']");
@@ -346,7 +346,7 @@ test(
       const stdoutContent = stdoutPanel.locator("[data-testid='stdout-content']");
       await expect(stdoutContent).toBeVisible();
       const stdoutText = await stdoutContent.textContent();
-      expect(stdoutText).toContain("smoke test");
+      expect(stdoutText).toContain('smoke test');
 
       // stderr panel must be present and show the captured error output
       const stderrPanel = wrapViewer.locator("[data-testid='stderr-panel']");
@@ -354,12 +354,12 @@ test(
       const stderrContent = stderrPanel.locator("[data-testid='stderr-content']");
       await expect(stderrContent).toBeVisible();
       const stderrText = await stderrContent.textContent();
-      expect(stderrText).toContain("warning: minor issue");
+      expect(stderrText).toContain('warning: minor issue');
 
       // Exit code must be shown
       const exitCode = wrapViewer.locator("[data-testid='exit-code']");
       await expect(exitCode).toBeVisible();
-      await expect(exitCode).toHaveText("0");
+      await expect(exitCode).toHaveText('0');
     } finally {
       await context.close();
       server.stop();
@@ -373,9 +373,9 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "bare PreToolUse event shows tool info header, not wrap-viewer",
+  'bare PreToolUse event shows tool info header, not wrap-viewer',
   async () => {
-    const server = await startServer(tmpRoot, "bare-tool-header-test");
+    const server = await startServer(tmpRoot, 'bare-tool-header-test');
     const { context, page } = await freshPage();
 
     try {
@@ -383,13 +383,13 @@ test(
 
       await page.goto(server.baseUrl);
 
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
       // Click the PreToolUse row
-      await page.locator("tbody tr[data-event-id]").first().click();
+      await page.locator('tbody tr[data-event-id]').first().click();
 
-      const detailContainer = page.locator("[data-detail-for] .event-detail");
+      const detailContainer = page.locator('[data-detail-for] .event-detail');
       await expect(detailContainer).toBeVisible({ timeout: 5000 });
 
       // wrap-viewer must NOT appear for bare events
@@ -397,19 +397,19 @@ test(
       await expect(wrapViewer).not.toBeVisible();
 
       // Standard tool info <dl> must appear (PreToolUse is a tool event)
-      const dl = detailContainer.locator("dl");
+      const dl = detailContainer.locator('dl');
       await expect(dl).toBeVisible();
 
       // The dl must show "Tool name" and "Bash"
-      await expect(dl.locator("dt", { hasText: "Tool name" })).toBeVisible();
-      await expect(dl.locator("dd", { hasText: "Bash" })).toBeVisible();
+      await expect(dl.locator('dt', { hasText: 'Tool name' })).toBeVisible();
+      await expect(dl.locator('dd', { hasText: 'Bash' })).toBeVisible();
 
       // Tool input must be present (command: ls -la)
-      await expect(dl.locator("dt", { hasText: "Tool input" })).toBeVisible();
-      const toolInputCode = dl.locator("pre code");
+      await expect(dl.locator('dt', { hasText: 'Tool input' })).toBeVisible();
+      const toolInputCode = dl.locator('pre code');
       await expect(toolInputCode).toBeVisible();
       const toolInputText = await toolInputCode.textContent();
-      expect(toolInputText).toContain("ls -la");
+      expect(toolInputText).toContain('ls -la');
     } finally {
       await context.close();
       server.stop();

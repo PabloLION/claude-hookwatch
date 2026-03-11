@@ -8,8 +8,8 @@
  * Extracted from src/handler/handler.test.ts (originally lines 51-102).
  */
 
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,23 +54,23 @@ export function startTestServer(): TestServer {
   const server = Bun.serve({
     port: 0, // OS-assigned free port
     async fetch(req) {
-      if (req.method === "POST" && new URL(req.url).pathname === "/api/events") {
+      if (req.method === 'POST' && new URL(req.url).pathname === '/api/events') {
         let body: unknown;
         try {
           body = await req.json();
         } catch (err) {
-          console.error("[test-server] req.json() parse failed:", err);
+          console.error('[test-server] req.json() parse failed:', err);
           body = null;
         }
         const status = state.nextStatus;
         events.push({ body, status });
-        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         if (state.serverVersion !== null) {
-          headers["X-Hookwatch-Version"] = state.serverVersion;
+          headers['X-Hookwatch-Version'] = state.serverVersion;
         }
         return new Response(JSON.stringify({ id: events.length }), { status, headers });
       }
-      return new Response("not found", { status: 404 });
+      return new Response('not found', { status: 404 });
     },
   });
 
@@ -117,7 +117,7 @@ export function firstEventBody(server: TestServer): Record<string, unknown> {
  * testing).
  */
 export function writePortFile(xdgDataHome: string, content: number | string): void {
-  const dir = join(xdgDataHome, "hookwatch");
+  const dir = join(xdgDataHome, 'hookwatch');
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "hookwatch.port"), String(content));
+  writeFileSync(join(dir, 'hookwatch.port'), String(content));
 }

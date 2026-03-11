@@ -7,7 +7,7 @@
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
-import htm from "htm";
-import { h } from "preact";
+import htm from 'htm';
+import { h } from 'preact';
 
 export const html = htm.bind(h);

@@ -7,13 +7,13 @@
  *   - createHandlerTestContext(): combined TMP_DIR + TestServer lifecycle for handler tests
  */
 
-import type { Database } from "bun:sqlite";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { close, openDb } from "@/db/connection.ts";
-import type { TestServer } from "./test-server.ts";
-import { startTestServer } from "./test-server.ts";
+import type { Database } from 'bun:sqlite';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { close, openDb } from '@/db/connection.ts';
+import type { TestServer } from './test-server.ts';
+import { startTestServer } from './test-server.ts';
 
 // ---------------------------------------------------------------------------
 // XDG_DATA_HOME isolation
@@ -41,7 +41,7 @@ export interface TempXdgHome {
  *   beforeEach(() => { xdg = createTempXdgHome(); });
  *   afterEach(() => { xdg.cleanup(); });
  */
-export function createTempXdgHome(prefix = "hookwatch-test-"): TempXdgHome {
+export function createTempXdgHome(prefix = 'hookwatch-test-'): TempXdgHome {
   const tmpDir = mkdtempSync(join(tmpdir(), prefix));
   return {
     tmpDir,
@@ -72,10 +72,10 @@ export interface TestDbHandle {
  *   beforeEach(() => { handle = setupTestDb(); });
  *   afterEach(() => { closeTestDb(handle); });
  */
-export function setupTestDb(prefix = "hookwatch-test-"): TestDbHandle {
+export function setupTestDb(prefix = 'hookwatch-test-'): TestDbHandle {
   close(); // reset singleton before each test
   const tmpDir = mkdtempSync(join(tmpdir(), prefix));
-  const dbPath = join(tmpDir, "hookwatch.db");
+  const dbPath = join(tmpDir, 'hookwatch.db');
   const db = openDb(dbPath);
   return { db, dbPath, tmpDir };
 }
@@ -117,7 +117,7 @@ export interface HandlerTestContext {
  * The context exposes ctx.tmpDir for per-test XDG subdirectory creation and
  * ctx.server for inspecting received events and configuring responses.
  */
-export function createHandlerTestContext(prefix = "hookwatch-handler-test-"): HandlerTestContext & {
+export function createHandlerTestContext(prefix = 'hookwatch-handler-test-'): HandlerTestContext & {
   setup: () => void;
 } {
   const tmpDir = join(tmpdir(), `${prefix}${Date.now()}`);

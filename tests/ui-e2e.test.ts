@@ -25,37 +25,37 @@
  * Run with: bun run test:e2e
  */
 
-import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
-import type { ServerHandle } from "@/test";
+import { spawn } from 'node:child_process';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { type BrowserContext, chromium, expect, type Page, test } from '@playwright/test';
+import type { ServerHandle } from '@/test';
 
 // ---------------------------------------------------------------------------
 // Shared constants
 // ---------------------------------------------------------------------------
 
-const SERVER_PATH = new URL("../src/server/index.ts", import.meta.url).pathname;
+const SERVER_PATH = new URL('../src/server/index.ts', import.meta.url).pathname;
 const BASE_SESSION_START = {
-  session_id: "e2e-test-session-001",
-  transcript_path: "/tmp/transcript.jsonl",
-  cwd: "/home/user/project",
-  permission_mode: "default",
-  hook_event_name: "SessionStart",
-  source: "startup",
-  model: "claude-sonnet-4-6",
+  session_id: 'e2e-test-session-001',
+  transcript_path: '/tmp/transcript.jsonl',
+  cwd: '/home/user/project',
+  permission_mode: 'default',
+  hook_event_name: 'SessionStart',
+  source: 'startup',
+  model: 'claude-sonnet-4-6',
 };
 
 const PRE_TOOL_USE_BASH = {
-  session_id: "e2e-test-session-002",
-  transcript_path: "/tmp/transcript.jsonl",
-  cwd: "/home/user/project",
-  permission_mode: "default",
-  hook_event_name: "PreToolUse",
-  tool_name: "Bash",
-  tool_use_id: "toolu_01ABC123",
-  tool_input: { command: "ls -la", description: "list files" },
+  session_id: 'e2e-test-session-002',
+  transcript_path: '/tmp/transcript.jsonl',
+  cwd: '/home/user/project',
+  permission_mode: 'default',
+  hook_event_name: 'PreToolUse',
+  tool_name: 'Bash',
+  tool_use_id: 'toolu_01ABC123',
+  tool_input: { command: 'ls -la', description: 'list files' },
 };
 
 // ---------------------------------------------------------------------------
@@ -68,7 +68,7 @@ const PRE_TOOL_USE_BASH = {
  */
 function readPortFile(xdgDataHome: string): number | null {
   try {
-    const content = readFileSync(join(xdgDataHome, "hookwatch", "hookwatch.port"), "utf8").trim();
+    const content = readFileSync(join(xdgDataHome, 'hookwatch', 'hookwatch.port'), 'utf8').trim();
     const port = Number.parseInt(content, 10);
     return Number.isNaN(port) ? null : port;
   } catch {
@@ -104,12 +104,12 @@ async function startServer(tmpBase: string, label: string): Promise<ServerHandle
   const xdgDataHome = join(tmpBase, label);
   mkdirSync(xdgDataHome, { recursive: true });
 
-  const proc = spawn("bun", ["--bun", SERVER_PATH], {
+  const proc = spawn('bun', ['--bun', SERVER_PATH], {
     env: {
       ...process.env,
       XDG_DATA_HOME: xdgDataHome,
     },
-    stdio: "pipe",
+    stdio: 'pipe',
     detached: false,
   });
 
@@ -135,7 +135,7 @@ async function startServer(tmpBase: string, label: string): Promise<ServerHandle
 
   const stop = (): void => {
     try {
-      proc.kill("SIGTERM");
+      proc.kill('SIGTERM');
     } catch {
       // Already dead
     }
@@ -154,8 +154,8 @@ async function startServer(tmpBase: string, label: string): Promise<ServerHandle
  */
 async function seedEvent(baseUrl: string, payload: Record<string, unknown>): Promise<void> {
   const res = await fetch(`${baseUrl}/api/events`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (res.status !== 201) {
@@ -199,16 +199,16 @@ async function freshPage(): Promise<{ context: BrowserContext; page: Page }> {
 // ---------------------------------------------------------------------------
 
 test(
-  "index.html loads with Pico CSS applied",
+  'index.html loads with Pico CSS applied',
   async () => {
-    const server = await startServer(tmpRoot, "pico-css-test");
+    const server = await startServer(tmpRoot, 'pico-css-test');
     const { context, page } = await freshPage();
 
     try {
       await page.goto(server.baseUrl);
 
       // The page title should be "hookwatch"
-      await expect(page).toHaveTitle("hookwatch");
+      await expect(page).toHaveTitle('hookwatch');
 
       // Pico CSS is linked as /pico.min.css in index.html.
       // Verify the stylesheet was loaded by checking for a <link> element.
@@ -217,14 +217,14 @@ test(
 
       // Pico CSS adds styles to semantic elements — verify the <main> tag is
       // present in the DOM (App component renders <main class="container">)
-      const main = page.locator("main.container");
+      const main = page.locator('main.container');
       await expect(main).toBeVisible();
 
       // Pico CSS itself is served — verify its HTTP status
       const picoRes = await page.request.get(`${server.baseUrl}/pico.min.css`);
       expect(picoRes.status()).toBe(200);
-      const ct = picoRes.headers()["content-type"] ?? "";
-      expect(ct).toContain("text/css");
+      const ct = picoRes.headers()['content-type'] ?? '';
+      expect(ct).toContain('text/css');
     } finally {
       await context.close();
       server.stop();
@@ -238,9 +238,9 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "empty state displays when no events exist",
+  'empty state displays when no events exist',
   async () => {
-    const server = await startServer(tmpRoot, "empty-state-test");
+    const server = await startServer(tmpRoot, 'empty-state-test');
     const { context, page } = await freshPage();
 
     try {
@@ -250,12 +250,12 @@ test(
       // Wait for the UI to mount and fetch (empty) results from /api/query.
       // The EventList component renders this text when eventList.value === [].
       const emptyMsg = page.locator(
-        "text=No events captured yet. Interact with Claude Code to generate events.",
+        'text=No events captured yet. Interact with Claude Code to generate events.',
       );
       await expect(emptyMsg).toBeVisible({ timeout: 10000 });
 
       // The events table must NOT be present in the empty state
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).not.toBeVisible();
     } finally {
       await context.close();
@@ -270,9 +270,9 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "event list renders seeded events in reverse chronological order with correct columns",
+  'event list renders seeded events in reverse chronological order with correct columns',
   async () => {
-    const server = await startServer(tmpRoot, "event-list-test");
+    const server = await startServer(tmpRoot, 'event-list-test');
     const { context, page } = await freshPage();
 
     try {
@@ -285,32 +285,32 @@ test(
       await page.goto(server.baseUrl);
 
       // Wait for the table to appear (events present)
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
       // Verify the table header columns
-      await expect(page.locator("th", { hasText: "Timestamp" })).toBeVisible();
-      await expect(page.locator("th", { hasText: "Event Type" })).toBeVisible();
-      await expect(page.locator("th", { hasText: "Session ID" })).toBeVisible();
-      await expect(page.locator("th", { hasText: "Tool Name" })).toBeVisible();
+      await expect(page.locator('th', { hasText: 'Timestamp' })).toBeVisible();
+      await expect(page.locator('th', { hasText: 'Event Type' })).toBeVisible();
+      await expect(page.locator('th', { hasText: 'Session ID' })).toBeVisible();
+      await expect(page.locator('th', { hasText: 'Tool Name' })).toBeVisible();
 
       // Verify both events appear in the table body
-      const rows = page.locator("tbody tr");
+      const rows = page.locator('tbody tr');
       await expect(rows).toHaveCount(2, { timeout: 10000 });
 
       // /api/query returns events in reverse chronological order (most recent first).
       // PreToolUse was inserted last, so it should be row 0.
       const firstRow = rows.nth(0);
-      await expect(firstRow.locator("td").nth(1)).toHaveText("PreToolUse");
-      await expect(firstRow.locator("td").nth(2)).toHaveText("e2e-test-session-002");
-      await expect(firstRow.locator("td").nth(3)).toHaveText("Bash");
+      await expect(firstRow.locator('td').nth(1)).toHaveText('PreToolUse');
+      await expect(firstRow.locator('td').nth(2)).toHaveText('e2e-test-session-002');
+      await expect(firstRow.locator('td').nth(3)).toHaveText('Bash');
 
       // SessionStart was inserted first, so it should be row 1.
       const secondRow = rows.nth(1);
-      await expect(secondRow.locator("td").nth(1)).toHaveText("SessionStart");
-      await expect(secondRow.locator("td").nth(2)).toHaveText("e2e-test-session-001");
+      await expect(secondRow.locator('td').nth(1)).toHaveText('SessionStart');
+      await expect(secondRow.locator('td').nth(2)).toHaveText('e2e-test-session-001');
       // SessionStart has no tool_name — EventList renders em-dash (U+2014)
-      await expect(secondRow.locator("td").nth(3)).toHaveText("\u2014");
+      await expect(secondRow.locator('td').nth(3)).toHaveText('\u2014');
     } finally {
       await context.close();
       server.stop();
@@ -324,9 +324,9 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "session filter dropdown populates, filtering works, clearing restores all",
+  'session filter dropdown populates, filtering works, clearing restores all',
   async () => {
-    const server = await startServer(tmpRoot, "session-filter-test");
+    const server = await startServer(tmpRoot, 'session-filter-test');
     const { context, page } = await freshPage();
 
     try {
@@ -338,31 +338,31 @@ test(
       await page.goto(server.baseUrl);
 
       // Wait for the table to appear (both events loaded)
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
-      await expect(page.locator("tbody tr")).toHaveCount(2, { timeout: 10000 });
+      await expect(page.locator('tbody tr')).toHaveCount(2, { timeout: 10000 });
 
       // The session filter dropdown must be present and enabled
-      const select = page.locator("select#session-filter");
+      const select = page.locator('select#session-filter');
       await expect(select).toBeVisible({ timeout: 10000 });
       await expect(select).not.toBeDisabled();
 
       // Dropdown must have "All sessions" plus one option per distinct session
       // (2 sessions seeded → 3 options total)
-      const options = select.locator("option");
+      const options = select.locator('option');
       await expect(options).toHaveCount(3, { timeout: 10000 });
-      await expect(options.nth(0)).toHaveText("All sessions");
+      await expect(options.nth(0)).toHaveText('All sessions');
 
       // Select session-001 — only that session's events should appear
-      await select.selectOption({ value: "e2e-test-session-001" });
-      await expect(page.locator("tbody tr")).toHaveCount(1, { timeout: 10000 });
-      const filteredRow = page.locator("tbody tr").nth(0);
-      await expect(filteredRow.locator("td").nth(1)).toHaveText("SessionStart");
-      await expect(filteredRow.locator("td").nth(2)).toHaveText("e2e-test-session-001");
+      await select.selectOption({ value: 'e2e-test-session-001' });
+      await expect(page.locator('tbody tr')).toHaveCount(1, { timeout: 10000 });
+      const filteredRow = page.locator('tbody tr').nth(0);
+      await expect(filteredRow.locator('td').nth(1)).toHaveText('SessionStart');
+      await expect(filteredRow.locator('td').nth(2)).toHaveText('e2e-test-session-001');
 
       // Select "All sessions" (empty value) — both events should be restored
-      await select.selectOption({ value: "" });
-      await expect(page.locator("tbody tr")).toHaveCount(2, { timeout: 10000 });
+      await select.selectOption({ value: '' });
+      await expect(page.locator('tbody tr')).toHaveCount(2, { timeout: 10000 });
     } finally {
       await context.close();
       server.stop();

@@ -11,31 +11,31 @@
  * - Extra fields preserved via .passthrough()
  */
 
-import { describe, expect, test } from "bun:test";
-import { ZodError } from "zod";
-import { queryFilterSchema } from "./query.ts";
+import { describe, expect, test } from 'bun:test';
+import { ZodError } from 'zod';
+import { queryFilterSchema } from './query.ts';
 
 // ---------------------------------------------------------------------------
 // Valid filters
 // ---------------------------------------------------------------------------
 
-describe("queryFilterSchema — valid filter with all fields", () => {
-  test("all fields provided parse successfully", () => {
+describe('queryFilterSchema — valid filter with all fields', () => {
+  test('all fields provided parse successfully', () => {
     const result = queryFilterSchema.parse({
-      session_id: "f8b0e97c-a19e-461a-8290-05a5c03d3d8f",
-      hook_event_name: "PreToolUse",
+      session_id: 'f8b0e97c-a19e-461a-8290-05a5c03d3d8f',
+      hook_event_name: 'PreToolUse',
       limit: 50,
       offset: 10,
     });
-    expect(result.session_id).toBe("f8b0e97c-a19e-461a-8290-05a5c03d3d8f");
-    expect(result.hook_event_name).toBe("PreToolUse");
+    expect(result.session_id).toBe('f8b0e97c-a19e-461a-8290-05a5c03d3d8f');
+    expect(result.hook_event_name).toBe('PreToolUse');
     expect(result.limit).toBe(50);
     expect(result.offset).toBe(10);
   });
 });
 
-describe("queryFilterSchema — empty object applies defaults", () => {
-  test("empty object is valid and applies default limit and offset", () => {
+describe('queryFilterSchema — empty object applies defaults', () => {
+  test('empty object is valid and applies default limit and offset', () => {
     const result = queryFilterSchema.parse({});
     expect(result.limit).toBe(100);
     expect(result.offset).toBe(0);
@@ -44,33 +44,33 @@ describe("queryFilterSchema — empty object applies defaults", () => {
   });
 });
 
-describe("queryFilterSchema — partial filters", () => {
-  test("only session_id provided — defaults applied to limit and offset", () => {
+describe('queryFilterSchema — partial filters', () => {
+  test('only session_id provided — defaults applied to limit and offset', () => {
     const result = queryFilterSchema.parse({
-      session_id: "abc-123",
+      session_id: 'abc-123',
     });
-    expect(result.session_id).toBe("abc-123");
+    expect(result.session_id).toBe('abc-123');
     expect(result.limit).toBe(100);
     expect(result.offset).toBe(0);
     expect(result.hook_event_name).toBeUndefined();
   });
 
-  test("only hook_event_name provided — defaults applied", () => {
+  test('only hook_event_name provided — defaults applied', () => {
     const result = queryFilterSchema.parse({
-      hook_event_name: "SessionStart",
+      hook_event_name: 'SessionStart',
     });
-    expect(result.hook_event_name).toBe("SessionStart");
+    expect(result.hook_event_name).toBe('SessionStart');
     expect(result.limit).toBe(100);
     expect(result.offset).toBe(0);
   });
 
-  test("only limit provided — offset defaults to 0", () => {
+  test('only limit provided — offset defaults to 0', () => {
     const result = queryFilterSchema.parse({ limit: 25 });
     expect(result.limit).toBe(25);
     expect(result.offset).toBe(0);
   });
 
-  test("only offset provided — limit defaults to 100", () => {
+  test('only offset provided — limit defaults to 100', () => {
     const result = queryFilterSchema.parse({ offset: 200 });
     expect(result.offset).toBe(200);
     expect(result.limit).toBe(100);
@@ -81,13 +81,13 @@ describe("queryFilterSchema — partial filters", () => {
 // Boundary values for limit
 // ---------------------------------------------------------------------------
 
-describe("queryFilterSchema — limit boundary values", () => {
-  test("limit of 1 is valid (minimum positive integer)", () => {
+describe('queryFilterSchema — limit boundary values', () => {
+  test('limit of 1 is valid (minimum positive integer)', () => {
     const result = queryFilterSchema.parse({ limit: 1 });
     expect(result.limit).toBe(1);
   });
 
-  test("limit of 1000 is valid (maximum allowed)", () => {
+  test('limit of 1000 is valid (maximum allowed)', () => {
     const result = queryFilterSchema.parse({ limit: 1000 });
     expect(result.limit).toBe(1000);
   });
@@ -97,13 +97,13 @@ describe("queryFilterSchema — limit boundary values", () => {
 // Boundary values for offset
 // ---------------------------------------------------------------------------
 
-describe("queryFilterSchema — offset boundary values", () => {
-  test("offset of 0 is valid (minimum nonneg integer)", () => {
+describe('queryFilterSchema — offset boundary values', () => {
+  test('offset of 0 is valid (minimum nonneg integer)', () => {
     const result = queryFilterSchema.parse({ offset: 0 });
     expect(result.offset).toBe(0);
   });
 
-  test("large offset is valid", () => {
+  test('large offset is valid', () => {
     const result = queryFilterSchema.parse({ offset: 99999 });
     expect(result.offset).toBe(99999);
   });
@@ -113,39 +113,39 @@ describe("queryFilterSchema — offset boundary values", () => {
 // Validation failures
 // ---------------------------------------------------------------------------
 
-describe("queryFilterSchema — limit validation failures", () => {
-  test("limit exceeding 1000 is rejected", () => {
+describe('queryFilterSchema — limit validation failures', () => {
+  test('limit exceeding 1000 is rejected', () => {
     expect(() => queryFilterSchema.parse({ limit: 1001 })).toThrow(ZodError);
   });
 
-  test("limit of 0 is rejected (must be positive)", () => {
+  test('limit of 0 is rejected (must be positive)', () => {
     expect(() => queryFilterSchema.parse({ limit: 0 })).toThrow(ZodError);
   });
 
-  test("negative limit is rejected", () => {
+  test('negative limit is rejected', () => {
     expect(() => queryFilterSchema.parse({ limit: -1 })).toThrow(ZodError);
   });
 
-  test("non-integer limit is rejected", () => {
+  test('non-integer limit is rejected', () => {
     expect(() => queryFilterSchema.parse({ limit: 10.5 })).toThrow(ZodError);
   });
 
-  test("string limit is rejected", () => {
-    expect(() => queryFilterSchema.parse({ limit: "50" })).toThrow(ZodError);
+  test('string limit is rejected', () => {
+    expect(() => queryFilterSchema.parse({ limit: '50' })).toThrow(ZodError);
   });
 });
 
-describe("queryFilterSchema — offset validation failures", () => {
-  test("negative offset is rejected", () => {
+describe('queryFilterSchema — offset validation failures', () => {
+  test('negative offset is rejected', () => {
     expect(() => queryFilterSchema.parse({ offset: -1 })).toThrow(ZodError);
   });
 
-  test("non-integer offset is rejected", () => {
+  test('non-integer offset is rejected', () => {
     expect(() => queryFilterSchema.parse({ offset: 1.5 })).toThrow(ZodError);
   });
 
-  test("string offset is rejected", () => {
-    expect(() => queryFilterSchema.parse({ offset: "10" })).toThrow(ZodError);
+  test('string offset is rejected', () => {
+    expect(() => queryFilterSchema.parse({ offset: '10' })).toThrow(ZodError);
   });
 });
 
@@ -153,16 +153,16 @@ describe("queryFilterSchema — offset validation failures", () => {
 // Passthrough — extra fields preserved
 // ---------------------------------------------------------------------------
 
-describe("queryFilterSchema — passthrough preserves unknown fields", () => {
-  test("extra field is preserved alongside known fields", () => {
+describe('queryFilterSchema — passthrough preserves unknown fields', () => {
+  test('extra field is preserved alongside known fields', () => {
     const result = queryFilterSchema.parse({
-      session_id: "abc-123",
-      future_filter_field: "some-value",
+      session_id: 'abc-123',
+      future_filter_field: 'some-value',
     });
-    expect((result as Record<string, unknown>).future_filter_field).toBe("some-value");
+    expect((result as Record<string, unknown>).future_filter_field).toBe('some-value');
   });
 
-  test("multiple unknown fields are all preserved", () => {
+  test('multiple unknown fields are all preserved', () => {
     const result = queryFilterSchema.parse({
       unknown_a: 42,
       unknown_b: true,
@@ -172,12 +172,12 @@ describe("queryFilterSchema — passthrough preserves unknown fields", () => {
     expect(r.unknown_b).toBe(true);
   });
 
-  test("extra field does not interfere with defaults", () => {
+  test('extra field does not interfere with defaults', () => {
     const result = queryFilterSchema.parse({
-      extra: "preserved",
+      extra: 'preserved',
     });
     expect(result.limit).toBe(100);
     expect(result.offset).toBe(0);
-    expect((result as Record<string, unknown>).extra).toBe("preserved");
+    expect((result as Record<string, unknown>).extra).toBe('preserved');
   });
 });

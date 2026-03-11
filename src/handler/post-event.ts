@@ -5,11 +5,11 @@
  * it if not reachable.
  */
 
-import type { parseHookEvent } from "@/schemas/events.ts";
-import type { SpawnResult } from "@/server-spawn.ts";
-import { spawnServer } from "@/server-spawn.ts";
-import { VERSION } from "@/version.ts";
-import { errorMsg } from "./errors.ts";
+import type { parseHookEvent } from '@/schemas/events.ts';
+import type { SpawnResult } from '@/server-spawn.ts';
+import { spawnServer } from '@/server-spawn.ts';
+import { VERSION } from '@/version.ts';
+import { errorMsg } from './errors.ts';
 
 const FETCH_TIMEOUT_MS = 5000;
 
@@ -28,7 +28,7 @@ interface BaseEventPayload {
  * exit_code is always 0 (bare mode never exits non-zero).
  */
 export interface BareEventPayload extends BaseEventPayload {
-  mode: "bare";
+  mode: 'bare';
   /** Hook output JSON written to stdout — what Claude Code sees. */
   stdout: string;
 }
@@ -38,7 +38,7 @@ export interface BareEventPayload extends BaseEventPayload {
  * exit_code reflects the child's actual exit code.
  */
 export interface WrappedEventPayload extends BaseEventPayload {
-  mode: "wrapped";
+  mode: 'wrapped';
   /** Command string to store in wrapped_command column. */
   wrappedCommand: string;
   /** Captured child stdout. */
@@ -64,16 +64,16 @@ export function isConnectionError(err: unknown): boolean {
   // Bun surfaces connection refusals with code "ConnectionRefused" and a
   // message like "Unable to connect. Is the computer able to access the url?"
   // Node.js uses code "ECONNREFUSED". Both are handled here.
-  const code = (err as NodeJS.ErrnoException).code ?? "";
+  const code = (err as NodeJS.ErrnoException).code ?? '';
   const msg = err.message.toLowerCase();
   return (
-    code === "ConnectionRefused" ||
-    code === "ECONNREFUSED" ||
-    msg.includes("connection refused") ||
-    msg.includes("econnrefused") ||
-    msg.includes("unable to connect") ||
-    msg.includes("failed to fetch") ||
-    msg.includes("fetch failed")
+    code === 'ConnectionRefused' ||
+    code === 'ECONNREFUSED' ||
+    msg.includes('connection refused') ||
+    msg.includes('econnrefused') ||
+    msg.includes('unable to connect') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('fetch failed')
   );
 }
 
@@ -92,7 +92,7 @@ export interface PostEventResult {
    * 'spawn' and 'retry' indicate infrastructure broken → fatal.
    * 'http' and 'exception' are transient → non-fatal.
    */
-  failureKind?: "spawn" | "retry" | "http" | "exception";
+  failureKind?: 'spawn' | 'retry' | 'http' | 'exception';
   failureReason?: string;
   detail?: string;
   /**
@@ -112,7 +112,7 @@ export interface PostEventResult {
  * not send it, and we don't want spurious errors in those cases.
  */
 function checkVersionHeader(res: Response): string | undefined {
-  const serverVersion = res.headers.get("X-Hookwatch-Version");
+  const serverVersion = res.headers.get('X-Hookwatch-Version');
   if (serverVersion === null || serverVersion === VERSION) return undefined;
   return `[error] Version mismatch: handler v${VERSION}, server v${serverVersion} — update hookwatch`;
 }
@@ -129,13 +129,13 @@ function checkVersionHeader(res: Response): string | undefined {
  * Fields already snake_case (stdout, stderr) map to themselves.
  */
 const WRAPPED_FIELD_MAP: Record<
-  Exclude<keyof WrappedEventPayload, keyof BaseEventPayload | "mode">,
+  Exclude<keyof WrappedEventPayload, keyof BaseEventPayload | 'mode'>,
   string
 > = {
-  wrappedCommand: "wrapped_command",
-  stdout: "stdout",
-  stderr: "stderr",
-  exitCode: "exit_code",
+  wrappedCommand: 'wrapped_command',
+  stdout: 'stdout',
+  stderr: 'stderr',
+  exitCode: 'exit_code',
 };
 
 /**
@@ -144,7 +144,7 @@ const WRAPPED_FIELD_MAP: Record<
  */
 function buildRequestBody(opts: EventPostPayload): string {
   const body: Record<string, unknown> = { ...opts.event };
-  if (opts.mode === "wrapped") {
+  if (opts.mode === 'wrapped') {
     for (const [camel, snake] of Object.entries(WRAPPED_FIELD_MAP) as [
       keyof typeof WRAPPED_FIELD_MAP,
       string,
@@ -190,17 +190,17 @@ export async function postEvent(port: number, opts: EventPostPayload): Promise<P
   // First attempt
   try {
     const res = await fetch(`http://127.0.0.1:${port}/api/events`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: payload,
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
 
     if (!res.ok) {
-      const text = await res.text().catch(() => "(unreadable)");
+      const text = await res.text().catch(() => '(unreadable)');
       const failureReason = `Server returned HTTP ${res.status}`;
       console.error(`[hookwatch] ${failureReason}: ${text}`);
-      return { ok: false, failureKind: "http", failureReason, detail: text };
+      return { ok: false, failureKind: 'http', failureReason, detail: text };
     }
 
     const versionMismatchLog = checkVersionHeader(res);
@@ -212,22 +212,22 @@ export async function postEvent(port: number, opts: EventPostPayload): Promise<P
     if (!isConnectionError(err)) {
       // Non-connection error (e.g. timeout, abort) — don't attempt spawn
       const detail = errorMsg(err);
-      const failureReason = "Failed to POST event to server";
+      const failureReason = 'Failed to POST event to server';
       console.error(`[hookwatch] ${failureReason}: ${detail}`);
-      return { ok: false, failureKind: "exception", failureReason, detail };
+      return { ok: false, failureKind: 'exception', failureReason, detail };
     }
   }
 
   // Server not reachable — attempt to spawn it
-  console.error("[hookwatch] Server not reachable, attempting to start it...");
+  console.error('[hookwatch] Server not reachable, attempting to start it...');
   const spawnResult: SpawnResult = await spawnServer();
 
   if (!spawnResult.ok) {
     const { failureKind } = spawnResult;
     const failureReason =
-      failureKind === "spawn"
-        ? "Spawn failed — server process could not be started"
-        : "Spawn failed — server did not become healthy in time";
+      failureKind === 'spawn'
+        ? 'Spawn failed — server process could not be started'
+        : 'Spawn failed — server did not become healthy in time';
     console.error(`[hookwatch] ${failureReason}`);
     return { ok: false, failureKind, failureReason };
   }
@@ -236,17 +236,17 @@ export async function postEvent(port: number, opts: EventPostPayload): Promise<P
   const { port: spawnedPort } = spawnResult;
   try {
     const res = await fetch(`http://127.0.0.1:${spawnedPort}/api/events`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: payload,
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
 
     if (!res.ok) {
-      const text = await res.text().catch(() => "(unreadable)");
+      const text = await res.text().catch(() => '(unreadable)');
       const failureReason = `Retry exhausted — server returned HTTP ${res.status}`;
       console.error(`[hookwatch] ${failureReason}: ${text}`);
-      return { ok: false, failureKind: "http", failureReason, detail: text };
+      return { ok: false, failureKind: 'http', failureReason, detail: text };
     }
 
     const versionMismatchLog = checkVersionHeader(res);
@@ -256,8 +256,8 @@ export async function postEvent(port: number, opts: EventPostPayload): Promise<P
     return { ok: true, ...(versionMismatchLog !== undefined && { versionMismatchLog }) };
   } catch (err) {
     const detail = errorMsg(err);
-    const failureReason = "Retry exhausted — failed to POST event to server after spawn";
+    const failureReason = 'Retry exhausted — failed to POST event to server after spawn';
     console.error(`[hookwatch] ${failureReason}: ${detail}`);
-    return { ok: false, failureKind: "exception", failureReason, detail };
+    return { ok: false, failureKind: 'exception', failureReason, detail };
   }
 }

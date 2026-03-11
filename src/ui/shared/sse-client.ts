@@ -15,10 +15,10 @@
  * ch-u88: no innerHTML — this module does not render HTML.
  */
 
-import type { Signal } from "@preact/signals";
-import type { EventRow } from "@/types.ts";
+import type { Signal } from '@preact/signals';
+import type { EventRow } from '@/types.ts';
 
-const SSE_ENDPOINT = "/api/events/stream";
+const SSE_ENDPOINT = '/api/events/stream';
 
 /**
  * Start the SSE client.
@@ -41,12 +41,12 @@ export function startSseClient(
     try {
       parsed = JSON.parse(ev.data) as unknown;
     } catch {
-      console.error("hookwatch: SSE received non-JSON data", ev.data);
+      console.error('hookwatch: SSE received non-JSON data', ev.data);
       return;
     }
 
     if (!isEventRow(parsed)) {
-      console.error("hookwatch: SSE event has unexpected shape", parsed);
+      console.error('hookwatch: SSE event has unexpected shape', parsed);
       return;
     }
 
@@ -62,7 +62,7 @@ export function startSseClient(
 
   source.onerror = () => {
     // EventSource handles reconnection automatically — log only for debugging
-    console.warn("hookwatch: SSE connection error, will reconnect automatically");
+    console.warn('hookwatch: SSE connection error, will reconnect automatically');
   };
 
   return source;
@@ -75,13 +75,13 @@ export function startSseClient(
  * to be absent or null.
  */
 function isEventRow(value: unknown): value is EventRow {
-  if (value === null || typeof value !== "object") return false;
+  if (value === null || typeof value !== 'object') return false;
   const obj = value as Record<string, unknown>;
   return (
-    typeof obj.id === "number" &&
-    typeof obj.timestamp === "number" &&
-    typeof obj.session_id === "string" &&
-    typeof obj.event === "string" &&
-    typeof obj.stdin === "string"
+    typeof obj.id === 'number' &&
+    typeof obj.timestamp === 'number' &&
+    typeof obj.session_id === 'string' &&
+    typeof obj.event === 'string' &&
+    typeof obj.stdin === 'string'
   );
 }

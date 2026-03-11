@@ -41,14 +41,14 @@
  *   Never mutate wrapped command exit code.
  */
 
-import { readPort } from "@/paths.ts";
-import { parseHookEvent } from "@/schemas/events.ts";
-import { hookOutputSchema } from "@/schemas/output.ts";
-import { buildSystemMessage } from "./context.ts";
-import { errorMsg } from "./errors.ts";
-import type { EventPostPayload, PostEventResult } from "./post-event.ts";
-import { postEvent } from "./post-event.ts";
-import { runWrapped } from "./wrap.ts";
+import { readPort } from '@/paths.ts';
+import { parseHookEvent } from '@/schemas/events.ts';
+import { hookOutputSchema } from '@/schemas/output.ts';
+import { buildSystemMessage } from './context.ts';
+import { errorMsg } from './errors.ts';
+import type { EventPostPayload, PostEventResult } from './post-event.ts';
+import { postEvent } from './post-event.ts';
+import { runWrapped } from './wrap.ts';
 
 const SLOW_THRESHOLD_MS = 100;
 
@@ -229,14 +229,14 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // -------------------------------------------------------------------------
 
   const elapsedMs = Date.now() - startMs;
-  const hookwatchLog = logEntries.length > 0 ? logEntries.join("; ") : null;
+  const hookwatchLog = logEntries.length > 0 ? logEntries.join('; ') : null;
 
   const postPayload: EventPostPayload =
     wrapArgs !== null
       ? {
-          mode: "wrapped",
+          mode: 'wrapped',
           event,
-          wrappedCommand: wrapArgs.join(" "),
+          wrappedCommand: wrapArgs.join(' '),
           stdout: childStdout as string,
           stderr: childStderr as string,
           exitCode: childExitCode,
@@ -244,7 +244,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
           hookwatchLog,
         }
       : {
-          mode: "bare",
+          mode: 'bare',
           event,
           stdout: preliminaryHookOutputJson,
           hookDurationMs: elapsedMs,
@@ -253,10 +253,10 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   const postResult: PostEventResult = await postEvent(port, postPayload);
 
   if (!postResult.ok) {
-    const reason = postResult.failureReason ?? "Failed to POST event to server";
-    const detail = postResult.detail ? `: ${postResult.detail}` : "";
+    const reason = postResult.failureReason ?? 'Failed to POST event to server';
+    const detail = postResult.detail ? `: ${postResult.detail}` : '';
 
-    if (postResult.failureKind === "spawn" || postResult.failureKind === "retry") {
+    if (postResult.failureKind === 'spawn' || postResult.failureKind === 'retry') {
       // Infrastructure broken — hookwatch cannot record events at all.
       // Exit fatal so the user sees the error in systemMessage. In wrapped
       // mode, infrastructure failure is also fatal: the wrapped command already

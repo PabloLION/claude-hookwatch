@@ -7,7 +7,7 @@
  *   - makeEvent(overrides): factory for EventRow-like DB insert params
  */
 
-import type { EventRow, InsertEventParams } from "@/types.ts";
+import type { EventRow, InsertEventParams } from '@/types.ts';
 
 // ---------------------------------------------------------------------------
 // Hook input payloads (stdin to the handler)
@@ -18,13 +18,13 @@ import type { EventRow, InsertEventParams } from "@/types.ts";
  * Used in handler and server tests to represent a real hook invocation.
  */
 export const BASE_SESSION_START: Record<string, unknown> = {
-  session_id: "test-session-001",
-  transcript_path: "/tmp/transcript.jsonl",
-  cwd: "/home/user/project",
-  permission_mode: "default",
-  hook_event_name: "SessionStart",
-  source: "startup",
-  model: "claude-sonnet-4-6",
+  session_id: 'test-session-001',
+  transcript_path: '/tmp/transcript.jsonl',
+  cwd: '/home/user/project',
+  permission_mode: 'default',
+  hook_event_name: 'SessionStart',
+  source: 'startup',
+  model: 'claude-sonnet-4-6',
 };
 
 /**
@@ -32,10 +32,10 @@ export const BASE_SESSION_START: Record<string, unknown> = {
  * Use as a base when building event-specific test payloads.
  */
 export const GENERIC_EVENT_BASE: Record<string, unknown> = {
-  session_id: "test-session-001",
-  transcript_path: "/tmp/transcript.jsonl",
-  cwd: "/home/user/project",
-  permission_mode: "default",
+  session_id: 'test-session-001',
+  transcript_path: '/tmp/transcript.jsonl',
+  cwd: '/home/user/project',
+  permission_mode: 'default',
 };
 
 // ---------------------------------------------------------------------------
@@ -52,13 +52,13 @@ export const GENERIC_EVENT_BASE: Record<string, unknown> = {
 export function makeEvent(overrides: Partial<InsertEventParams> = {}): InsertEventParams {
   return {
     timestamp: 1700000000000,
-    event: "SessionStart",
-    session_id: "sess-test-001",
-    cwd: "/tmp",
+    event: 'SessionStart',
+    session_id: 'sess-test-001',
+    cwd: '/tmp',
     tool_name: null,
     session_name: null,
     hook_duration_ms: null,
-    stdin: "{}",
+    stdin: '{}',
     wrapped_command: null,
     stdout: null,
     stderr: null,
@@ -76,13 +76,13 @@ export function makeEventRow(overrides: Partial<EventRow> = {}): EventRow {
   return {
     id: 1,
     timestamp: 1700000000000,
-    event: "SessionStart",
-    session_id: "sess-test-001",
-    cwd: "/tmp",
+    event: 'SessionStart',
+    session_id: 'sess-test-001',
+    cwd: '/tmp',
     tool_name: null,
     session_name: null,
     hook_duration_ms: null,
-    stdin: "{}",
+    stdin: '{}',
     wrapped_command: null,
     stdout: null,
     stderr: null,

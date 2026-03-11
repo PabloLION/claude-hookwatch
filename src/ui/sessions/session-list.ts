@@ -15,26 +15,26 @@
  */
 export async function fetchSessions(): Promise<string[]> {
   try {
-    const res = await fetch("/api/query", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ queryType: "sessions" }),
+    const res = await fetch('/api/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ queryType: 'sessions' }),
     });
 
     if (!res.ok) {
-      console.error("hookwatch: /api/query (sessions) returned", res.status);
+      console.error('hookwatch: /api/query (sessions) returned', res.status);
       return [];
     }
 
     const data: unknown = await res.json();
-    if (Array.isArray(data) && data.every((item) => typeof item === "string")) {
+    if (Array.isArray(data) && data.every((item) => typeof item === 'string')) {
       return data as string[];
     }
 
-    console.error("hookwatch: unexpected sessions response shape", data);
+    console.error('hookwatch: unexpected sessions response shape', data);
     return [];
   } catch (err) {
-    console.error("hookwatch: failed to fetch sessions", err);
+    console.error('hookwatch: failed to fetch sessions', err);
     return [];
   }
 }

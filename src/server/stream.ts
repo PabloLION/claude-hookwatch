@@ -15,7 +15,7 @@
  *   Connection: keep-alive
  */
 
-import type { EventRow } from "@/types.ts";
+import type { EventRow } from '@/types.ts';
 
 // ---------------------------------------------------------------------------
 // Client registry
@@ -45,9 +45,9 @@ export function handleStream(_req: Request): Response {
   return new Response(stream, {
     status: 200,
     headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
     },
   });
 }

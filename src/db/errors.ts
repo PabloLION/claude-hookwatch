@@ -1,7 +1,7 @@
 /**
  * Shared DB error helpers.
  *
- * Centralises detection of SQLite runtime errors so callers do not need to
+ * Centralizes detection of SQLite runtime errors so callers do not need to
  * duplicate string-matching logic.
  */
 
@@ -13,5 +13,5 @@
 export function isSqliteBusy(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const msg = err.message.toUpperCase();
-  return msg.includes("SQLITE_BUSY") || msg.includes("SQLITE_LOCKED");
+  return msg.includes('SQLITE_BUSY') || msg.includes('SQLITE_LOCKED');
 }

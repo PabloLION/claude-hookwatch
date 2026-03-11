@@ -16,11 +16,11 @@
  * - OS error (EISDIR) → returns DEFAULT_PORT, warning is non-null string describing the error
  */
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { DEFAULT_PORT, readPort } from "./paths.ts";
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { DEFAULT_PORT, readPort } from './paths.ts';
 
 // ---------------------------------------------------------------------------
 // Test setup: isolated XDG_DATA_HOME per test
@@ -31,7 +31,7 @@ let tmpDir: string;
 
 beforeEach(() => {
   originalXdgDataHome = process.env.XDG_DATA_HOME;
-  tmpDir = mkdtempSync(join(tmpdir(), "hookwatch-paths-test-"));
+  tmpDir = mkdtempSync(join(tmpdir(), 'hookwatch-paths-test-'));
   process.env.XDG_DATA_HOME = tmpDir;
 });
 
@@ -51,45 +51,45 @@ afterEach(() => {
 
 /** Writes the port file content inside the controlled XDG_DATA_HOME. */
 function writePortFile(content: string): void {
-  const dir = join(tmpDir, "hookwatch");
+  const dir = join(tmpDir, 'hookwatch');
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "hookwatch.port"), content);
+  writeFileSync(join(dir, 'hookwatch.port'), content);
 }
 
 // ---------------------------------------------------------------------------
 // Valid port file
 // ---------------------------------------------------------------------------
 
-describe("valid port file", () => {
-  test("reads the exact port number from the file", () => {
-    writePortFile("7890");
+describe('valid port file', () => {
+  test('reads the exact port number from the file', () => {
+    writePortFile('7890');
     const result = readPort();
     expect(result.port).toBe(7890);
     expect(result.warning).toBeNull();
   });
 
-  test("trims surrounding whitespace before parsing", () => {
-    writePortFile("  8080\n");
+  test('trims surrounding whitespace before parsing', () => {
+    writePortFile('  8080\n');
     const result = readPort();
     expect(result.port).toBe(8080);
     expect(result.warning).toBeNull();
   });
 
-  test("returns warning: null on success", () => {
-    writePortFile("6004");
+  test('returns warning: null on success', () => {
+    writePortFile('6004');
     const result = readPort();
     expect(result.warning).toBeNull();
   });
 
-  test("accepts port 1 (minimum valid port)", () => {
-    writePortFile("1");
+  test('accepts port 1 (minimum valid port)', () => {
+    writePortFile('1');
     const result = readPort();
     expect(result.port).toBe(1);
     expect(result.warning).toBeNull();
   });
 
-  test("accepts port 65535 (maximum valid port)", () => {
-    writePortFile("65535");
+  test('accepts port 65535 (maximum valid port)', () => {
+    writePortFile('65535');
     const result = readPort();
     expect(result.port).toBe(65535);
     expect(result.warning).toBeNull();
@@ -100,14 +100,14 @@ describe("valid port file", () => {
 // Missing file (ENOENT)
 // ---------------------------------------------------------------------------
 
-describe("missing port file (ENOENT)", () => {
-  test("returns DEFAULT_PORT when file does not exist", () => {
+describe('missing port file (ENOENT)', () => {
+  test('returns DEFAULT_PORT when file does not exist', () => {
     // No writePortFile call — file is absent
     const result = readPort();
     expect(result.port).toBe(DEFAULT_PORT);
   });
 
-  test("returns warning: null on ENOENT (silent fallback)", () => {
+  test('returns warning: null on ENOENT (silent fallback)', () => {
     const result = readPort();
     expect(result.warning).toBeNull();
   });
@@ -117,37 +117,37 @@ describe("missing port file (ENOENT)", () => {
 // Invalid content (non-numeric, out-of-range)
 // ---------------------------------------------------------------------------
 
-describe("invalid port file content", () => {
-  test("non-numeric content → DEFAULT_PORT, warning null", () => {
-    writePortFile("not-a-port");
+describe('invalid port file content', () => {
+  test('non-numeric content → DEFAULT_PORT, warning null', () => {
+    writePortFile('not-a-port');
     const result = readPort();
     expect(result.port).toBe(DEFAULT_PORT);
     expect(result.warning).toBeNull();
   });
 
-  test("empty file → DEFAULT_PORT, warning null", () => {
-    writePortFile("");
+  test('empty file → DEFAULT_PORT, warning null', () => {
+    writePortFile('');
     const result = readPort();
     expect(result.port).toBe(DEFAULT_PORT);
     expect(result.warning).toBeNull();
   });
 
-  test("port 0 (invalid) → DEFAULT_PORT, warning null", () => {
-    writePortFile("0");
+  test('port 0 (invalid) → DEFAULT_PORT, warning null', () => {
+    writePortFile('0');
     const result = readPort();
     expect(result.port).toBe(DEFAULT_PORT);
     expect(result.warning).toBeNull();
   });
 
-  test("port 65536 (above max) → DEFAULT_PORT, warning null", () => {
-    writePortFile("65536");
+  test('port 65536 (above max) → DEFAULT_PORT, warning null', () => {
+    writePortFile('65536');
     const result = readPort();
     expect(result.port).toBe(DEFAULT_PORT);
     expect(result.warning).toBeNull();
   });
 
-  test("negative port number → DEFAULT_PORT, warning null", () => {
-    writePortFile("-1");
+  test('negative port number → DEFAULT_PORT, warning null', () => {
+    writePortFile('-1');
     const result = readPort();
     expect(result.port).toBe(DEFAULT_PORT);
     expect(result.warning).toBeNull();
@@ -155,7 +155,7 @@ describe("invalid port file content", () => {
 
   test("float string → DEFAULT_PORT, warning null (parseInt truncates to NaN for '6.5'...)", () => {
     // parseInt("6.5") = 6, which is valid — but "abc6" → NaN
-    writePortFile("abc6");
+    writePortFile('abc6');
     const result = readPort();
     expect(result.port).toBe(DEFAULT_PORT);
     expect(result.warning).toBeNull();
@@ -166,33 +166,33 @@ describe("invalid port file content", () => {
 // OS errors (non-ENOENT) → warning returned
 // ---------------------------------------------------------------------------
 
-describe("OS error reading port file (non-ENOENT)", () => {
-  test("EISDIR: port file path is a directory → DEFAULT_PORT with non-null warning", () => {
+describe('OS error reading port file (non-ENOENT)', () => {
+  test('EISDIR: port file path is a directory → DEFAULT_PORT with non-null warning', () => {
     // Create a directory where the port file should be — readFileSync throws EISDIR.
     // EISDIR is a reliable cross-platform non-ENOENT OS error for this scenario.
-    const dir = join(tmpDir, "hookwatch");
-    const portFilePath = join(dir, "hookwatch.port");
+    const dir = join(tmpDir, 'hookwatch');
+    const portFilePath = join(dir, 'hookwatch.port');
     mkdirSync(portFilePath, { recursive: true }); // create dir at file path
 
     const result = readPort();
     expect(result.port).toBe(DEFAULT_PORT);
     expect(result.warning).not.toBeNull();
-    expect(typeof result.warning).toBe("string");
+    expect(typeof result.warning).toBe('string');
   });
 
-  test("EISDIR: warning string mentions the error code or DEFAULT_PORT", () => {
-    const dir = join(tmpDir, "hookwatch");
-    const portFilePath = join(dir, "hookwatch.port");
+  test('EISDIR: warning string mentions the error code or DEFAULT_PORT', () => {
+    const dir = join(tmpDir, 'hookwatch');
+    const portFilePath = join(dir, 'hookwatch.port');
     mkdirSync(portFilePath, { recursive: true });
 
     const result = readPort();
     // Warning should reference either the error code or the fallback
-    const warning = result.warning ?? "";
+    const warning = result.warning ?? '';
     expect(warning.length).toBeGreaterThan(0);
     // The message includes either the OS code or a description
-    const containsCode = warning.includes("EISDIR") || warning.includes("unknown");
+    const containsCode = warning.includes('EISDIR') || warning.includes('unknown');
     const containsFallback =
-      warning.toLowerCase().includes("default_port") || warning.includes("DEFAULT_PORT");
+      warning.toLowerCase().includes('default_port') || warning.includes('DEFAULT_PORT');
     expect(containsCode || containsFallback).toBe(true);
   });
 });

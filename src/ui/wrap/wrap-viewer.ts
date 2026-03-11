@@ -16,8 +16,8 @@
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
-import type { EventRow } from "@/types.ts";
-import { html } from "../shared/html.ts";
+import type { EventRow } from '@/types.ts';
+import { html } from '../shared/html.ts';
 
 interface WrapViewerProps {
   event: EventRow;
@@ -29,19 +29,19 @@ interface WrapViewerProps {
  */
 function exitCodeStyle(exitCode: number | null): Record<string, string> {
   if (exitCode === null) {
-    return { color: "var(--pico-muted-color, #888)", fontWeight: "600" };
+    return { color: 'var(--pico-muted-color, #888)', fontWeight: '600' };
   }
   if (exitCode === 0) {
-    return { color: "var(--pico-ins-color, #2d9a2d)", fontWeight: "600" };
+    return { color: 'var(--pico-ins-color, #2d9a2d)', fontWeight: '600' };
   }
-  return { color: "var(--pico-del-color, #c0392b)", fontWeight: "600" };
+  return { color: 'var(--pico-del-color, #c0392b)', fontWeight: '600' };
 }
 
 /**
  * Format the exit code for display.
  */
 function formatExitCode(exitCode: number | null): string {
-  if (exitCode === null) return "N/A";
+  if (exitCode === null) return 'N/A';
   return String(exitCode);
 }
 

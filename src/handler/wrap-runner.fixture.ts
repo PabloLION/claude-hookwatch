@@ -11,11 +11,11 @@
  * Exits with the child's exit code.
  */
 
-import { runWrapped } from "./wrap.ts";
+import { runWrapped } from './wrap.ts';
 
 const cmd = process.argv.slice(2);
 if (cmd.length === 0) {
-  process.stderr.write(`${JSON.stringify({ error: "no command provided" })}\n`);
+  process.stderr.write(`${JSON.stringify({ error: 'no command provided' })}\n`);
   process.exit(1);
 }
 

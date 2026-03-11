@@ -16,11 +16,11 @@
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
-import type { Signal } from "@preact/signals";
-import { useEffect, useState } from "preact/hooks";
-import type { EventRow } from "@/types.ts";
-import { html } from "../shared/html.ts";
-import { EventDetail } from "./event-detail.ts";
+import type { Signal } from '@preact/signals';
+import { useEffect, useState } from 'preact/hooks';
+import type { EventRow } from '@/types.ts';
+import { html } from '../shared/html.ts';
+import { EventDetail } from './event-detail.ts';
 
 // TODO: configurable via config.toml (ch-1ex5.1)
 const DEFAULT_QUERY_LIMIT = 100;
@@ -39,16 +39,16 @@ function extractToolName(stdinJson: string): string {
     const parsed: unknown = JSON.parse(stdinJson);
     if (
       parsed !== null &&
-      typeof parsed === "object" &&
-      "tool_name" in parsed &&
-      typeof (parsed as Record<string, unknown>).tool_name === "string"
+      typeof parsed === 'object' &&
+      'tool_name' in parsed &&
+      typeof (parsed as Record<string, unknown>).tool_name === 'string'
     ) {
       return (parsed as Record<string, unknown>).tool_name as string;
     }
   } catch {
     // stdin is not valid JSON — return placeholder
   }
-  return "\u2014";
+  return '\u2014';
 }
 
 /**
@@ -69,24 +69,24 @@ function formatTimestamp(ts: number): string {
 function eventTypeBadgeStyle(isWrapped: boolean): Record<string, string> {
   if (isWrapped) {
     return {
-      display: "inline-block",
-      padding: "0.1em 0.5em",
-      borderRadius: "0.25em",
-      background: "var(--pico-primary)",
-      color: "var(--pico-primary-inverse, #fff)",
-      fontWeight: "600",
-      fontSize: "0.85em",
+      display: 'inline-block',
+      padding: '0.1em 0.5em',
+      borderRadius: '0.25em',
+      background: 'var(--pico-primary)',
+      color: 'var(--pico-primary-inverse, #fff)',
+      fontWeight: '600',
+      fontSize: '0.85em',
     };
   }
   return {
-    display: "inline-block",
-    padding: "0.1em 0.5em",
-    borderRadius: "0.25em",
-    background: "transparent",
-    color: "var(--pico-primary)",
-    border: "1px solid var(--pico-primary)",
-    fontWeight: "600",
-    fontSize: "0.85em",
+    display: 'inline-block',
+    padding: '0.1em 0.5em',
+    borderRadius: '0.25em',
+    background: 'transparent',
+    color: 'var(--pico-primary)',
+    border: '1px solid var(--pico-primary)',
+    fontWeight: '600',
+    fontSize: '0.85em',
   };
 }
 
@@ -123,7 +123,7 @@ export function EventList({ eventList, activeSession }: EventListProps) {
 
   return html`
     <section>
-      <div style=${{ overflowX: "auto" }}>
+      <div style=${{ overflowX: 'auto' }}>
         <table>
           <thead>
             <tr>
@@ -142,15 +142,15 @@ export function EventList({ eventList, activeSession }: EventListProps) {
                 <tr
                   key=${event.id}
                   onClick=${() => toggleRow(event.id)}
-                  style=${{ cursor: "pointer" }}
+                  style=${{ cursor: 'pointer' }}
                   aria-expanded=${expanded}
                   data-event-id=${event.id}
-                  data-wrapped=${isWrapped ? "true" : "false"}
+                  data-wrapped=${isWrapped ? 'true' : 'false'}
                 >
                   <td>${formatTimestamp(event.timestamp)}</td>
                   <td>
                     <span
-                      class=${isWrapped ? "event-type-badge event-type-badge--wrapped" : "event-type-badge event-type-badge--bare"}
+                      class=${isWrapped ? 'event-type-badge event-type-badge--wrapped' : 'event-type-badge event-type-badge--bare'}
                       style=${eventTypeBadgeStyle(isWrapped)}
                       data-testid="event-type-badge"
                     >${event.event}</span>
@@ -184,14 +184,14 @@ async function fetchEvents(eventList: Signal<EventRow[]>, sessionId: string | nu
       body.session_id = sessionId;
     }
 
-    const res = await fetch("/api/query", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await fetch('/api/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
     if (!res.ok) {
-      console.error("hookwatch: /api/query returned", res.status);
+      console.error('hookwatch: /api/query returned', res.status);
       return;
     }
 
@@ -200,6 +200,6 @@ async function fetchEvents(eventList: Signal<EventRow[]>, sessionId: string | nu
       eventList.value = rows as EventRow[];
     }
   } catch (err) {
-    console.error("hookwatch: failed to fetch events", err);
+    console.error('hookwatch: failed to fetch events', err);
   }
 }

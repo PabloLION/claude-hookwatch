@@ -8,18 +8,18 @@
  *   - handleStream returns correct SSE response headers
  */
 
-import { afterEach, describe, expect, test } from "bun:test";
-import { broadcast, closeAll, handleStream } from "@/server/stream.ts";
-import { makeEventRow } from "@/test";
+import { afterEach, describe, expect, test } from 'bun:test';
+import { broadcast, closeAll, handleStream } from '@/server/stream.ts';
+import { makeEventRow } from '@/test';
 
 /** Open a real SSE connection to the handleStream handler and return the
  *  stream reader so test code can pull chunks from it. */
 function openSseStream(): ReadableStreamDefaultReader<Uint8Array> {
-  const req = new Request("http://localhost/api/events/stream");
+  const req = new Request('http://localhost/api/events/stream');
   const res = handleStream(req);
   // handleStream always returns a ReadableStream body — the non-null assertion
   // is safe here; body is only null for responses without a body (e.g., 204).
-  if (res.body === null) throw new Error("handleStream returned a response with no body");
+  if (res.body === null) throw new Error('handleStream returned a response with no body');
   return res.body.getReader();
 }
 
@@ -37,13 +37,13 @@ afterEach(() => {
 // handleStream — response headers
 // ---------------------------------------------------------------------------
 
-describe("handleStream", () => {
-  test("returns 200 with text/event-stream content-type", () => {
-    const req = new Request("http://localhost/api/events/stream");
+describe('handleStream', () => {
+  test('returns 200 with text/event-stream content-type', () => {
+    const req = new Request('http://localhost/api/events/stream');
     const res = handleStream(req);
     expect(res.status).toBe(200);
-    expect(res.headers.get("Content-Type")).toBe("text/event-stream");
-    expect(res.headers.get("Cache-Control")).toBe("no-cache");
+    expect(res.headers.get('Content-Type')).toBe('text/event-stream');
+    expect(res.headers.get('Cache-Control')).toBe('no-cache');
   });
 });
 
@@ -51,8 +51,8 @@ describe("handleStream", () => {
 // broadcast — message delivery
 // ---------------------------------------------------------------------------
 
-describe("broadcast", () => {
-  test("delivers SSE data message to a connected client", async () => {
+describe('broadcast', () => {
+  test('delivers SSE data message to a connected client', async () => {
     const reader = openSseStream();
     const row = makeEventRow({ id: 42 });
 
@@ -64,18 +64,18 @@ describe("broadcast", () => {
     const text = decoder.decode(value);
 
     // Must start with "data: " and end with "\n\n"
-    expect(text.startsWith("data: ")).toBe(true);
-    expect(text.endsWith("\n\n")).toBe(true);
+    expect(text.startsWith('data: ')).toBe(true);
+    expect(text.endsWith('\n\n')).toBe(true);
 
     // The JSON payload must round-trip to the original row
-    const json = text.slice("data: ".length, -2);
+    const json = text.slice('data: '.length, -2);
     const parsed = JSON.parse(json);
     expect(parsed.id).toBe(42);
-    expect(parsed.event).toBe("SessionStart");
-    expect(parsed.session_id).toBe("sess-test-001");
+    expect(parsed.event).toBe('SessionStart');
+    expect(parsed.session_id).toBe('sess-test-001');
   });
 
-  test("delivers to all connected clients simultaneously", async () => {
+  test('delivers to all connected clients simultaneously', async () => {
     const reader1 = openSseStream();
     const reader2 = openSseStream();
     const row = makeEventRow({ id: 7 });
@@ -94,9 +94,9 @@ describe("broadcast", () => {
     expect(text1.includes(`"id":7`)).toBe(true);
   });
 
-  test("skips dead clients and removes them from the set", async () => {
+  test('skips dead clients and removes them from the set', async () => {
     // Open a stream and then close it to simulate a disconnected client
-    const req = new Request("http://localhost/api/events/stream");
+    const req = new Request('http://localhost/api/events/stream');
     const res = handleStream(req);
     // Cancel the body to trigger the stream cancel callback.
     // body is always present on our SSE response; cancel() via optional chain
@@ -113,7 +113,7 @@ describe("broadcast", () => {
     const { value, done } = await healthyReader.read();
     expect(done).toBe(false);
     const text = decoder.decode(value);
-    expect(text.startsWith("data: ")).toBe(true);
+    expect(text.startsWith('data: ')).toBe(true);
   });
 });
 
@@ -121,8 +121,8 @@ describe("broadcast", () => {
 // closeAll
 // ---------------------------------------------------------------------------
 
-describe("closeAll", () => {
-  test("closes all open streams", async () => {
+describe('closeAll', () => {
+  test('closes all open streams', async () => {
     const reader1 = openSseStream();
     const reader2 = openSseStream();
 
@@ -133,7 +133,7 @@ describe("closeAll", () => {
     expect(r2.done).toBe(true);
   });
 
-  test("is idempotent — second closeAll does not throw", () => {
+  test('is idempotent — second closeAll does not throw', () => {
     openSseStream();
     closeAll();
     expect(() => closeAll()).not.toThrow();

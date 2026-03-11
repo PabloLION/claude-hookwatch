@@ -11,20 +11,20 @@
  *     then exits after activity stops
  */
 
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from 'bun:test';
 
 // ---------------------------------------------------------------------------
 // Unit tests — verify resetIdleTimer is exported and callable
 // ---------------------------------------------------------------------------
 
-describe("resetIdleTimer (unit)", () => {
-  test("is exported and callable without throwing", async () => {
-    const { resetIdleTimer } = await import("@/server/index.ts");
+describe('resetIdleTimer (unit)', () => {
+  test('is exported and callable without throwing', async () => {
+    const { resetIdleTimer } = await import('@/server/index.ts');
     expect(() => resetIdleTimer()).not.toThrow();
   });
 
-  test("calling multiple times does not throw", async () => {
-    const { resetIdleTimer } = await import("@/server/index.ts");
+  test('calling multiple times does not throw', async () => {
+    const { resetIdleTimer } = await import('@/server/index.ts');
     expect(() => {
       resetIdleTimer();
       resetIdleTimer();
@@ -97,9 +97,9 @@ function spawnServerWithTimeout(timeoutMs: number): Bun.Subprocess {
     }
   `;
 
-  return Bun.spawn(["bun", "--eval", script], {
-    stdout: "pipe",
-    stderr: "pipe",
+  return Bun.spawn(['bun', '--eval', script], {
+    stdout: 'pipe',
+    stderr: 'pipe',
     env: { ...process.env },
   });
 }
@@ -108,19 +108,19 @@ function spawnServerWithTimeout(timeoutMs: number): Bun.Subprocess {
 async function readLine(subprocess: Bun.Subprocess): Promise<string> {
   const reader = (subprocess.stdout as ReadableStream<Uint8Array>).getReader();
   const decoder = new TextDecoder();
-  let buf = "";
+  let buf = '';
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
     buf += decoder.decode(value);
-    if (buf.includes("\n")) break;
+    if (buf.includes('\n')) break;
   }
   reader.releaseLock();
   return buf.trim();
 }
 
-describe("idle timeout integration", () => {
-  test("server exits with code 0 after idle timeout with no activity", async () => {
+describe('idle timeout integration', () => {
+  test('server exits with code 0 after idle timeout with no activity', async () => {
     const TIMEOUT_MS = 300;
     const subprocess = spawnServerWithTimeout(TIMEOUT_MS);
 
@@ -140,7 +140,7 @@ describe("idle timeout integration", () => {
     expect(exitCode).toBe(0);
   }, 5000);
 
-  test("server stays alive while requests keep arriving, exits after activity stops", async () => {
+  test('server stays alive while requests keep arriving, exits after activity stops', async () => {
     const TIMEOUT_MS = 400;
     const subprocess = spawnServerWithTimeout(TIMEOUT_MS);
 
@@ -168,7 +168,7 @@ describe("idle timeout integration", () => {
     const exitCode = subprocess.exitCode;
     if (exitCode === null) {
       subprocess.kill();
-      throw new Error("Server did not exit after requests stopped");
+      throw new Error('Server did not exit after requests stopped');
     }
     expect(exitCode).toBe(0);
   }, 8000);

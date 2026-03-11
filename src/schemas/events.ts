@@ -16,8 +16,8 @@
  * Naming: camelCase + Schema suffix (e.g. sessionStartSchema), PascalCase inferred types.
  */
 
-import { type ZodSchema, z } from "zod";
-import type { EVENT_NAMES } from "@/types.ts";
+import { type ZodSchema, z } from 'zod';
+import type { EVENT_NAMES } from '@/types.ts';
 
 // ---------------------------------------------------------------------------
 // Common fields (present on every event)
@@ -46,8 +46,8 @@ export type CommonFields = z.infer<typeof commonFieldsSchema>;
 
 export const sessionStartSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("SessionStart"),
-    source: z.enum(["startup", "resume", "clear", "compact"]),
+    hook_event_name: z.literal('SessionStart'),
+    source: z.enum(['startup', 'resume', 'clear', 'compact']),
     model: z.string(),
     agent_type: z.string().optional(),
   })
@@ -57,13 +57,13 @@ export type SessionStart = z.infer<typeof sessionStartSchema>;
 
 export const sessionEndSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("SessionEnd"),
+    hook_event_name: z.literal('SessionEnd'),
     reason: z.enum([
-      "clear",
-      "logout",
-      "prompt_input_exit",
-      "bypass_permissions_disabled",
-      "other",
+      'clear',
+      'logout',
+      'prompt_input_exit',
+      'bypass_permissions_disabled',
+      'other',
     ]),
   })
   .passthrough();
@@ -72,7 +72,7 @@ export type SessionEnd = z.infer<typeof sessionEndSchema>;
 
 export const userPromptSubmitSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("UserPromptSubmit"),
+    hook_event_name: z.literal('UserPromptSubmit'),
     prompt: z.string(),
   })
   .passthrough();
@@ -81,7 +81,7 @@ export type UserPromptSubmit = z.infer<typeof userPromptSubmitSchema>;
 
 export const preToolUseSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("PreToolUse"),
+    hook_event_name: z.literal('PreToolUse'),
     tool_name: z.string(),
     tool_use_id: z.string(),
     tool_input: z.record(z.string(), z.unknown()),
@@ -92,7 +92,7 @@ export type PreToolUse = z.infer<typeof preToolUseSchema>;
 
 export const postToolUseSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("PostToolUse"),
+    hook_event_name: z.literal('PostToolUse'),
     tool_name: z.string(),
     tool_use_id: z.string(),
     tool_input: z.record(z.string(), z.unknown()),
@@ -104,7 +104,7 @@ export type PostToolUse = z.infer<typeof postToolUseSchema>;
 
 export const postToolUseFailureSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("PostToolUseFailure"),
+    hook_event_name: z.literal('PostToolUseFailure'),
     tool_name: z.string(),
     tool_use_id: z.string(),
     tool_input: z.record(z.string(), z.unknown()),
@@ -121,7 +121,7 @@ export type PostToolUseFailure = z.infer<typeof postToolUseFailureSchema>;
  */
 export const permissionRequestSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("PermissionRequest"),
+    hook_event_name: z.literal('PermissionRequest'),
     tool_name: z.string(),
     tool_input: z.record(z.string(), z.unknown()),
     permission_suggestions: z.array(z.record(z.string(), z.unknown())).optional(),
@@ -132,14 +132,14 @@ export type PermissionRequest = z.infer<typeof permissionRequestSchema>;
 
 export const notificationSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("Notification"),
+    hook_event_name: z.literal('Notification'),
     message: z.string(),
     title: z.string().optional(),
     notification_type: z.enum([
-      "permission_prompt",
-      "idle_prompt",
-      "auth_success",
-      "elicitation_dialog",
+      'permission_prompt',
+      'idle_prompt',
+      'auth_success',
+      'elicitation_dialog',
     ]),
   })
   .passthrough();
@@ -148,7 +148,7 @@ export type Notification = z.infer<typeof notificationSchema>;
 
 export const subagentStartSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("SubagentStart"),
+    hook_event_name: z.literal('SubagentStart'),
     agent_id: z.string(),
     agent_type: z.string(),
   })
@@ -158,7 +158,7 @@ export type SubagentStart = z.infer<typeof subagentStartSchema>;
 
 export const subagentStopSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("SubagentStop"),
+    hook_event_name: z.literal('SubagentStop'),
     agent_id: z.string(),
     agent_type: z.string(),
     stop_hook_active: z.boolean(),
@@ -171,7 +171,7 @@ export type SubagentStop = z.infer<typeof subagentStopSchema>;
 
 export const stopSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("Stop"),
+    hook_event_name: z.literal('Stop'),
     stop_hook_active: z.boolean(),
     last_assistant_message: z.string(),
   })
@@ -181,8 +181,8 @@ export type Stop = z.infer<typeof stopSchema>;
 
 export const preCompactSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("PreCompact"),
-    trigger: z.enum(["manual", "auto"]),
+    hook_event_name: z.literal('PreCompact'),
+    trigger: z.enum(['manual', 'auto']),
     custom_instructions: z.string(),
   })
   .passthrough();
@@ -191,7 +191,7 @@ export type PreCompact = z.infer<typeof preCompactSchema>;
 
 export const teammateIdleSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("TeammateIdle"),
+    hook_event_name: z.literal('TeammateIdle'),
     teammate_name: z.string(),
     team_name: z.string(),
   })
@@ -201,7 +201,7 @@ export type TeammateIdle = z.infer<typeof teammateIdleSchema>;
 
 export const taskCompletedSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("TaskCompleted"),
+    hook_event_name: z.literal('TaskCompleted'),
     task_id: z.string(),
     task_subject: z.string(),
     task_description: z.string().optional(),
@@ -214,13 +214,13 @@ export type TaskCompleted = z.infer<typeof taskCompletedSchema>;
 
 export const configChangeSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("ConfigChange"),
+    hook_event_name: z.literal('ConfigChange'),
     source: z.enum([
-      "user_settings",
-      "project_settings",
-      "local_settings",
-      "policy_settings",
-      "skills",
+      'user_settings',
+      'project_settings',
+      'local_settings',
+      'policy_settings',
+      'skills',
     ]),
     file_path: z.string().optional(),
   })
@@ -230,7 +230,7 @@ export type ConfigChange = z.infer<typeof configChangeSchema>;
 
 export const worktreeCreateSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("WorktreeCreate"),
+    hook_event_name: z.literal('WorktreeCreate'),
     name: z.string(),
   })
   .passthrough();
@@ -239,7 +239,7 @@ export type WorktreeCreate = z.infer<typeof worktreeCreateSchema>;
 
 export const worktreeRemoveSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("WorktreeRemove"),
+    hook_event_name: z.literal('WorktreeRemove'),
     worktree_path: z.string(),
   })
   .passthrough();
@@ -253,8 +253,8 @@ export type WorktreeRemove = z.infer<typeof worktreeRemoveSchema>;
  */
 export const instructionsLoadedSchema = commonFieldsSchema
   .extend({
-    hook_event_name: z.literal("InstructionsLoaded"),
-    trigger: z.enum(["init", "maintenance"]),
+    hook_event_name: z.literal('InstructionsLoaded'),
+    trigger: z.enum(['init', 'maintenance']),
   })
   .passthrough();
 
@@ -343,7 +343,7 @@ export const SCHEMA_MAP: Record<(typeof EVENT_NAMES)[number], ZodSchema> = {
 export function parseHookEvent(raw: unknown): HookEvent {
   // Extract hook_event_name from the raw payload to discriminate.
   const name = (raw as Record<string, unknown>)?.hook_event_name;
-  const schema = typeof name === "string" ? SCHEMA_MAP[name] : undefined;
+  const schema = typeof name === 'string' ? SCHEMA_MAP[name] : undefined;
   // Unknown event type — validate common fields only, preserve everything else.
   return (schema ?? unknownEventSchema).parse(raw);
 }

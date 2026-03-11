@@ -20,13 +20,13 @@
  * Cross-platform: runs on macOS, Linux, and Windows.
  */
 
-import { appendFileSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { appendFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-const IS_WINDOWS = process.platform === "win32";
+const IS_WINDOWS = process.platform === 'win32';
 const OUT_DIR = tmpdir();
-const PREFIX = "hookwatch-probe-non-interactive";
+const PREFIX = 'hookwatch-probe-non-interactive';
 const REPORT_FILE = join(OUT_DIR, `${PREFIX}-report.txt`);
 const MARKER_FILE = join(OUT_DIR, `${PREFIX}-marker.txt`);
 
@@ -62,37 +62,37 @@ async function runProbe(): Promise<ProbeResult> {
 
   const settings = JSON.stringify({
     hooks: {
-      SessionStart: [{ hooks: [{ type: "command", command: hookCommand }] }],
+      SessionStart: [{ hooks: [{ type: 'command', command: hookCommand }] }],
     },
   });
 
   const args = IS_WINDOWS
-    ? ["claude", "--print", "--settings", settings, "--dangerously-skip-permissions", "say hello"]
+    ? ['claude', '--print', '--settings', settings, '--dangerously-skip-permissions', 'say hello']
     : [
-        "env",
-        "-u",
-        "CLAUDECODE",
-        "claude",
-        "--print",
-        "--settings",
+        'env',
+        '-u',
+        'CLAUDECODE',
+        'claude',
+        '--print',
+        '--settings',
         settings,
-        "--dangerously-skip-permissions",
-        "say hello",
+        '--dangerously-skip-permissions',
+        'say hello',
       ];
 
   const env = IS_WINDOWS
-    ? Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== "CLAUDECODE"))
+    ? Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== 'CLAUDECODE'))
     : undefined;
 
   // Run from a temp directory so the probe session doesn't appear in the
   // project's Claude Code resume list.
   const probeCwd = mkdtempSync(join(OUT_DIR, `${PREFIX}-cwd-`));
   log(`Probe cwd: ${probeCwd}`);
-  log("Spawning claude --print (non-interactive mode)...");
+  log('Spawning claude --print (non-interactive mode)...');
   const proc = Bun.spawn(args, {
     cwd: probeCwd,
-    stdout: "ignore",
-    stderr: "ignore",
+    stdout: 'ignore',
+    stderr: 'ignore',
     ...(env ? { env } : {}),
   });
 
@@ -104,23 +104,23 @@ async function runProbe(): Promise<ProbeResult> {
 }
 
 function interpret(result: ProbeResult): void {
-  log("\n=== Interpretation ===\n");
+  log('\n=== Interpretation ===\n');
 
   log(`Claude exit code: ${result.claudeExitCode}`);
   log(`Hook fired (marker file exists): ${result.hookFired}`);
-  log(`Marker content: ${result.markerContent ?? "(absent)"}`);
+  log(`Marker content: ${result.markerContent ?? '(absent)'}`);
 
   if (result.hookFired) {
-    log("\nFINDING: SessionStart hook FIRES in non-interactive mode (--print).");
-    log("  Hookwatch will capture session starts from automated/scripted usage.");
+    log('\nFINDING: SessionStart hook FIRES in non-interactive mode (--print).');
+    log('  Hookwatch will capture session starts from automated/scripted usage.');
   } else if (result.claudeExitCode === 0) {
-    log("\nFINDING: SessionStart hook does NOT fire in non-interactive mode.");
-    log("  Claude completed successfully but the hook never ran.");
-    log("  Hookwatch will miss session starts from --print / piped / SDK usage.");
+    log('\nFINDING: SessionStart hook does NOT fire in non-interactive mode.');
+    log('  Claude completed successfully but the hook never ran.');
+    log('  Hookwatch will miss session starts from --print / piped / SDK usage.');
   } else {
-    log("\nINCONCLUSIVE: Claude exited non-zero and hook did not fire.");
-    log("  Possible causes: API key missing, network error, or startup failure.");
-    log("  Cannot determine non-interactive hook behavior.");
+    log('\nINCONCLUSIVE: Claude exited non-zero and hook did not fire.');
+    log('  Possible causes: API key missing, network error, or startup failure.');
+    log('  Cannot determine non-interactive hook behavior.');
   }
 }
 
@@ -130,21 +130,21 @@ async function main(): Promise<void> {
   if (await reportFile.exists()) await reportFile.delete();
   if (await markerFile.exists()) await markerFile.delete();
 
-  log("=== probe-non-interactive ===");
+  log('=== probe-non-interactive ===');
   log(`Platform: ${process.platform}`);
   log(`Temp dir: ${OUT_DIR}`);
-  log("");
-  log("Question: Does the SessionStart hook fire in non-interactive mode (--print)?");
-  log("");
+  log('');
+  log('Question: Does the SessionStart hook fire in non-interactive mode (--print)?');
+  log('');
 
-  const versionProc = Bun.spawn(["claude", "--version"], {
-    stdout: "pipe",
-    stderr: "ignore",
+  const versionProc = Bun.spawn(['claude', '--version'], {
+    stdout: 'pipe',
+    stderr: 'ignore',
   });
   const versionText = await new Response(versionProc.stdout).text();
   await versionProc.exited;
   log(`Claude version: ${versionText.trim()}`);
-  log("");
+  log('');
 
   let result: ProbeResult;
   try {

@@ -5,13 +5,13 @@
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
-import { signal } from "@preact/signals";
-import { render } from "preact";
-import type { EventRow } from "@/types.ts";
-import { EventList } from "./events/event-list.ts";
-import { SessionFilter } from "./sessions/session-filter.ts";
-import { html } from "./shared/html.ts";
-import { startSseClient } from "./shared/sse-client.ts";
+import { signal } from '@preact/signals';
+import { render } from 'preact';
+import type { EventRow } from '@/types.ts';
+import { EventList } from './events/event-list.ts';
+import { SessionFilter } from './sessions/session-filter.ts';
+import { html } from './shared/html.ts';
+import { startSseClient } from './shared/sse-client.ts';
 
 // Cross-component signal — owns the current event list
 // TODO: configurable via config.toml (ch-1ex5.1) — default query limit
@@ -35,7 +35,7 @@ function App() {
   `;
 }
 
-const appEl = document.getElementById("app");
+const appEl = document.getElementById('app');
 if (appEl) {
   render(html`<${App} />`, appEl);
 }

@@ -1,8 +1,8 @@
-import { Database } from "bun:sqlite";
-import { chmodSync, existsSync, mkdirSync, renameSync } from "node:fs";
-import { dirname } from "node:path";
-import { dbPath as resolveDbPath } from "@/paths.ts";
-import { applyFreshSchema, CURRENT_VERSION, checkVersion } from "./schema.ts";
+import { Database } from 'bun:sqlite';
+import { chmodSync, existsSync, mkdirSync, renameSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { dbPath as resolveDbPath } from '@/paths.ts';
+import { applyFreshSchema, CURRENT_VERSION, checkVersion } from './schema.ts';
 
 let db: Database | null = null;
 
@@ -48,21 +48,21 @@ function openAndInit(path: string): Database {
   }
 
   // Enable WAL mode on every connection open
-  conn.exec("PRAGMA journal_mode=wal;");
+  conn.exec('PRAGMA journal_mode=wal;');
 
   const status = checkVersion(conn);
 
-  if (status === "fresh") {
+  if (status === 'fresh') {
     applyFreshSchema(conn);
     return conn;
   }
 
-  if (status === "ok") {
+  if (status === 'ok') {
     return conn;
   }
 
   // status === "mismatch": backup old DB, open fresh one
-  const versionRow = conn.query("PRAGMA user_version;").get() as { user_version: number };
+  const versionRow = conn.query('PRAGMA user_version;').get() as { user_version: number };
   const oldVersion = versionRow.user_version;
   const backupPath = `${path}.v${oldVersion}`;
   process.stderr.write(
@@ -71,7 +71,7 @@ function openAndInit(path: string): Database {
   );
 
   // Close before rename so WAL is flushed and the file can be moved
-  conn.exec("PRAGMA wal_checkpoint(TRUNCATE);");
+  conn.exec('PRAGMA wal_checkpoint(TRUNCATE);');
   conn.close();
 
   try {
@@ -80,7 +80,7 @@ function openAndInit(path: string): Database {
     // Open a brand-new database at the original path
     conn = new Database(path);
     chmodSync(path, 0o600);
-    conn.exec("PRAGMA journal_mode=wal;");
+    conn.exec('PRAGMA journal_mode=wal;');
     applyFreshSchema(conn);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

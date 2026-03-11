@@ -14,7 +14,7 @@
  * by a signal.
  */
 
-import { constants as osConstants } from "node:os";
+import { constants as osConstants } from 'node:os';
 
 /** Lookup table: signal name → number, populated once at module load. */
 const SIGNAL_NUMBERS: Readonly<Record<string, number>> = osConstants.signals as Record<
@@ -36,7 +36,7 @@ const SIGNAL_NUMBERS: Readonly<Record<string, number>> = osConstants.signals as 
 export function signalExitCode(signal: string | null): number {
   if (signal === null) return 1;
   const num = SIGNAL_NUMBERS[signal];
-  if (typeof num === "number") return 128 + num;
+  if (typeof num === 'number') return 128 + num;
   // Unknown signal name — fall back to 1 (unavoidable last resort)
   return 1;
 }
@@ -57,7 +57,7 @@ export function describeExitCode(code: number): string | null {
   // Build reverse map on demand (called infrequently — no need to precompute)
   for (const [name, num] of Object.entries(SIGNAL_NUMBERS)) {
     if (num === signalNum) {
-      const label = SIGNAL_LABELS[name] ?? "signal termination";
+      const label = SIGNAL_LABELS[name] ?? 'signal termination';
       return `likely ${name} — ${label}`;
     }
   }
@@ -69,14 +69,14 @@ export function describeExitCode(code: number): string | null {
  * Unlisted signals fall back to "signal termination".
  */
 const SIGNAL_LABELS: Readonly<Record<string, string>> = {
-  SIGKILL: "forced termination",
-  SIGTERM: "graceful shutdown request",
-  SIGINT: "interrupt (Ctrl+C)",
-  SIGABRT: "assertion failure",
-  SIGSEGV: "segmentation fault (native crash)",
-  SIGPIPE: "broken pipe",
-  SIGHUP: "hangup (terminal closed)",
-  SIGBUS: "bus error",
-  SIGFPE: "floating point exception",
-  SIGILL: "illegal instruction",
+  SIGKILL: 'forced termination',
+  SIGTERM: 'graceful shutdown request',
+  SIGINT: 'interrupt (Ctrl+C)',
+  SIGABRT: 'assertion failure',
+  SIGSEGV: 'segmentation fault (native crash)',
+  SIGPIPE: 'broken pipe',
+  SIGHUP: 'hangup (terminal closed)',
+  SIGBUS: 'bus error',
+  SIGFPE: 'floating point exception',
+  SIGILL: 'illegal instruction',
 };

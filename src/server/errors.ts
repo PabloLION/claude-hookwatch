@@ -11,7 +11,7 @@
  *   INTERNAL      — Unexpected server error; use HTTP 500
  */
 
-export type ErrorCode = "DB_LOCKED" | "NOT_FOUND" | "INVALID_QUERY" | "INTERNAL";
+export type ErrorCode = 'DB_LOCKED' | 'NOT_FOUND' | 'INVALID_QUERY' | 'INTERNAL';
 
 export function errorResponse(code: ErrorCode, message: string, status: number): Response {
   return Response.json({ error: { code, message } }, { status });

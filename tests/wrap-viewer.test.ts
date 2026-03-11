@@ -23,61 +23,61 @@
  * Run with: bun run test:wrap-e2e
  */
 
-import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
-import type { ServerHandle } from "@/test";
+import { spawn } from 'node:child_process';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { type BrowserContext, chromium, expect, type Page, test } from '@playwright/test';
+import type { ServerHandle } from '@/test';
 
 // ---------------------------------------------------------------------------
 // Shared constants
 // ---------------------------------------------------------------------------
 
-const SERVER_PATH = new URL("../src/server/index.ts", import.meta.url).pathname;
+const SERVER_PATH = new URL('../src/server/index.ts', import.meta.url).pathname;
 
 /** A bare (non-wrapped) PreToolUse event — wrapped_command is omitted. */
 const BARE_PRE_TOOL_USE = {
-  session_id: "wrap-test-session-bare",
-  transcript_path: "/tmp/transcript.jsonl",
-  cwd: "/home/user/project",
-  permission_mode: "default",
-  hook_event_name: "PreToolUse",
-  tool_name: "Bash",
-  tool_use_id: "toolu_bare_test",
-  tool_input: { command: "ls -la", description: "list files" },
+  session_id: 'wrap-test-session-bare',
+  transcript_path: '/tmp/transcript.jsonl',
+  cwd: '/home/user/project',
+  permission_mode: 'default',
+  hook_event_name: 'PreToolUse',
+  tool_name: 'Bash',
+  tool_use_id: 'toolu_bare_test',
+  tool_input: { command: 'ls -la', description: 'list files' },
 };
 
 /** A wrapped PreToolUse event with stdout, stderr, exit_code, wrapped_command. */
 const WRAPPED_PRE_TOOL_USE = {
-  session_id: "wrap-test-session-wrapped",
-  transcript_path: "/tmp/transcript.jsonl",
-  cwd: "/home/user/project",
-  permission_mode: "default",
-  hook_event_name: "PreToolUse",
-  tool_name: "Bash",
-  tool_use_id: "toolu_wrapped_test",
-  tool_input: { command: "echo hello", description: "greet the world" },
+  session_id: 'wrap-test-session-wrapped',
+  transcript_path: '/tmp/transcript.jsonl',
+  cwd: '/home/user/project',
+  permission_mode: 'default',
+  hook_event_name: 'PreToolUse',
+  tool_name: 'Bash',
+  tool_use_id: 'toolu_wrapped_test',
+  tool_input: { command: 'echo hello', description: 'greet the world' },
   // Top-level fields consumed by the server for wrap storage:
   wrapped_command: "sh -c 'echo hello'",
-  stdout: "hello\n",
-  stderr: "",
+  stdout: 'hello\n',
+  stderr: '',
   exit_code: 0,
 };
 
 /** A wrapped event with non-zero exit code and stderr output. */
 const WRAPPED_FAILING = {
-  session_id: "wrap-test-session-fail",
-  transcript_path: "/tmp/transcript.jsonl",
-  cwd: "/home/user/project",
-  permission_mode: "default",
-  hook_event_name: "PreToolUse",
-  tool_name: "Bash",
-  tool_use_id: "toolu_fail_test",
-  tool_input: { command: "cat /nonexistent", description: "fail on purpose" },
+  session_id: 'wrap-test-session-fail',
+  transcript_path: '/tmp/transcript.jsonl',
+  cwd: '/home/user/project',
+  permission_mode: 'default',
+  hook_event_name: 'PreToolUse',
+  tool_name: 'Bash',
+  tool_use_id: 'toolu_fail_test',
+  tool_input: { command: 'cat /nonexistent', description: 'fail on purpose' },
   wrapped_command: "sh -c 'cat /nonexistent'",
-  stdout: "",
-  stderr: "cat: /nonexistent: No such file or directory\n",
+  stdout: '',
+  stderr: 'cat: /nonexistent: No such file or directory\n',
   exit_code: 1,
 };
 
@@ -87,7 +87,7 @@ const WRAPPED_FAILING = {
 
 function readPortFile(xdgDataHome: string): number | null {
   try {
-    const content = readFileSync(join(xdgDataHome, "hookwatch", "hookwatch.port"), "utf8").trim();
+    const content = readFileSync(join(xdgDataHome, 'hookwatch', 'hookwatch.port'), 'utf8').trim();
     const port = Number.parseInt(content, 10);
     return Number.isNaN(port) ? null : port;
   } catch {
@@ -113,9 +113,9 @@ async function startServer(tmpBase: string, label: string): Promise<ServerHandle
   const xdgDataHome = join(tmpBase, label);
   mkdirSync(xdgDataHome, { recursive: true });
 
-  const proc = spawn("bun", ["--bun", SERVER_PATH], {
+  const proc = spawn('bun', ['--bun', SERVER_PATH], {
     env: { ...process.env, XDG_DATA_HOME: xdgDataHome },
-    stdio: "pipe",
+    stdio: 'pipe',
     detached: false,
   });
 
@@ -140,7 +140,7 @@ async function startServer(tmpBase: string, label: string): Promise<ServerHandle
 
   const stop = (): void => {
     try {
-      proc.kill("SIGTERM");
+      proc.kill('SIGTERM');
     } catch {
       // Already dead
     }
@@ -156,8 +156,8 @@ async function startServer(tmpBase: string, label: string): Promise<ServerHandle
 
 async function seedEvent(baseUrl: string, payload: Record<string, unknown>): Promise<void> {
   const res = await fetch(`${baseUrl}/api/events`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (res.status !== 201) {
@@ -197,9 +197,9 @@ async function freshPage(): Promise<{ context: BrowserContext; page: Page }> {
 // ---------------------------------------------------------------------------
 
 test(
-  "bare events show hollow badge; wrapped events show solid badge",
+  'bare events show hollow badge; wrapped events show solid badge',
   async () => {
-    const server = await startServer(tmpRoot, "badge-style-test");
+    const server = await startServer(tmpRoot, 'badge-style-test');
     const { context, page } = await freshPage();
 
     try {
@@ -210,20 +210,20 @@ test(
 
       await page.goto(server.baseUrl);
 
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
       // Two event rows expected
-      const eventRows = page.locator("tbody tr[data-event-id]");
+      const eventRows = page.locator('tbody tr[data-event-id]');
       await expect(eventRows).toHaveCount(2, { timeout: 10000 });
 
       // Wrapped event is first (reverse-chronological order)
       const wrappedRow = eventRows.nth(0);
-      await expect(wrappedRow).toHaveAttribute("data-wrapped", "true");
+      await expect(wrappedRow).toHaveAttribute('data-wrapped', 'true');
 
       // Bare event is second
       const bareRow = eventRows.nth(1);
-      await expect(bareRow).toHaveAttribute("data-wrapped", "false");
+      await expect(bareRow).toHaveAttribute('data-wrapped', 'false');
 
       // Wrapped badge has the --wrapped class
       const wrappedBadge = wrappedRow.locator("[data-testid='event-type-badge']");
@@ -247,9 +247,9 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "expanding a wrapped event renders the wrap-viewer component",
+  'expanding a wrapped event renders the wrap-viewer component',
   async () => {
-    const server = await startServer(tmpRoot, "wrap-viewer-render-test");
+    const server = await startServer(tmpRoot, 'wrap-viewer-render-test');
     const { context, page } = await freshPage();
 
     try {
@@ -257,11 +257,11 @@ test(
 
       await page.goto(server.baseUrl);
 
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
       // Click the wrapped event row to expand it
-      const eventRow = page.locator("tbody tr[data-event-id]").first();
+      const eventRow = page.locator('tbody tr[data-event-id]').first();
       await eventRow.click();
 
       // WrapViewer should appear in the detail row
@@ -280,9 +280,9 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "wrap-viewer shows wrapped_command, stdout, stderr, and green exit code 0",
+  'wrap-viewer shows wrapped_command, stdout, stderr, and green exit code 0',
   async () => {
-    const server = await startServer(tmpRoot, "wrap-viewer-content-test");
+    const server = await startServer(tmpRoot, 'wrap-viewer-content-test');
     const { context, page } = await freshPage();
 
     try {
@@ -290,10 +290,10 @@ test(
 
       await page.goto(server.baseUrl);
 
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
-      await page.locator("tbody tr[data-event-id]").first().click();
+      await page.locator('tbody tr[data-event-id]').first().click();
 
       const wrapViewer = page.locator("[data-testid='wrap-viewer']");
       await expect(wrapViewer).toBeVisible({ timeout: 5000 });
@@ -306,7 +306,7 @@ test(
       // Verify exit code is shown and is green (exit code 0)
       const exitCode = wrapViewer.locator("[data-testid='exit-code']");
       await expect(exitCode).toBeVisible();
-      await expect(exitCode).toHaveText("0");
+      await expect(exitCode).toHaveText('0');
 
       // Verify stdout panel is present and contains stdout content
       const stdoutPanel = wrapViewer.locator("[data-testid='stdout-panel']");
@@ -314,7 +314,7 @@ test(
       const stdoutContent = stdoutPanel.locator("[data-testid='stdout-content']");
       await expect(stdoutContent).toBeVisible();
       const stdoutText = await stdoutContent.textContent();
-      expect(stdoutText).toContain("hello");
+      expect(stdoutText).toContain('hello');
 
       // Verify stderr panel is present — stderr is empty for this event
       const stderrPanel = wrapViewer.locator("[data-testid='stderr-panel']");
@@ -334,9 +334,9 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "wrap-viewer shows red exit code for non-zero and stderr content",
+  'wrap-viewer shows red exit code for non-zero and stderr content',
   async () => {
-    const server = await startServer(tmpRoot, "wrap-viewer-fail-test");
+    const server = await startServer(tmpRoot, 'wrap-viewer-fail-test');
     const { context, page } = await freshPage();
 
     try {
@@ -344,10 +344,10 @@ test(
 
       await page.goto(server.baseUrl);
 
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
-      await page.locator("tbody tr[data-event-id]").first().click();
+      await page.locator('tbody tr[data-event-id]').first().click();
 
       const wrapViewer = page.locator("[data-testid='wrap-viewer']");
       await expect(wrapViewer).toBeVisible({ timeout: 5000 });
@@ -355,7 +355,7 @@ test(
       // Exit code should be "1" and have red color styling
       const exitCode = wrapViewer.locator("[data-testid='exit-code']");
       await expect(exitCode).toBeVisible();
-      await expect(exitCode).toHaveText("1");
+      await expect(exitCode).toHaveText('1');
 
       // stderr should have content
       const stderrPanel = wrapViewer.locator("[data-testid='stderr-panel']");
@@ -363,7 +363,7 @@ test(
       const stderrContent = stderrPanel.locator("[data-testid='stderr-content']");
       await expect(stderrContent).toBeVisible();
       const stderrText = await stderrContent.textContent();
-      expect(stderrText).toContain("No such file or directory");
+      expect(stderrText).toContain('No such file or directory');
 
       // stdout should be empty
       const stdoutPanel = wrapViewer.locator("[data-testid='stdout-panel']");
@@ -382,9 +382,9 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "stdout and stderr panels in wrap-viewer can be collapsed and expanded",
+  'stdout and stderr panels in wrap-viewer can be collapsed and expanded',
   async () => {
-    const server = await startServer(tmpRoot, "wrap-viewer-collapse-test");
+    const server = await startServer(tmpRoot, 'wrap-viewer-collapse-test');
     const { context, page } = await freshPage();
 
     try {
@@ -392,10 +392,10 @@ test(
 
       await page.goto(server.baseUrl);
 
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
-      await page.locator("tbody tr[data-event-id]").first().click();
+      await page.locator('tbody tr[data-event-id]').first().click();
 
       const wrapViewer = page.locator("[data-testid='wrap-viewer']");
       await expect(wrapViewer).toBeVisible({ timeout: 5000 });
@@ -403,16 +403,16 @@ test(
       // stdout panel starts open (open attribute)
       const stdoutPanel = wrapViewer.locator("[data-testid='stdout-panel']");
       await expect(stdoutPanel).toBeVisible();
-      await expect(stdoutPanel).toHaveAttribute("open", "");
+      await expect(stdoutPanel).toHaveAttribute('open', '');
 
       // Click the stdout summary to close it
-      await stdoutPanel.locator("summary").click();
+      await stdoutPanel.locator('summary').click();
       // After clicking, the panel should no longer have the open attribute
-      await expect(stdoutPanel).not.toHaveAttribute("open");
+      await expect(stdoutPanel).not.toHaveAttribute('open');
 
       // Click again to re-open
-      await stdoutPanel.locator("summary").click();
-      await expect(stdoutPanel).toHaveAttribute("open", "");
+      await stdoutPanel.locator('summary').click();
+      await expect(stdoutPanel).toHaveAttribute('open', '');
     } finally {
       await context.close();
       server.stop();
@@ -426,9 +426,9 @@ test(
 // ---------------------------------------------------------------------------
 
 test(
-  "bare event (wrapped_command null) shows standard EventDetail, not WrapViewer",
+  'bare event (wrapped_command null) shows standard EventDetail, not WrapViewer',
   async () => {
-    const server = await startServer(tmpRoot, "bare-event-detail-test");
+    const server = await startServer(tmpRoot, 'bare-event-detail-test');
     const { context, page } = await freshPage();
 
     try {
@@ -436,12 +436,12 @@ test(
 
       await page.goto(server.baseUrl);
 
-      const table = page.locator("table");
+      const table = page.locator('table');
       await expect(table).toBeVisible({ timeout: 10000 });
 
-      await page.locator("tbody tr[data-event-id]").first().click();
+      await page.locator('tbody tr[data-event-id]').first().click();
 
-      const detailContainer = page.locator("[data-detail-for] .event-detail");
+      const detailContainer = page.locator('[data-detail-for] .event-detail');
       await expect(detailContainer).toBeVisible({ timeout: 5000 });
 
       // WrapViewer should NOT appear for bare events
@@ -449,10 +449,10 @@ test(
       await expect(wrapViewer).not.toBeVisible();
 
       // Standard tool info <dl> should appear (PreToolUse is a tool event)
-      const dl = detailContainer.locator("dl");
+      const dl = detailContainer.locator('dl');
       await expect(dl).toBeVisible();
-      await expect(dl.locator("dt", { hasText: "Tool name" })).toBeVisible();
-      await expect(dl.locator("dd", { hasText: "Bash" })).toBeVisible();
+      await expect(dl.locator('dt', { hasText: 'Tool name' })).toBeVisible();
+      await expect(dl.locator('dd', { hasText: 'Bash' })).toBeVisible();
     } finally {
       await context.close();
       server.stop();

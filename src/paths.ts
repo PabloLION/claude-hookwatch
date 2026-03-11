@@ -5,7 +5,7 @@
  * Respects $XDG_DATA_HOME and $XDG_CONFIG_HOME; falls back to XDG defaults.
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync } from 'node:fs';
 
 /** The fixed default port for the hookwatch server.
  * The server binds exclusively to this port and errors if it is occupied.
@@ -61,7 +61,7 @@ export interface ReadPortResult {
  */
 export function readPort(): ReadPortResult {
   try {
-    const content = readFileSync(portFilePath(), "utf8").trim();
+    const content = readFileSync(portFilePath(), 'utf8').trim();
     const port = Number.parseInt(content, 10);
     if (Number.isNaN(port) || port <= 0 || port > 65535) {
       console.error(
@@ -72,12 +72,12 @@ export function readPort(): ReadPortResult {
     return { port, warning: null };
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
-    if (code === "ENOENT") {
+    if (code === 'ENOENT') {
       // File absent — server not started yet or running on default port
       return { port: DEFAULT_PORT, warning: null };
     }
     // Unexpected OS error (EACCES, EIO, etc.) — log and fall back
-    const msg = `Port file unreadable (${code ?? "unknown"}), using DEFAULT_PORT`;
+    const msg = `Port file unreadable (${code ?? 'unknown'}), using DEFAULT_PORT`;
     console.error(`[hookwatch] ${msg}`);
     return { port: DEFAULT_PORT, warning: msg };
   }

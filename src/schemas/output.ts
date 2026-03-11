@@ -14,7 +14,7 @@
  * Naming: camelCase + Schema suffix (e.g. hookOutputSchema), PascalCase inferred types.
  */
 
-import { z } from "zod";
+import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
 // Base schema (all hooks)
@@ -50,7 +50,7 @@ export const preToolUseOutputSchema = z
     systemMessage: z.string().optional(),
     hookSpecificOutput: z
       .object({
-        permissionDecision: z.enum(["allow", "deny", "ask"]),
+        permissionDecision: z.enum(['allow', 'deny', 'ask']),
         updatedInput: z.record(z.string(), z.unknown()).optional(),
       })
       .optional(),
@@ -72,7 +72,7 @@ export const stopOutputSchema = z
     continue: z.boolean().optional(),
     suppressOutput: z.boolean().optional(),
     systemMessage: z.string().optional(),
-    decision: z.enum(["approve", "block"]),
+    decision: z.enum(['approve', 'block']),
     reason: z.string().optional(),
   })
   .passthrough();
