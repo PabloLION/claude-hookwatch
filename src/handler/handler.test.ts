@@ -26,7 +26,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import {
-  assertExitLegality,
+  assertBareExitLegality,
   BASE_SESSION_START,
   createHandlerTestContext,
   firstEventBody,
@@ -78,7 +78,7 @@ describe("port file", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "port-present");
+    assertBareExitLegality(result, "port-present");
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(1);
   });
@@ -95,7 +95,7 @@ describe("port file", () => {
       XDG_CONFIG_HOME: join(xdgHome, "config"),
     });
 
-    assertExitLegality(result, "port-absent");
+    assertBareExitLegality(result, "port-absent");
     // Auto-start succeeds — event is delivered to the spawned server
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain("[hookwatch]");
@@ -110,7 +110,7 @@ describe("port file", () => {
       XDG_CONFIG_HOME: join(xdgHome, "config"),
     });
 
-    assertExitLegality(result, "port-invalid");
+    assertBareExitLegality(result, "port-invalid");
     // Auto-start fires because fallback port 6004 has no server → connection error
     // stderr should mention the invalid value/fallback and the spawn attempt
     expect(result.stderr).toContain("[hookwatch]");
@@ -132,7 +132,7 @@ describe("stdin parsing", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "stdin-valid");
+    assertBareExitLegality(result, "stdin-valid");
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(1);
     const body = firstEventBody(ctx.server);
@@ -148,7 +148,7 @@ describe("stdin parsing", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "stdin-invalid");
+    assertBareExitLegality(result, "stdin-invalid");
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain("[hookwatch]");
     expect(ctx.server.events).toHaveLength(0);
@@ -166,7 +166,7 @@ describe("stdin parsing", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "stdin-empty");
+    assertBareExitLegality(result, "stdin-empty");
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
@@ -189,7 +189,7 @@ describe("Zod validation", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "zod-known");
+    assertBareExitLegality(result, "zod-known");
     expect(result.exitCode).toBe(0);
     const body = firstEventBody(ctx.server);
     expect(body?.source).toBe("startup");
@@ -214,7 +214,7 @@ describe("Zod validation", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "zod-missing-field");
+    assertBareExitLegality(result, "zod-missing-field");
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain("[hookwatch]");
     expect(ctx.server.events).toHaveLength(0);
@@ -237,7 +237,7 @@ describe("Zod validation", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "zod-bad-enum");
+    assertBareExitLegality(result, "zod-bad-enum");
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
@@ -260,7 +260,7 @@ describe("unknown event forwarding", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "unknown-event");
+    assertBareExitLegality(result, "unknown-event");
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(1);
     const body = firstEventBody(ctx.server);
@@ -282,7 +282,7 @@ describe("unknown event forwarding", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "unknown-event-bad");
+    assertBareExitLegality(result, "unknown-event-bad");
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
