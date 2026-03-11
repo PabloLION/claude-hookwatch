@@ -7,6 +7,7 @@
  * Story 2.2, and EXPLAIN QUERY PLAN assertions for idx_events_timestamp.
  */
 
+import type { SQLQueryBindings } from 'bun:sqlite';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { closeTestDb, makeEvent, setupTestDb, type TestDbHandle } from '@/test';
 import type { openDb } from './connection.ts';
@@ -106,6 +107,23 @@ interface QueryPlanRow {
   detail: string;
 }
 
+/**
+ * Asserts that at least one row of the query plan references
+ * idx_events_timestamp, confirming SQLite uses the index for ordering.
+ */
+function assertUsesTimestampIndex(
+  db: ReturnType<typeof openDb>,
+  sql: string,
+  bindings: SQLQueryBindings[] = [],
+): void {
+  const planRows = db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...bindings) as QueryPlanRow[];
+  const usesIndex = planRows.some((r) => r.detail.includes('idx_events_timestamp'));
+  expect(
+    usesIndex,
+    `Expected EXPLAIN QUERY PLAN to reference idx_events_timestamp.\nSQL: ${sql}\nPlan: ${JSON.stringify(planRows, null, 2)}`,
+  ).toBe(true);
+}
+
 describe('timestamp index usage (EXPLAIN QUERY PLAN)', () => {
   let handle: TestDbHandle;
 
@@ -116,23 +134,6 @@ describe('timestamp index usage (EXPLAIN QUERY PLAN)', () => {
   afterEach(() => {
     closeTestDb(handle);
   });
-
-  /**
-   * Asserts that at least one row of the query plan references
-   * idx_events_timestamp, confirming SQLite uses the index for ordering.
-   */
-  function assertUsesTimestampIndex(
-    db: ReturnType<typeof openDb>,
-    sql: string,
-    bindings: unknown[] = [],
-  ): void {
-    const planRows = db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...bindings) as QueryPlanRow[];
-    const usesIndex = planRows.some((r) => r.detail.includes('idx_events_timestamp'));
-    expect(
-      usesIndex,
-      `Expected EXPLAIN QUERY PLAN to reference idx_events_timestamp.\nSQL: ${sql}\nPlan: ${JSON.stringify(planRows, null, 2)}`,
-    ).toBe(true);
-  }
 
   test('getAllEvents (ORDER BY timestamp ASC) uses idx_events_timestamp', () => {
     assertUsesTimestampIndex(handle.db, 'SELECT * FROM events ORDER BY timestamp ASC');
@@ -160,7 +161,7 @@ describe('timestamp index usage (EXPLAIN QUERY PLAN)', () => {
       makeEvent({ session_id: 's-idx', timestamp: 2000, event: 'PreToolUse', tool_name: 'Bash' }),
     );
 
-    const rows = queryEvents(db, { limit: 100, offset: 0 });
+    const rows = queryEvents(db, { queryType: 'events', limit: 100, offset: 0 });
     expect(rows).toHaveLength(3);
     // Newest first
     expect(rows[0]?.timestamp).toBe(3000);
