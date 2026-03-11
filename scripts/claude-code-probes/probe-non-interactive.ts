@@ -67,14 +67,7 @@ async function runProbe(): Promise<ProbeResult> {
   });
 
   const args = IS_WINDOWS
-    ? [
-        "claude",
-        "--print",
-        "--settings",
-        settings,
-        "--dangerously-skip-permissions",
-        "say hello",
-      ]
+    ? ["claude", "--print", "--settings", settings, "--dangerously-skip-permissions", "say hello"]
     : [
         "env",
         "-u",
