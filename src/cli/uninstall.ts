@@ -85,13 +85,13 @@ export const uninstallCommand = defineCommand({
       );
     }
 
-    if (!dryRun) {
+    if (dryRun) {
+      console.log('[dry-run] Uninstall preview complete — no changes made.');
+    } else {
       console.log('');
       console.log('hookwatch uninstalled.');
       console.log('Note: Claude Code settings.json hooks are not modified automatically.');
       console.log('Remove the plugin entry from your Claude Code settings if needed.');
-    } else {
-      console.log('[dry-run] Uninstall preview complete — no changes made.');
     }
   },
 });

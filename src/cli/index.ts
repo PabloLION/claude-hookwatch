@@ -84,20 +84,23 @@ const main = defineCommand({
   },
 });
 
+/**
+ * Returns true when the first CLI argument looks like an unknown PascalCase
+ * event type — starts with an uppercase letter but is not a known event type
+ * or a standard subcommand.
+ */
+function isUnknownEventType(arg: string | undefined): boolean {
+  if (arg === undefined) return false;
+  if (arg.startsWith('-')) return false;
+  if (['install', 'uninstall', 'ui'].includes(arg)) return false;
+  if (EVENT_TYPE_SET.has(arg)) return false;
+  return /^[A-Z]/.test(arg);
+}
+
 // Handle unknown arguments: if the first arg looks like a PascalCase event
 // type that is NOT in our list, exit 1 with guidance.
 const firstArg = process.argv[2];
-if (
-  firstArg !== undefined &&
-  // Not a flag
-  !firstArg.startsWith('-') &&
-  // Not a known subcommand
-  !['install', 'uninstall', 'ui'].includes(firstArg) &&
-  // Not a known event type
-  !EVENT_TYPE_SET.has(firstArg) &&
-  // Looks like PascalCase (starts with uppercase letter)
-  /^[A-Z]/.test(firstArg)
-) {
+if (isUnknownEventType(firstArg)) {
   process.stderr.write(
     `[hookwatch] Unknown event type: "${firstArg}"\n` +
       `  Known event types: ${EVENT_TYPES.join(', ')}\n` +

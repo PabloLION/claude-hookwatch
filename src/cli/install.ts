@@ -159,15 +159,15 @@ export const installCommand = defineCommand({
       process.exit(1);
     }
 
-    if (!dryRun) {
+    if (dryRun) {
+      console.log('[dry-run] Install preview complete — no changes made.');
+    } else {
       console.log('');
       console.log('hookwatch installed successfully!');
       console.log('');
       console.log('Next steps:');
       console.log(`  Add to Claude Code with:\n    claude --plugin-dir ${PACKAGE_ROOT}`);
       console.log('  Or open the web UI:\n    hookwatch ui');
-    } else {
-      console.log('[dry-run] Install preview complete — no changes made.');
     }
   },
 });
