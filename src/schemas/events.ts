@@ -17,6 +17,7 @@
  */
 
 import { type ZodSchema, z } from "zod";
+import type { EVENT_NAMES } from "@/types.ts";
 
 // ---------------------------------------------------------------------------
 // Common fields (present on every event)
@@ -302,11 +303,12 @@ export type HookEvent =
 
 /**
  * Maps every known hook_event_name to its Zod schema.
- * This is the single source of truth for the 18 known event types — adding a
- * new event type requires only an entry here (and the schema above), rather
- * than a new switch case.
+ * Keyed by the EVENT_NAMES tuple from src/types.ts — the compiler enforces
+ * that all 18 known event names have a corresponding schema entry.
+ * Adding a new event type requires only a schema definition above and one
+ * entry here; no switch case needed.
  */
-export const SCHEMA_MAP: Record<string, ZodSchema> = {
+export const SCHEMA_MAP: Record<(typeof EVENT_NAMES)[number], ZodSchema> = {
   SessionStart: sessionStartSchema,
   SessionEnd: sessionEndSchema,
   UserPromptSubmit: userPromptSubmitSchema,

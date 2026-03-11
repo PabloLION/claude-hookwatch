@@ -6,6 +6,54 @@
  */
 
 // ---------------------------------------------------------------------------
+// Known event names
+// ---------------------------------------------------------------------------
+
+/**
+ * All 18 known Claude Code hook event name literals, in alphabetical order.
+ * Use as const preserves the tuple of string literals for type inference.
+ */
+export const EVENT_NAMES = [
+  "ConfigChange",
+  "InstructionsLoaded",
+  "Notification",
+  "PermissionRequest",
+  "PostToolUse",
+  "PostToolUseFailure",
+  "PreCompact",
+  "PreToolUse",
+  "SessionEnd",
+  "SessionStart",
+  "Stop",
+  "SubagentStart",
+  "SubagentStop",
+  "TaskCompleted",
+  "TeammateIdle",
+  "UserPromptSubmit",
+  "WorktreeCreate",
+  "WorktreeRemove",
+] as const;
+
+/**
+ * Union type of all known hook_event_name values plus "unknown".
+ *
+ * "unknown" is a synthetic value written to EventRow.event when hookwatch
+ * receives an event name it does not recognise — e.g. a future Claude Code
+ * SDK event type. This keeps the column type stable without requiring a DB
+ * migration every time new event types are added.
+ */
+export type KnownEventName = (typeof EVENT_NAMES)[number] | "unknown";
+
+/**
+ * Normalise a raw hook_event_name string to KnownEventName.
+ * If the name is one of the 18 documented event types, it is returned
+ * as-is. Otherwise "unknown" is returned.
+ */
+export function toKnownEventName(name: string): KnownEventName {
+  return (EVENT_NAMES as readonly string[]).includes(name) ? (name as KnownEventName) : "unknown";
+}
+
+// ---------------------------------------------------------------------------
 // DB row types
 // ---------------------------------------------------------------------------
 
@@ -16,7 +64,8 @@
 export interface EventRow {
   id: number;
   timestamp: number;
-  event: string;
+  /** Normalised hook event name. Unrecognised event types stored as "unknown". */
+  event: KnownEventName;
   session_id: string;
   cwd: string;
   tool_name: string | null;

@@ -24,6 +24,7 @@ import { getEventById, insertEvent } from "@/db/queries.ts";
 import { parseHookEvent } from "@/schemas/events.ts";
 import { errorResponse } from "@/server/errors.ts";
 import { broadcast } from "@/server/stream.ts";
+import { toKnownEventName } from "@/types.ts";
 
 export async function handleIngest(req: Request): Promise<Response> {
   // Parse JSON body
@@ -68,7 +69,7 @@ export async function handleIngest(req: Request): Promise<Response> {
     const db = openDb();
     const id = insertEvent(db, {
       timestamp: Date.now(),
-      event: event.hook_event_name,
+      event: toKnownEventName(event.hook_event_name),
       session_id: event.session_id,
       cwd: event.cwd,
       tool_name:
