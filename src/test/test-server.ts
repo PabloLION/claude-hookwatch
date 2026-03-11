@@ -25,6 +25,12 @@ export interface TestServer {
   events: ReceivedEvent[];
   /** Override the next response status (default 201). */
   nextStatus: number;
+  /**
+   * Version string to return in X-Hookwatch-Version response header.
+   * Defaults to null (header absent). Set to a semver string to simulate
+   * version mismatch detection in the handler.
+   */
+  serverVersion: string | null;
   stop: () => void;
 }
 
@@ -43,7 +49,7 @@ export interface TestServer {
  */
 export function startTestServer(): TestServer {
   const events: ReceivedEvent[] = [];
-  const state = { nextStatus: 201 };
+  const state = { nextStatus: 201, serverVersion: null as string | null };
 
   const server = Bun.serve({
     port: 0, // OS-assigned free port
@@ -58,10 +64,11 @@ export function startTestServer(): TestServer {
         }
         const status = state.nextStatus;
         events.push({ body, status });
-        return new Response(JSON.stringify({ id: events.length }), {
-          status,
-          headers: { "Content-Type": "application/json" },
-        });
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (state.serverVersion !== null) {
+          headers["X-Hookwatch-Version"] = state.serverVersion;
+        }
+        return new Response(JSON.stringify({ id: events.length }), { status, headers });
       }
       return new Response("not found", { status: 404 });
     },
@@ -77,6 +84,12 @@ export function startTestServer(): TestServer {
     },
     set nextStatus(v: number) {
       state.nextStatus = v;
+    },
+    get serverVersion() {
+      return state.serverVersion;
+    },
+    set serverVersion(v: string | null) {
+      state.serverVersion = v;
     },
     stop: () => server.stop(true),
   };
