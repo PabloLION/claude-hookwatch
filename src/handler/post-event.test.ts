@@ -20,7 +20,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import {
-  assertExitLegality,
+  assertBareExitLegality,
+  assertWrappedExitLegality,
   BASE_SESSION_START,
   createHandlerTestContext,
   firstEventBody,
@@ -67,7 +68,7 @@ describe("server non-2xx response", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "server-error");
+    assertBareExitLegality(result, "server-error");
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain("500");
     // Non-fatal: stdout is normal hook output JSON (not hookwatch_fatal)
@@ -100,7 +101,7 @@ describe("server non-2xx response", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "stdout-post-failure");
+    assertBareExitLegality(result, "stdout-post-failure");
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(parsed.continue).toBe(true);
@@ -125,7 +126,7 @@ describe("auto-start (server unavailable)", () => {
       XDG_CONFIG_HOME: join(xdgHome, "config"),
     });
 
-    assertExitLegality(result, "server-unavailable");
+    assertBareExitLegality(result, "server-unavailable");
     // Auto-start fires: spawned server writes port file, health probe discovers
     // new port, handler retries and succeeds.
     expect(result.stderr).toContain("[hookwatch]");
@@ -166,7 +167,7 @@ describe("wrapped mode", () => {
       { XDG_DATA_HOME: xdgHome },
     );
 
-    assertExitLegality(result, "wrap-exit-0");
+    assertWrappedExitLegality(result, "wrap-exit-0");
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(1);
   });
@@ -198,7 +199,7 @@ describe("wrapped mode", () => {
       { XDG_DATA_HOME: xdgHome },
     );
 
-    assertExitLegality(result, "wrap-tee-stdout");
+    assertWrappedExitLegality(result, "wrap-tee-stdout");
     expect(result.exitCode).toBe(0);
     // stdout contains child output + hook JSON at the end
     expect(result.stdout).toContain("child-output");
@@ -218,7 +219,7 @@ describe("wrapped mode", () => {
       { XDG_DATA_HOME: xdgHome },
     );
 
-    assertExitLegality(result, "wrap-command-stored");
+    assertWrappedExitLegality(result, "wrap-command-stored");
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(1);
     const body = firstEventBody(ctx.server);
@@ -235,7 +236,7 @@ describe("wrapped mode", () => {
       { XDG_DATA_HOME: xdgHome },
     );
 
-    assertExitLegality(result, "wrap-duration-ms");
+    assertWrappedExitLegality(result, "wrap-duration-ms");
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(1);
     const body = firstEventBody(ctx.server);
@@ -271,7 +272,7 @@ describe("unified pipeline", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "unified-bare-null-wrapped");
+    assertBareExitLegality(result, "unified-bare-null-wrapped");
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(1);
     const body = firstEventBody(ctx.server);
@@ -286,7 +287,7 @@ describe("unified pipeline", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "unified-bare-stdout-stored");
+    assertBareExitLegality(result, "unified-bare-stdout-stored");
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(1);
     // bare mode: stdout column should contain hook output JSON (what Claude Code sees)
@@ -305,7 +306,7 @@ describe("unified pipeline", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "unified-bare-exit-code");
+    assertBareExitLegality(result, "unified-bare-exit-code");
     expect(result.exitCode).toBe(0);
     const body = firstEventBody(ctx.server);
     expect(body?.exit_code).toBe(0);
@@ -321,7 +322,7 @@ describe("unified pipeline", () => {
       { XDG_DATA_HOME: xdgHome },
     );
 
-    assertExitLegality(result, "unified-wrapped-exit-code");
+    assertWrappedExitLegality(result, "unified-wrapped-exit-code");
     expect(result.exitCode).toBe(0);
     const body = firstEventBody(ctx.server);
     expect(body?.exit_code).toBe(0);
@@ -335,7 +336,7 @@ describe("unified pipeline", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "unified-no-hookwatch-log");
+    assertBareExitLegality(result, "unified-no-hookwatch-log");
     expect(result.exitCode).toBe(0);
     const body = firstEventBody(ctx.server);
     // hookwatch_log should not be present (null means not sent)
@@ -350,7 +351,7 @@ describe("unified pipeline", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "unified-duration-bare");
+    assertBareExitLegality(result, "unified-duration-bare");
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(1);
     const body = firstEventBody(ctx.server);
@@ -375,7 +376,7 @@ describe("version mismatch detection", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "version-match");
+    assertBareExitLegality(result, "version-match");
     expect(result.exitCode).toBe(0);
     // No version error in stderr
     expect(result.stderr).not.toContain("Version mismatch");
@@ -396,7 +397,7 @@ describe("version mismatch detection", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "version-mismatch");
+    assertBareExitLegality(result, "version-mismatch");
     expect(result.exitCode).toBe(0);
     // Version mismatch logged to stderr
     expect(result.stderr).toContain("Version mismatch");
@@ -434,7 +435,7 @@ describe("version mismatch detection", () => {
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "version-header-absent");
+    assertBareExitLegality(result, "version-header-absent");
     expect(result.exitCode).toBe(0);
     expect(result.stderr).not.toContain("Version mismatch");
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
