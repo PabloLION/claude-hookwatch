@@ -28,9 +28,12 @@ import {
   killProcessOnPort,
   runHandler,
   runHandlerWrapped,
+  startTestServer,
   writePortFile,
 } from "@/test";
 import { VERSION } from "@/version.ts";
+import type { PostEventResult } from "./post-event.ts";
+import { postEvent } from "./post-event.ts";
 
 // ---------------------------------------------------------------------------
 // Test setup
@@ -440,5 +443,147 @@ describe("version mismatch detection", () => {
     expect(result.stderr).not.toContain("Version mismatch");
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(parsed.systemMessage as string).not.toContain("Version mismatch");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// failureKind dispatch (ch-xs6p)
+// ---------------------------------------------------------------------------
+
+/**
+ * Tests for the failureKind field on PostEventResult.
+ *
+ * Coverage strategy:
+ * - 'http' and 'exception' failure paths: tested in-process via postEvent()
+ *   directly, because they don't require a spawned server.
+ * - 'spawn' and 'retry' failure paths: these require spawnServer() to return
+ *   a failure, which means the real server process either won't start or
+ *   won't pass the health probe. Since the test environment always has a
+ *   working Bun binary and the server always starts successfully, these paths
+ *   cannot be triggered without module mocking. The dispatch logic in
+ *   handleHook() (3 lines in index.ts) is verified by code review and the
+ *   'http' non-fatal path tests below (which verify the opposite branch).
+ */
+describe("failureKind — postEvent() unit tests", () => {
+  let unitServer: ReturnType<typeof startTestServer>;
+
+  beforeAll(() => {
+    unitServer = startTestServer();
+  });
+
+  afterAll(() => {
+    unitServer.stop();
+  });
+
+  afterEach(() => {
+    unitServer.nextStatus = 201;
+    unitServer.serverVersion = null;
+    unitServer.events.splice(0);
+  });
+
+  /**
+   * Builds a minimal BareEventPayload for unit-level postEvent() calls.
+   * The event shape is cast to satisfy the type; real validation happens
+   * inside the handler, not inside postEvent().
+   */
+  function makeBarePayload(): Parameters<typeof postEvent>[1] {
+    return {
+      mode: "bare",
+      // biome-ignore lint/suspicious/noExplicitAny: test fixture, shape matches BareEventPayload
+      event: { hook_event_name: "SessionStart" } as any,
+      stdout: JSON.stringify({ continue: true, systemMessage: "test" }),
+      hookDurationMs: 0,
+      hookwatchLog: null,
+    };
+  }
+
+  test("'http' failureKind: non-2xx response returns ok:false with failureKind:'http'", async () => {
+    unitServer.nextStatus = 500;
+
+    const result: PostEventResult = await postEvent(unitServer.port, makeBarePayload());
+
+    expect(result.ok).toBe(false);
+    expect(result.failureKind).toBe("http");
+    expect(result.failureReason).toContain("500");
+  });
+
+  test("'http' failureKind: 503 response also sets failureKind:'http'", async () => {
+    unitServer.nextStatus = 503;
+
+    const result: PostEventResult = await postEvent(unitServer.port, makeBarePayload());
+
+    expect(result.ok).toBe(false);
+    expect(result.failureKind).toBe("http");
+  });
+
+  test("ok:true response: no failureKind set", async () => {
+    unitServer.nextStatus = 201;
+
+    const result: PostEventResult = await postEvent(unitServer.port, makeBarePayload());
+
+    expect(result.ok).toBe(true);
+    expect(result.failureKind).toBeUndefined();
+  });
+
+  test("'exception' failureKind: non-connection fetch error returns failureKind:'exception'", async () => {
+    // Temporarily replace globalThis.fetch with a version that throws an
+    // AbortError — not a connection refused error. This exercises the
+    // non-connection exception path (isConnectionError returns false →
+    // failureKind: 'exception', no spawn attempt).
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => {
+      throw new DOMException("The operation was aborted", "AbortError");
+    };
+
+    try {
+      const result: PostEventResult = await postEvent(unitServer.port, makeBarePayload());
+      expect(result.ok).toBe(false);
+      expect(result.failureKind).toBe("exception");
+      expect(result.failureReason).toContain("Failed to POST event to server");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// failureKind — integration: non-fatal paths don't set hookwatch_fatal
+// ---------------------------------------------------------------------------
+
+describe("failureKind — integration: non-fatal dispatch in handleHook()", () => {
+  test("'http' failure (500): handler exits 0, hookwatch_fatal absent (non-fatal)", async () => {
+    const xdgHome = join(ctx.tmpDir, "fk-http-nonfatal");
+    writePortFile(xdgHome, ctx.server.port);
+    ctx.server.nextStatus = 500;
+
+    const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    assertExitLegality(result, "fk-http-nonfatal");
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    // Non-fatal: hookwatch_fatal must NOT be present
+    expect(parsed.hookwatch_fatal).toBeUndefined();
+    // Failure reason appears in systemMessage (user-visible, non-blocking)
+    expect(parsed.continue).toBe(true);
+    expect(parsed.systemMessage as string).toContain("500");
+  });
+
+  test("'http' failure (503): failure reason in systemMessage, not hookwatch_fatal", async () => {
+    const xdgHome = join(ctx.tmpDir, "fk-http-503");
+    writePortFile(xdgHome, ctx.server.port);
+    ctx.server.nextStatus = 503;
+
+    const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    assertExitLegality(result, "fk-http-503");
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(parsed.hookwatch_fatal).toBeUndefined();
+    expect(parsed.systemMessage as string).toContain("503");
   });
 });

@@ -133,10 +133,10 @@ export const uiCommand = defineCommand({
 
     // Server is not running — attempt to start it
     console.log("Starting hookwatch server...");
-    const port = await spawnServer();
+    const spawnResult = await spawnServer();
 
-    if (port === null) {
-      // Health check timed out — check if DEFAULT_PORT is occupied by a foreign process
+    if (!spawnResult.ok) {
+      // Health check timed out or spawn failed — check if DEFAULT_PORT is occupied
       if (await isPortOccupied(DEFAULT_PORT)) {
         process.stderr.write(`[hookwatch] port ${DEFAULT_PORT} in use\n`);
       } else {
@@ -145,6 +145,7 @@ export const uiCommand = defineCommand({
       process.exit(1);
     }
 
+    const { port } = spawnResult;
     console.log(`Server started on port ${port}.`);
     const url = `http://localhost:${port}`;
     console.log(`Opening ${url} ...`);

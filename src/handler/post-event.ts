@@ -8,6 +8,7 @@
 import type { parseHookEvent } from "@/schemas/events.ts";
 import { VERSION } from "@/version.ts";
 import { errorMsg } from "./errors.ts";
+import type { SpawnResult } from "./spawn.ts";
 import { spawnServer } from "./spawn.ts";
 
 const FETCH_TIMEOUT_MS = 5000;
@@ -79,6 +80,19 @@ export function isConnectionError(err: unknown): boolean {
 /** Result returned by postEvent(). */
 export interface PostEventResult {
   ok: boolean;
+  /**
+   * Distinguishes failure paths for programmatic dispatch in the caller.
+   * Only present when ok: false.
+   *
+   * 'spawn'     — Bun.spawn() failed to start the server process.
+   * 'retry'     — Server was spawned but health probe timed out.
+   * 'http'      — Server returned a non-2xx HTTP response.
+   * 'exception' — Non-connection exception (e.g. fetch timeout, abort).
+   *
+   * 'spawn' and 'retry' indicate infrastructure broken → fatal.
+   * 'http' and 'exception' are transient → non-fatal.
+   */
+  failureKind?: "spawn" | "retry" | "http" | "exception";
   failureReason?: string;
   detail?: string;
   /**
@@ -137,9 +151,12 @@ function buildRequestBody(opts: EventPostPayload): string {
  * If the server is not reachable, attempts to spawn it automatically, then
  * retries the POST with the discovered port.
  *
- * Returns { ok: true } on success or { ok: false, failureReason, detail } on
- * any unrecoverable error. Never throws. Failures are non-fatal — the caller
- * stores failureReason in hookwatch_log and systemMessage and continues.
+ * Returns { ok: true } on success or { ok: false, failureKind, failureReason,
+ * detail } on any unrecoverable error. Never throws.
+ *
+ * failureKind distinguishes fatal vs non-fatal failures:
+ *   'spawn' | 'retry' — infrastructure broken → caller should exitFatal()
+ *   'http' | 'exception' — transient → caller appends to logEntries
  *
  * When ok: true, versionMismatchLog may also be set if the server's version
  * differs from the handler's — caller should push it into logEntries.
@@ -160,7 +177,7 @@ export async function postEvent(port: number, opts: EventPostPayload): Promise<P
       const text = await res.text().catch(() => "(unreadable)");
       const failureReason = `Server returned HTTP ${res.status}`;
       console.error(`[hookwatch] ${failureReason}: ${text}`);
-      return { ok: false, failureReason, detail: text };
+      return { ok: false, failureKind: "http", failureReason, detail: text };
     }
 
     const versionMismatchLog = checkVersionHeader(res);
@@ -174,21 +191,26 @@ export async function postEvent(port: number, opts: EventPostPayload): Promise<P
       const detail = errorMsg(err);
       const failureReason = "Failed to POST event to server";
       console.error(`[hookwatch] ${failureReason}: ${detail}`);
-      return { ok: false, failureReason, detail };
+      return { ok: false, failureKind: "exception", failureReason, detail };
     }
   }
 
   // Server not reachable — attempt to spawn it
   console.error("[hookwatch] Server not reachable, attempting to start it...");
-  const spawnedPort = await spawnServer();
+  const spawnResult: SpawnResult = await spawnServer();
 
-  if (spawnedPort === null) {
-    const failureReason = "Spawn failed — server did not start";
+  if (!spawnResult.ok) {
+    const { failureKind } = spawnResult;
+    const failureReason =
+      failureKind === "spawn"
+        ? "Spawn failed — server process could not be started"
+        : "Spawn failed — server did not become healthy in time";
     console.error(`[hookwatch] ${failureReason}`);
-    return { ok: false, failureReason };
+    return { ok: false, failureKind, failureReason };
   }
 
   // Retry POST with the port returned by the health check
+  const { port: spawnedPort } = spawnResult;
   try {
     const res = await fetch(`http://127.0.0.1:${spawnedPort}/api/events`, {
       method: "POST",
@@ -201,7 +223,7 @@ export async function postEvent(port: number, opts: EventPostPayload): Promise<P
       const text = await res.text().catch(() => "(unreadable)");
       const failureReason = `Retry exhausted — server returned HTTP ${res.status}`;
       console.error(`[hookwatch] ${failureReason}: ${text}`);
-      return { ok: false, failureReason, detail: text };
+      return { ok: false, failureKind: "http", failureReason, detail: text };
     }
 
     const versionMismatchLog = checkVersionHeader(res);
@@ -213,6 +235,6 @@ export async function postEvent(port: number, opts: EventPostPayload): Promise<P
     const detail = errorMsg(err);
     const failureReason = "Retry exhausted — failed to POST event to server after spawn";
     console.error(`[hookwatch] ${failureReason}: ${detail}`);
-    return { ok: false, failureReason, detail };
+    return { ok: false, failureKind: "exception", failureReason, detail };
   }
 }
