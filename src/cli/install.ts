@@ -11,7 +11,7 @@
  *   --dry-run / -n  — preview without writing files or running bun link
  */
 
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { defineCommand } from "citty";
 import { description, name, version } from "../../package.json";
@@ -132,7 +132,7 @@ export const installCommand = defineCommand({
       if (!existsSync(pluginDir)) {
         mkdirSync(pluginDir, { recursive: true });
       }
-      writeFileSync(pluginJsonPath, `${pluginJsonContent}\n`, "utf8");
+      await Bun.write(pluginJsonPath, `${pluginJsonContent}\n`);
       console.log(`Wrote ${pluginJsonPath}`);
     }
 
@@ -148,7 +148,7 @@ export const installCommand = defineCommand({
       if (!existsSync(hooksDir)) {
         mkdirSync(hooksDir, { recursive: true });
       }
-      writeFileSync(hooksJsonPath, `${hooksJsonContent}\n`, "utf8");
+      await Bun.write(hooksJsonPath, `${hooksJsonContent}\n`);
       console.log(`Wrote ${hooksJsonPath}`);
     }
 

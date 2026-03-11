@@ -138,3 +138,4 @@ Both modes share the same `handleHook()` pipeline. The branch point is
 - **UI errors:** Display server errors — never swallow silently
 - **Imports:** Use `@/` path alias (maps to `./src/`) — no relative `../` chains
 - **No build step:** Bun runs `.ts` directly. `Bun.Transpiler` handles UI delivery on-the-fly
+- **Bun-native APIs preferred:** Use `Bun.write()`, `Bun.file().text()`, `Bun.file().exists()`, `Bun.file().delete()` instead of `node:fs` equivalents. Keep `node:fs` only when no Bun equivalent exists: `mkdirSync({ recursive })`, `mkdtempSync()`, `rmSync({ recursive })`, `chmodSync()`, `renameSync()`, `appendFileSync()`, `openSync()`, `tmpdir()`
