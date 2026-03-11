@@ -118,16 +118,39 @@ function checkVersionHeader(res: Response): string | undefined {
 }
 
 /**
+ * Typed mapping from WrappedEventPayload-specific camelCase fields to their
+ * snake_case wire names.
+ *
+ * Keys are constrained to exactly the fields that WrappedEventPayload adds
+ * over BaseEventPayload (plus 'mode' which is structural, not a wire field).
+ * The TypeScript compiler errors here if a new field is added to
+ * WrappedEventPayload without a corresponding snake_case mapping.
+ *
+ * Fields already snake_case (stdout, stderr) map to themselves.
+ */
+const WRAPPED_FIELD_MAP: Record<
+  Exclude<keyof WrappedEventPayload, keyof BaseEventPayload | "mode">,
+  string
+> = {
+  wrappedCommand: "wrapped_command",
+  stdout: "stdout",
+  stderr: "stderr",
+  exitCode: "exit_code",
+};
+
+/**
  * Builds the JSON body for the /api/events POST request from the typed payload.
  * Port is transport-level — not included in the body.
  */
 function buildRequestBody(opts: EventPostPayload): string {
   const body: Record<string, unknown> = { ...opts.event };
   if (opts.mode === "wrapped") {
-    body.wrapped_command = opts.wrappedCommand;
-    body.stdout = opts.stdout;
-    body.stderr = opts.stderr;
-    body.exit_code = opts.exitCode;
+    for (const [camel, snake] of Object.entries(WRAPPED_FIELD_MAP) as [
+      keyof typeof WRAPPED_FIELD_MAP,
+      string,
+    ][]) {
+      body[snake] = opts[camel];
+    }
   } else {
     // Bare mode: stdout is the hook output JSON; exit_code is always 0
     body.stdout = opts.stdout;
