@@ -24,11 +24,12 @@
  * Run with: bun run test:sse-e2e
  */
 
-import { type ChildProcess, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
+import type { ServerHandle } from "@/test";
 
 // ---------------------------------------------------------------------------
 // Shared constants
@@ -66,14 +67,6 @@ function makePreToolUse(sessionId: string, toolName: string): Record<string, unk
 // ---------------------------------------------------------------------------
 // Server lifecycle helpers
 // ---------------------------------------------------------------------------
-
-interface ServerHandle {
-  port: number;
-  xdgDataHome: string;
-  proc: ChildProcess;
-  baseUrl: string;
-  stop: () => void;
-}
 
 /**
  * Read the port from the hookwatch port file.

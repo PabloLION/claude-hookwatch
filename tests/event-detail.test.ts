@@ -20,11 +20,12 @@
  * Run with: bun run test:e2e
  */
 
-import { type ChildProcess, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
+import type { ServerHandle } from "@/test";
 
 // ---------------------------------------------------------------------------
 // Shared constants
@@ -56,14 +57,6 @@ const PRE_TOOL_USE_EVENT = {
 // ---------------------------------------------------------------------------
 // Server lifecycle helpers (same pattern as ui-e2e.test.ts)
 // ---------------------------------------------------------------------------
-
-interface ServerHandle {
-  port: number;
-  xdgDataHome: string;
-  proc: ChildProcess;
-  baseUrl: string;
-  stop: () => void;
-}
 
 function readPortFile(xdgDataHome: string): number | null {
   try {

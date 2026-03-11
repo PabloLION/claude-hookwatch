@@ -23,11 +23,12 @@
  * Run with: bun run test:wrap-e2e
  */
 
-import { type ChildProcess, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type BrowserContext, chromium, expect, type Page, test } from "@playwright/test";
+import type { ServerHandle } from "@/test";
 
 // ---------------------------------------------------------------------------
 // Shared constants
@@ -83,14 +84,6 @@ const WRAPPED_FAILING = {
 // ---------------------------------------------------------------------------
 // Server lifecycle helpers
 // ---------------------------------------------------------------------------
-
-interface ServerHandle {
-  port: number;
-  xdgDataHome: string;
-  proc: ChildProcess;
-  baseUrl: string;
-  stop: () => void;
-}
 
 function readPortFile(xdgDataHome: string): number | null {
   try {
