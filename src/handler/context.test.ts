@@ -190,6 +190,40 @@ describe("buildSystemMessage", () => {
     } as unknown as HookEvent;
     expect(buildSystemMessage(event)).toBe("hookwatch captured PostToolUse (Read)");
   });
+
+  test("appends single log entry after em-dash when logEntries provided", () => {
+    const event = { hook_event_name: "Stop" } as unknown as HookEvent;
+    expect(buildSystemMessage(event, ["[error] Server returned HTTP 500"])).toBe(
+      "hookwatch captured Stop — [error] Server returned HTTP 500",
+    );
+  });
+
+  test("appends multiple log entries joined by semicolon", () => {
+    const event = { hook_event_name: "Stop" } as unknown as HookEvent;
+    expect(buildSystemMessage(event, ["[error] first", "[warn] second"])).toBe(
+      "hookwatch captured Stop — [error] first; [warn] second",
+    );
+  });
+
+  test("returns base message when logEntries is empty array", () => {
+    const event = { hook_event_name: "Stop" } as unknown as HookEvent;
+    expect(buildSystemMessage(event, [])).toBe("hookwatch captured Stop");
+  });
+
+  test("returns base message when logEntries is undefined", () => {
+    const event = { hook_event_name: "Stop" } as unknown as HookEvent;
+    expect(buildSystemMessage(event, undefined)).toBe("hookwatch captured Stop");
+  });
+
+  test("appends log entries to message that has a subtype", () => {
+    const event = {
+      hook_event_name: "SessionStart",
+      source: "startup",
+    } as unknown as HookEvent;
+    expect(buildSystemMessage(event, ["[error] Spawn failed — server did not start"])).toBe(
+      "hookwatch captured SessionStart (startup) — [error] Spawn failed — server did not start",
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------

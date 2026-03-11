@@ -58,12 +58,20 @@ export function getEventSubtype(event: HookEvent): string | null {
  * Format: "hookwatch captured <EventType> (<subtype>)" when a subtype exists,
  * or "hookwatch captured <EventType>" when there is no subtype.
  *
+ * When logEntries are provided (non-empty), they are appended to the message
+ * so the user can see non-fatal hookwatch issues (e.g. POST failure reason)
+ * without blocking Claude Code.
+ *
  * TODO: configurable via config.toml (ch-1ex5.1)
  */
-export function buildSystemMessage(event: HookEvent): string {
+export function buildSystemMessage(event: HookEvent, logEntries?: string[]): string {
   const subtype = getEventSubtype(event);
-  if (subtype !== null) {
-    return `hookwatch captured ${event.hook_event_name} (${subtype})`;
+  const base =
+    subtype !== null
+      ? `hookwatch captured ${event.hook_event_name} (${subtype})`
+      : `hookwatch captured ${event.hook_event_name}`;
+  if (logEntries && logEntries.length > 0) {
+    return `${base} — ${logEntries.join("; ")}`;
   }
-  return `hookwatch captured ${event.hook_event_name}`;
+  return base;
 }

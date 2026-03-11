@@ -178,7 +178,7 @@ describe("server already running", () => {
     }
   });
 
-  test("exits 0 with hookwatch_fatal JSON in stdout when server returns non-2xx", async () => {
+  test("exits 0 with hook output JSON when server returns non-2xx (non-fatal)", async () => {
     const xdgHome = join(TMP_DIR, "server-error");
     mkdirSync(xdgHome, { recursive: true });
 
@@ -197,16 +197,18 @@ describe("server already running", () => {
         XDG_DATA_HOME: xdgHome,
       });
 
-      // Hookwatch fatal: exit 0 + JSON with hookwatch_fatal and systemMessage.
-      // Claude Code only parses stdout JSON at exit 0 — this makes the error
-      // visible via systemMessage without blocking Claude Code.
+      // Non-fatal: exit 0 + normal hook output JSON (not hookwatch_fatal).
+      // Failure reason appears in systemMessage so user is informed without
+      // blocking Claude Code (passive observer principle).
       expect(result.exitCode).toBe(0);
       expect(result.stderr).toContain("500");
-      // stdout must contain JSON with hookwatch_fatal + continue + systemMessage
+      // stdout must contain hook output JSON with continue: true and systemMessage
       const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
-      expect(typeof parsed.hookwatch_fatal).toBe("string");
+      expect(parsed.hookwatch_fatal).toBeUndefined();
       expect(parsed.continue).toBe(true);
       expect(typeof parsed.systemMessage).toBe("string");
+      // systemMessage must include the HTTP status for user visibility
+      expect(parsed.systemMessage as string).toContain("500");
     } finally {
       testServer.stop(true);
     }

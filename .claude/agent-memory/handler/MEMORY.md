@@ -10,9 +10,9 @@ Working directory is `/Users/pablo/LocalDocs/repo/PabloLION/claude-hookwatch`.
 
 ```
 src/handler/
-  index.ts        — handleHook(), runHandler(), readPort(), exitFatal(), parseEventSafely()
-  post-event.ts   — postEvent(), isConnectionError(), EventPostPayload
-  context.ts      — getEventSubtype(), buildSystemMessage()
+  index.ts        — handleHook(), runHandler(), exitFatal(), parseEventSafely()
+  post-event.ts   — postEvent(), isConnectionError(), EventPostPayload, PostEventResult
+  context.ts      — getEventSubtype(), buildSystemMessage(event, logEntries?)
   errors.ts       — errorMsg()
   spawn.ts        — spawnServer() (also used by cli/open.ts)
   wrap.ts         — runWrapped()
@@ -40,7 +40,9 @@ All imports go through `@/test` barrel:
 ## Key constraints
 
 - stdout suppression is CRITICAL: all logging to stderr (console.error), never console.log
-- Exit codes: 0 = success, 2 = hookwatch fatal (JSON stdout with hookwatch_fatal field)
+- Exit codes: 0 = success (always in bare mode); wrapped mode forwards child exit code
+- Fatal errors (stdin parse failure only): exit 0 + JSON with `hookwatch_fatal` + `systemMessage`
+- POST failures are NON-FATAL: failure reason goes into logEntries → appended to systemMessage
 - Never exit 1 — shows generic "hook error" in Claude Code, stderr not surfaced
 - `fetch()` must use `AbortSignal.timeout(5000)`
 - spawn server detached via `spawnServer()` from `spawn.ts`, don't wait for it
@@ -63,5 +65,13 @@ This bug was latent — no test used the shared runHandler before ch-qmy7.
 ## assertExitLegality()
 
 Lives in `src/test/handler-assertions.ts`, exported from `@/test`.
-Validates: exit 0 + (empty stdout OR JSON with `continue: boolean`). Exit 2 abandoned — hookwatch always exits 0. Fatal errors use exit 0 + JSON with `hookwatch_fatal` and `systemMessage`.
+Validates: exit 0 + (empty stdout OR JSON with `continue: boolean`). Exit 2 abandoned — hookwatch always exits 0. Fatal errors (stdin parse only) use exit 0 + JSON with `hookwatch_fatal` and `systemMessage`. POST failures are non-fatal: normal hook output JSON with failure reason in `systemMessage`.
 Handles wrapped mode: extracts last `{...}` block if full parse fails (child stdout precedes hook JSON).
+
+## PostEventResult (ch-6k4y)
+
+`postEvent()` returns `PostEventResult { ok: boolean; failureReason?: string; detail?: string }`.
+Four failure paths: HTTP error, non-connection exception, spawn failure, retry exhausted.
+Caller (handleHook) puts `failureReason` + `detail` into logEntries on `ok: false`.
+logEntries are appended to `systemMessage` via `buildSystemMessage(event, logEntries)`.
+Never call `exitFatal()` on POST failure — passive observer principle.
