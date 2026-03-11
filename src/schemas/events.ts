@@ -16,7 +16,7 @@
  * Naming: camelCase + Schema suffix (e.g. sessionStartSchema), PascalCase inferred types.
  */
 
-import { z } from "zod";
+import { type ZodSchema, z } from "zod";
 
 // ---------------------------------------------------------------------------
 // Common fields (present on every event)
@@ -297,6 +297,37 @@ export type HookEvent =
   | UnknownEvent;
 
 // ---------------------------------------------------------------------------
+// Schema lookup map
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps every known hook_event_name to its Zod schema.
+ * This is the single source of truth for the 18 known event types — adding a
+ * new event type requires only an entry here (and the schema above), rather
+ * than a new switch case.
+ */
+export const SCHEMA_MAP: Record<string, ZodSchema> = {
+  SessionStart: sessionStartSchema,
+  SessionEnd: sessionEndSchema,
+  UserPromptSubmit: userPromptSubmitSchema,
+  PreToolUse: preToolUseSchema,
+  PostToolUse: postToolUseSchema,
+  PostToolUseFailure: postToolUseFailureSchema,
+  PermissionRequest: permissionRequestSchema,
+  Notification: notificationSchema,
+  SubagentStart: subagentStartSchema,
+  SubagentStop: subagentStopSchema,
+  Stop: stopSchema,
+  PreCompact: preCompactSchema,
+  TeammateIdle: teammateIdleSchema,
+  TaskCompleted: taskCompletedSchema,
+  ConfigChange: configChangeSchema,
+  WorktreeCreate: worktreeCreateSchema,
+  WorktreeRemove: worktreeRemoveSchema,
+  InstructionsLoaded: instructionsLoadedSchema,
+};
+
+// ---------------------------------------------------------------------------
 // Discriminated parse function
 // ---------------------------------------------------------------------------
 
@@ -308,48 +339,9 @@ export type HookEvent =
  * Throws a ZodError if the payload fails validation.
  */
 export function parseHookEvent(raw: unknown): HookEvent {
-  // First, extract hook_event_name from the raw payload to discriminate.
+  // Extract hook_event_name from the raw payload to discriminate.
   const name = (raw as Record<string, unknown>)?.hook_event_name;
-
-  switch (name) {
-    case "SessionStart":
-      return sessionStartSchema.parse(raw);
-    case "SessionEnd":
-      return sessionEndSchema.parse(raw);
-    case "UserPromptSubmit":
-      return userPromptSubmitSchema.parse(raw);
-    case "PreToolUse":
-      return preToolUseSchema.parse(raw);
-    case "PostToolUse":
-      return postToolUseSchema.parse(raw);
-    case "PostToolUseFailure":
-      return postToolUseFailureSchema.parse(raw);
-    case "PermissionRequest":
-      return permissionRequestSchema.parse(raw);
-    case "Notification":
-      return notificationSchema.parse(raw);
-    case "SubagentStart":
-      return subagentStartSchema.parse(raw);
-    case "SubagentStop":
-      return subagentStopSchema.parse(raw);
-    case "Stop":
-      return stopSchema.parse(raw);
-    case "PreCompact":
-      return preCompactSchema.parse(raw);
-    case "TeammateIdle":
-      return teammateIdleSchema.parse(raw);
-    case "TaskCompleted":
-      return taskCompletedSchema.parse(raw);
-    case "ConfigChange":
-      return configChangeSchema.parse(raw);
-    case "WorktreeCreate":
-      return worktreeCreateSchema.parse(raw);
-    case "WorktreeRemove":
-      return worktreeRemoveSchema.parse(raw);
-    case "InstructionsLoaded":
-      return instructionsLoadedSchema.parse(raw);
-    default:
-      // Unknown event type — validate common fields only, preserve everything else.
-      return unknownEventSchema.parse(raw);
-  }
+  const schema = typeof name === "string" ? SCHEMA_MAP[name] : undefined;
+  // Unknown event type — validate common fields only, preserve everything else.
+  return (schema ?? unknownEventSchema).parse(raw);
 }
