@@ -561,7 +561,7 @@ describe("failureKind — integration: non-fatal dispatch in handleHook()", () =
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "fk-http-nonfatal");
+    assertBareExitLegality(result, "fk-http-nonfatal");
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     // Non-fatal: hookwatch_fatal must NOT be present
@@ -580,7 +580,7 @@ describe("failureKind — integration: non-fatal dispatch in handleHook()", () =
       XDG_DATA_HOME: xdgHome,
     });
 
-    assertExitLegality(result, "fk-http-503");
+    assertBareExitLegality(result, "fk-http-503");
     expect(result.exitCode).toBe(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(parsed.hookwatch_fatal).toBeUndefined();

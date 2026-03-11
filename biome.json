@@ -37,6 +37,7 @@
       "!node_modules",
       "!dist",
       "!*.db",
+      "!.beads",
       "!.git-ignored",
       "!.claude/worktrees",
       "!test-results",
