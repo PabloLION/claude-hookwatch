@@ -6,6 +6,7 @@
  * - runWrapped: child stdout/stderr are teed to process streams and captured
  * - runWrapped: child exit code is forwarded correctly (0, 1, 2, 3)
  * - runWrapped: non-existent command returns exit 1 with empty capture
+ * - runWrapped: signal-killed child → exit code 128+N, hookwatchLog [warn]
  *
  * Strategy: a small fixture script (wrap-runner.fixture.ts) calls runWrapped()
  * and writes the WrapResult as JSON to stderr (WRAP_RESULT: prefix). Tests
@@ -108,5 +109,58 @@ describe("runWrapped — error handling", () => {
     expect(result.wrapResult?.exitCode).toBe(1);
     expect(result.wrapResult?.stdout).toBe("");
     expect(result.wrapResult?.stderr).toBe("");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: signal handling (ch-qddi)
+// ---------------------------------------------------------------------------
+
+describe("runWrapped — signal-killed child", () => {
+  test("SIGKILL child returns exit code 137 (128+9)", async () => {
+    // `kill -9 $$` kills the shell with SIGKILL inside the child process
+    const result = await runWrapRunner(["sh", "-c", "kill -9 $$"], "");
+
+    // exit code 137 = 128 + SIGKILL(9)
+    expect(result.wrapResult?.exitCode).toBe(137);
+  });
+
+  test("SIGKILL child: hookwatchLog contains [warn] with exit code", async () => {
+    const result = await runWrapRunner(["sh", "-c", "kill -9 $$"], "");
+
+    const log = result.wrapResult?.hookwatchLog;
+    expect(typeof log).toBe("string");
+    expect(log).toContain("[warn]");
+    expect(log).toContain("137");
+  });
+
+  test("SIGKILL child: hookwatchLog describes likely SIGKILL", async () => {
+    const result = await runWrapRunner(["sh", "-c", "kill -9 $$"], "");
+
+    const log = result.wrapResult?.hookwatchLog;
+    expect(log).toContain("likely SIGKILL");
+    expect(log).toContain("forced termination");
+  });
+
+  test("SIGKILL child: signal death is logged to stderr by runWrapped", async () => {
+    const result = await runWrapRunner(["sh", "-c", "kill -9 $$"], "");
+
+    // runWrapped logs to console.error which appears in the runner's stderr
+    expect(result.runnerStderr).toContain("[hookwatch]");
+    expect(result.runnerStderr).toContain("signal");
+  });
+
+  test("normal exit: hookwatchLog is absent from WrapResult", async () => {
+    const result = await runWrapRunner(["sh", "-c", "exit 0"], "");
+
+    // No signal death — hookwatchLog should be undefined (not present in JSON)
+    expect(result.wrapResult?.hookwatchLog).toBeUndefined();
+  });
+
+  test("non-zero clean exit: hookwatchLog is absent (not a signal death)", async () => {
+    const result = await runWrapRunner(["sh", "-c", "exit 42"], "");
+
+    expect(result.wrapResult?.exitCode).toBe(42);
+    expect(result.wrapResult?.hookwatchLog).toBeUndefined();
   });
 });

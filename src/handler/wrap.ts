@@ -19,6 +19,9 @@
  *
  * Best-effort: if the child process fails to spawn, we still return an exit
  * code of 1 with empty capture buffers — the caller handles server reporting.
+ * If the child is signal-killed, Bun's proc.exited already returns 128+N
+ * (e.g. SIGKILL → 137). Signal deaths are detected via proc.signalCode and
+ * a [warn] log entry is included in WrapResult.hookwatchLog for the caller.
  *
  * STDOUT SUPPRESSION REMINDER: All hookwatch-internal logging goes to stderr
  * (console.error / process.stderr.write) — NEVER console.log().
@@ -26,6 +29,7 @@
 
 import type { WrapResult } from "@/types.ts";
 import { errorMsg } from "./errors.ts";
+import { describeExitCode, signalExitCode } from "./signals.ts";
 
 export type { WrapResult };
 
@@ -35,8 +39,11 @@ export type { WrapResult };
  * - stdout is written to process.stdout AND a capture buffer
  * - stderr is written to process.stderr AND a capture buffer
  *
- * Returns the child exit code, buffered stdin, and captured output strings.
+ * Returns the child exit code, buffered stdin, captured output strings, and
+ * an optional hookwatchLog entry for signal deaths.
  * Never throws — errors are reported to stderr and exit code 1 is returned.
+ * Signal deaths are converted to 128+N (e.g. SIGKILL → 137) and reported via
+ * WrapResult.hookwatchLog.
  */
 export async function runWrapped(cmd: string[]): Promise<WrapResult> {
   if (cmd.length === 0) {
@@ -72,17 +79,42 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
   }
 
   // Tee stdout and stderr concurrently while waiting for the child to exit.
-  const [exitCode, capturedStdout, capturedStderr] = await Promise.all([
+  const [rawExitCode, capturedStdout, capturedStderr] = await Promise.all([
     child.exited,
     teeStream(child.stdout, process.stdout),
     teeStream(child.stderr, process.stderr),
   ]);
 
+  // In Bun, proc.exited resolves to the 128+N value for signal-killed children
+  // (proc.exitCode is null in that case). We detect signal deaths by checking
+  // proc.signalCode rather than rawExitCode — Bun already applies 128+N so we
+  // do not need to compute it ourselves, but we still need signalExitCode() as
+  // a fallback if rawExitCode is somehow null without a known signal code.
+  const signalCode = child.signalCode ?? null;
+  const isSignalKill = signalCode !== null;
+
+  // Resolve final exit code:
+  //   - Normal exit: rawExitCode is the numeric exit code (0-255)
+  //   - Signal kill: rawExitCode is already 128+N from Bun; signalExitCode is
+  //     the fallback if rawExitCode is somehow null
+  const exitCode = rawExitCode !== null ? rawExitCode : signalExitCode(signalCode);
+
+  // Build a [warn] log entry for signal deaths so the caller can store it in
+  // hookwatch_log and surface it in the systemMessage.
+  let hookwatchLog: string | undefined;
+  if (isSignalKill) {
+    const description = describeExitCode(exitCode);
+    const label = description !== null ? ` (${description})` : "";
+    hookwatchLog = `[warn] exit ${exitCode}${label}`;
+    console.error(`[hookwatch] Child killed by signal: ${hookwatchLog}`);
+  }
+
   return {
-    exitCode: exitCode ?? 1,
+    exitCode,
     stdin: stdinContent,
     stdout: capturedStdout,
     stderr: capturedStderr,
+    ...(hookwatchLog !== undefined && { hookwatchLog }),
   };
 }
 

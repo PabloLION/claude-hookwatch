@@ -106,4 +106,11 @@ export interface WrapResult {
   stdin: string;
   stdout: string;
   stderr: string;
+  /**
+   * Hookwatch-internal diagnostic log entry for signal deaths, or undefined
+   * when the child exited normally. Format: "[warn] exit 137 (likely SIGKILL
+   * — forced termination)". Caller pushes this into logEntries so it appears
+   * in hookwatch_log and systemMessage.
+   */
+  hookwatchLog?: string;
 }

@@ -171,6 +171,12 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
     childStdout = wrapResult.stdout;
     childStderr = wrapResult.stderr;
     childExitCode = wrapResult.exitCode;
+    // Propagate signal-death warning (if any) into the log so it appears in
+    // hookwatch_log and systemMessage. Example: "[warn] exit 137 (likely SIGKILL
+    // — forced termination)".
+    if (wrapResult.hookwatchLog !== undefined) {
+      logEntries.push(wrapResult.hookwatchLog);
+    }
   } else {
     // Bare mode: read stdin directly
     stdinJson = await Bun.stdin.text();
