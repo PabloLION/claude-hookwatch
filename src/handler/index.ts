@@ -253,6 +253,11 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
     }
   }
 
+  // Version mismatch is independent of POST success — present even when ok: true
+  if (postResult.versionMismatchLog !== undefined) {
+    logEntries.push(postResult.versionMismatchLog);
+  }
+
   // -------------------------------------------------------------------------
   // Step 6: Build final hook output JSON and write to stdout (context injection)
   // -------------------------------------------------------------------------

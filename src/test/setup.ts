@@ -141,6 +141,7 @@ export function createHandlerTestContext(prefix = "hookwatch-handler-test-"): Ha
     reset() {
       server.events.length = 0;
       server.nextStatus = 201;
+      server.serverVersion = null;
     },
   };
 }

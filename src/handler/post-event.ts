@@ -6,6 +6,7 @@
  */
 
 import type { parseHookEvent } from "@/schemas/events.ts";
+import { VERSION } from "@/version.ts";
 import { errorMsg } from "./errors.ts";
 import { spawnServer } from "./spawn.ts";
 
@@ -59,6 +60,26 @@ export interface PostEventResult {
   ok: boolean;
   failureReason?: string;
   detail?: string;
+  /**
+   * Version mismatch log entry if the server's X-Hookwatch-Version header
+   * differs from this handler's VERSION. Present even when ok: true.
+   * Caller should push this into logEntries so it appears in systemMessage.
+   */
+  versionMismatchLog?: string;
+}
+
+/**
+ * Checks the X-Hookwatch-Version response header against the handler's own
+ * VERSION. Returns an [error]-prefixed log entry string if they differ, or
+ * undefined if versions match or the header is absent.
+ *
+ * A missing header is silently ignored — older servers or test servers may
+ * not send it, and we don't want spurious errors in those cases.
+ */
+function checkVersionHeader(res: Response): string | undefined {
+  const serverVersion = res.headers.get("X-Hookwatch-Version");
+  if (serverVersion === null || serverVersion === VERSION) return undefined;
+  return `[error] Version mismatch: handler v${VERSION}, server v${serverVersion} — update hookwatch`;
 }
 
 /**
@@ -70,6 +91,9 @@ export interface PostEventResult {
  * Returns { ok: true } on success or { ok: false, failureReason, detail } on
  * any unrecoverable error. Never throws. Failures are non-fatal — the caller
  * stores failureReason in hookwatch_log and systemMessage and continues.
+ *
+ * When ok: true, versionMismatchLog may also be set if the server's version
+ * differs from the handler's — caller should push it into logEntries.
  */
 export async function postEvent(opts: EventPostPayload): Promise<PostEventResult> {
   const body: Record<string, unknown> = { ...opts.event };
@@ -107,7 +131,11 @@ export async function postEvent(opts: EventPostPayload): Promise<PostEventResult
       return { ok: false, failureReason, detail: text };
     }
 
-    return { ok: true };
+    const versionMismatchLog = checkVersionHeader(res);
+    if (versionMismatchLog !== undefined) {
+      console.error(`[hookwatch] ${versionMismatchLog}`);
+    }
+    return { ok: true, ...(versionMismatchLog !== undefined && { versionMismatchLog }) };
   } catch (err) {
     if (!isConnectionError(err)) {
       // Non-connection error (e.g. timeout, abort) — don't attempt spawn
@@ -144,7 +172,11 @@ export async function postEvent(opts: EventPostPayload): Promise<PostEventResult
       return { ok: false, failureReason, detail: text };
     }
 
-    return { ok: true };
+    const versionMismatchLog = checkVersionHeader(res);
+    if (versionMismatchLog !== undefined) {
+      console.error(`[hookwatch] ${versionMismatchLog}`);
+    }
+    return { ok: true, ...(versionMismatchLog !== undefined && { versionMismatchLog }) };
   } catch (err) {
     const detail = errorMsg(err);
     const failureReason = "Retry exhausted — failed to POST event to server after spawn";

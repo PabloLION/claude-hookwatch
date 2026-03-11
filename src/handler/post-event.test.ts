@@ -29,6 +29,7 @@ import {
   runHandlerWrapped,
   writePortFile,
 } from "@/test";
+import { VERSION } from "@/version.ts";
 
 // ---------------------------------------------------------------------------
 // Test setup
@@ -355,5 +356,88 @@ describe("unified pipeline", () => {
     const body = firstEventBody(ctx.server);
     expect(typeof body?.hook_duration_ms).toBe("number");
     expect(body?.hook_duration_ms as number).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Version mismatch detection (ch-8ff5)
+// ---------------------------------------------------------------------------
+
+describe("version mismatch detection", () => {
+  test("matching versions: no version error in systemMessage or stderr", async () => {
+    const xdgHome = join(ctx.tmpDir, "version-match");
+    writePortFile(xdgHome, ctx.server.port);
+
+    // Server returns the same version as the handler
+    ctx.server.serverVersion = VERSION;
+
+    const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    assertExitLegality(result, "version-match");
+    expect(result.exitCode).toBe(0);
+    // No version error in stderr
+    expect(result.stderr).not.toContain("Version mismatch");
+    // No version error in systemMessage
+    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(parsed.systemMessage as string).not.toContain("Version mismatch");
+  });
+
+  test("mismatched versions: [error] log entry appears in systemMessage", async () => {
+    const xdgHome = join(ctx.tmpDir, "version-mismatch");
+    writePortFile(xdgHome, ctx.server.port);
+
+    // Simulate a server running a different version
+    const staleVersion = "0.0.1-stale";
+    ctx.server.serverVersion = staleVersion;
+
+    const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    assertExitLegality(result, "version-mismatch");
+    expect(result.exitCode).toBe(0);
+    // Version mismatch logged to stderr
+    expect(result.stderr).toContain("Version mismatch");
+    expect(result.stderr).toContain(staleVersion);
+    // Version mismatch appears in systemMessage (visible to Claude Code agent)
+    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(parsed.continue).toBe(true);
+    expect(parsed.systemMessage as string).toContain("[error] Version mismatch");
+    expect(parsed.systemMessage as string).toContain(staleVersion);
+    expect(parsed.systemMessage as string).toContain(VERSION);
+  });
+
+  test("mismatched versions: handler still exits 0 (non-blocking)", async () => {
+    const xdgHome = join(ctx.tmpDir, "version-mismatch-exit-0");
+    writePortFile(xdgHome, ctx.server.port);
+
+    ctx.server.serverVersion = "0.0.1-stale";
+
+    const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    // Version mismatch is [error] severity but never fatal — always exits 0
+    expect(result.exitCode).toBe(0);
+  });
+
+  test("server omits X-Hookwatch-Version header: no version error logged", async () => {
+    const xdgHome = join(ctx.tmpDir, "version-header-absent");
+    writePortFile(xdgHome, ctx.server.port);
+
+    // serverVersion defaults to null → header absent (older server)
+    expect(ctx.server.serverVersion).toBeNull();
+
+    const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
+      XDG_DATA_HOME: xdgHome,
+    });
+
+    assertExitLegality(result, "version-header-absent");
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).not.toContain("Version mismatch");
+    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    expect(parsed.systemMessage as string).not.toContain("Version mismatch");
   });
 });
