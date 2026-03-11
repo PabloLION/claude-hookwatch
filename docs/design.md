@@ -175,8 +175,8 @@ hook_duration_ms,INTEGER,hookwatch handler execution time in milliseconds
 wrapped_command,TEXT,"NULL = bare handler; non-NULL = user command being wrapped"
 stdout,TEXT,Captured stdout from wrapped command (NULL for bare handler)
 stderr,TEXT,Captured stderr from wrapped command (NULL for bare handler)
-exit_code,INTEGER,Exit code from wrapped command (NULL for bare handler)
-hookwatch_error,TEXT,"Hookwatch's own accumulated error messages (NULL = no error). Multiple errors are collected during a handler run via a string builder. Non-fatal (priority 2): POST collected errors to this column at end of handler. Fatal (priority 1): exit 2 + JSON with all collected errors before reaching DB."
+exit_code,INTEGER NOT NULL DEFAULT 0,Exit code (bare handler: always 0; wrapped: child's exit code; signal-killed: 128+signal)
+hookwatch_log,TEXT,"Hookwatch's own log messages with severity prefix (NULL = no issues). Non-fatal errors: [error] prefix. Warnings: [warn] prefix. Multiple entries joined with '; '. Fatal errors (server unreachable, schema parse failure): exit 0 + JSON systemMessage — no DB record written."
 ```
 
 Indexed on: `event`, `session_id`, `timestamp`, `tool_name`.
@@ -261,8 +261,8 @@ HITL is triggered by specific event conditions (configurable). When triggered:
 
 1. The hook presents the question to the user through the web UI
 2. The hook blocks until the user responds or a timeout expires
-3. The response determines the hook's exit behavior (exit 0 to proceed, exit 2
-   to deny, or JSON output with the response)
+3. The response determines the hook's JSON output (exit 0 + `decision: "block"`
+   to deny, or `decision: "approve"` to proceed)
 
 HITL enables the v2 guardrail features: C1 (block dangerous commands), C2
 (protect secrets), C3 (file scope), C7 (path traversal), C8 (bash pipeline
@@ -412,33 +412,35 @@ Configurable data cleanup using a high-water / low-water mark pattern.
 
 Error handling uses a priority chain based on severity:
 
-**Priority 1 — Fatal error** (server unreachable, port occupied, POST fails):
-Exit 2 + JSON in stdout. Always, in both bare and wrapped modes. The user must
-fix hookwatch first. Claude Code surfaces the JSON message to the user.
+**Fatal error** (server unreachable, schema parse failure, port occupied):
+Exit 0 + JSON stdout with `systemMessage` and `hookwatch_fatal` field. No DB
+record written. Claude Code surfaces the systemMessage to the user/agent.
+Hookwatch must never block Claude Code — always exit 0.
 
-**Priority 2 — Non-fatal error** (server reachable, hookwatch had an issue):
-Log to `hookwatch_error` column in the database. If we can POST, we can write
-to DB — guaranteed by the architecture (same Bun server handles both). No
-separate log file fallback needed.
+**Non-fatal error** (server reachable, hookwatch had an issue):
+Log to `hookwatch_log` column with `[error]` prefix. If we can POST, we can
+write to DB — guaranteed by the architecture (same Bun server handles both).
 
-**Priority 3 — Normal operation** (no hookwatch error):
-`hookwatch_error` is NULL. Bare handler exits 0 with hook output JSON. Wrapped
+**Warning** (non-critical issues, e.g. slow handler):
+Log to `hookwatch_log` column with `[warn]` prefix. Same mechanism as errors.
+
+**Normal operation** (no hookwatch issues):
+`hookwatch_log` is NULL. Bare handler exits 0 with hook output JSON. Wrapped
 handler passes through the wrapped command's stdout, stderr, and exit code.
 
-- **Never exit 1** — empirically observed: Claude Code shows a generic
-  `"hookname:subtype hook error"` message. stderr is not surfaced to the user
-  or to the coding agent. Exit 1 is strictly worse than exit 2.
+- **Never exit 1** — Claude Code shows a generic `"hookname:subtype hook error"`.
+  stderr is not surfaced. Strictly useless.
+- **Never exit 2** — JSON is ignored at exit 2 per Claude Code docs. Exit 2
+  may block certain events (PreToolUse, PermissionRequest). Hookwatch must
+  never block Claude Code.
 - **Pass through wrapped command exit code** — hookwatch is a transparent proxy.
-  If the wrapped command exits 1, hookwatch exits 1. Authenticity over
-  agent-friendliness.
+  If the wrapped command exits 1, hookwatch exits 1. Signal-killed children
+  use 128+signal convention (e.g. SIGKILL → 137).
 - **Health check verification** — the health probe confirms server
-  responsiveness. POST response verification (non-cryptographic) can run
-  async, in parallel with the wrapped command.
+  responsiveness.
 
 **Why authenticity matters:** A hook developer wrapping their broken hook with
-`hookwatch wrap` must see the real failure. If hookwatch rewrites exit 1 to
-exit 2 (agent-friendly JSON), the developer sees a clean exit and thinks their
-hook works — a false positive during debugging. hookwatch observes; it does not
+`hookwatch wrap` must see the real failure. hookwatch observes; it does not
 heal.
 
 ### NFR-5: Maintainability
@@ -467,7 +469,7 @@ TOML config,"Supports comments (JSON does not). Human-readable. May need smol-to
 Preact + htm for web UI,"Tagged template literals — no JSX transform or build step. ~4KB runtime. Fits Bun-native no-transpilation goal.","Svelte (requires build step — conflicts with NFR-5), Vanilla HTML/JS (harder to maintain), React (heavier)"
 Log retention (v1),"High/low water mark pattern. Checked at SessionStart (once per session). Both age and size limits active. Margin prevents re-triggering.","No retention (user responsibility), PreCompact trigger (adds latency during active work)"
 Unified handler pipeline (template method),"Single entry point; bare handler = wrapped handler with no child process. Branch on wrappedCommand being null/non-null. Pipeline: readStdin → parseEvent → resolvePort → [if wrapped: spawn child] → postEvent → writeOutput. One algorithm skeleton with a conditional branch — template method without inheritance. Replaces strategy pattern (two separate functions).","Strategy pattern with runBare + runWrappedMode — rejected: 80%+ shared logic, divergent behavior risk"
-Exit code strategy (priority chain),"Priority 1 fatal (server unreachable): exit 2 + JSON always (both modes). Priority 2 non-fatal (server OK): log to hookwatch_error DB column. Priority 3 normal: hookwatch_error NULL. Never exit 1 (generic 'hook error', stderr swallowed). Pass through wrapped command exit code unchanged. Reason: hook developers wrapping broken hooks must see real failures, not false positives.","Exit 1 + stderr (rejected: not surfaced), Always exit 0 (rejected: loses wrapped command signal), Rewrite to exit 2 (rejected: false positives during hook dev), serverLogPath() fallback (rejected: if can POST, can write DB — simpler)"
+Exit code strategy,"Fatal: exit 0 + JSON systemMessage (never block Claude Code). Non-fatal: hookwatch_log DB column with [error]/[warn] prefix. Normal: hookwatch_log NULL. Never exit 1 (useless generic error) or exit 2 (JSON ignored per docs). Wrapped command exit code passed through unchanged. Signal-killed children: 128+signal convention.","Exit 1 + stderr (rejected: not surfaced), Exit 2 + JSON (rejected: JSON ignored at exit 2 per Claude Code docs, may block events), serverLogPath() fallback (rejected: if can POST, can write DB — simpler)"
 ```
 
 ## Open Questions

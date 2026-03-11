@@ -91,15 +91,15 @@ The coordination flow for v0 (ch-a2f):
 2. If connection refused → spawn Bun server in background
 3. Poll `GET /health` at 50ms intervals (max 2s timeout)
 4. If health OK → retry POST
-5. If health timeout → exit 2 + JSON stdout (fatal, server unreachable)
+5. If health timeout → exit 0 + JSON stdout with systemMessage (fatal, server unreachable)
 
 Happy path (server running) is one POST with no overhead.
 
 ### Cross-Cutting Concerns Identified
 
 - **Error resilience**: Handler must catch all errors — no exception may
-  propagate to Claude Code. Exit 0 on success; fatal errors (server unreachable)
-  exit 2 + JSON stdout. Non-fatal errors logged to `hookwatch_log` DB column.
+  propagate to Claude Code. Always exit 0 — fatal errors use JSON stdout with
+  systemMessage. Non-fatal errors logged to `hookwatch_log` DB column.
 - **Forward compatibility**: Unknown event types and unknown fields must be
   preserved. Affects Zod schemas, SQLite storage, and web UI rendering.
   Note: forward compatibility applies to field-level schema evolution. New event
@@ -400,11 +400,11 @@ choices.
 
 ### Process Patterns
 
-- **Handler errors**: Priority chain — fatal (server unreachable): exit 2 + JSON
-  stdout; non-fatal (server OK, hookwatch internal issue): log to `hookwatch_log`
-  DB column; normal: `hookwatch_log` NULL. Never exit 1 — Claude Code shows only
-  a generic "hook error" and swallows stderr. Exit 2 + JSON is strictly better.
-  In wrapped mode: child exit code is always forwarded unchanged.
+- **Handler errors**: Fatal (server unreachable): exit 0 + JSON stdout with
+  systemMessage. Non-fatal: log to `hookwatch_log` DB column with [error]/[warn]
+  prefix. Normal: `hookwatch_log` NULL. Never exit 1 (useless) or exit 2 (JSON
+  ignored). Hookwatch must never block Claude Code. In wrapped mode: child exit
+  code forwarded unchanged; signal-killed children use 128+signal convention.
 - **Server errors**: Structured JSON
   `{ "error": { "code": "DB_LOCKED", "message": "..." } }` for all API
   responses. Log to stderr with level prefix (`[ERROR]`, `[WARN]`, `[INFO]`)
@@ -573,8 +573,9 @@ Browser
 Four inconsistencies found and resolved during validation:
 
 1. Handler POST path: `localhost:6004/events` → `localhost:6004/api/events`
-2. Exit code strategy: resolved as priority chain — fatal errors exit 2 + JSON
-   stdout; non-fatal errors log to hookwatch_log DB column; never exit 1
+2. Exit code strategy: resolved as priority chain — fatal errors exit 0 + JSON
+   stdout with systemMessage; non-fatal errors log to hookwatch_log DB column;
+   never exit 1 or 2
 3. Component file naming: PascalCase example → kebab-case (matching step 5
    decision, PascalCase as fallback)
 4. UI delivery gap: added on-the-fly transpile via `Bun.Transpiler` with
@@ -588,7 +589,7 @@ user-facing channel.
 
 - **28 FRs**: All mapped to project directories (FR → Directory Mapping table)
 - **14 NFRs**: All addressed architecturally. NFR6 updated to reflect priority
-  chain (fatal: exit 2 + JSON; non-fatal: hookwatch_log column)
+  chain (fatal: exit 0 + JSON systemMessage; non-fatal: hookwatch_log column)
 - **19 beads issues**: Track all deferred decisions — no untracked debt
 
 ### Implementation Readiness

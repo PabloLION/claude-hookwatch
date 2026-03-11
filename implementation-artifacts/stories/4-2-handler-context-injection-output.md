@@ -81,11 +81,10 @@ The detail varies by event type — tool name for tool events, source/reason for
 Scenario,Exit Code,Stdout,Behavior
 POST success + injection enabled,0,Valid JSON,Claude Code parses stdout
 POST success + injection disabled,0,None,Silent success
-POST failure (server unreachable),1,None,Non-blocking error
-Hook wants to block the action (PreToolUse / PreSubAgentStart),2,JSON with decision,Claude Code blocks the action
+POST failure (server unreachable),0,"JSON with systemMessage + hookwatch_fatal",Claude Code shows systemMessage to user
 ```
 
-Exit code 2 is reserved for blocking actions (PreToolUse and PreSubAgentStart hooks that support blocking). hookwatch does not use exit 2 in its standard capture path — it is listed here for completeness and to avoid confusion with exit 1. If a future story adds blocking support, exit 2 is the correct mechanism.
+Hookwatch always exits 0. Never exit 1 (useless generic error) or exit 2 (JSON ignored per Claude Code docs, may block events). Fatal errors use exit 0 + JSON systemMessage to alert the user without blocking Claude Code. Future blocking support (v2 HITL) would use exit 0 + JSON `decision: "block"`, not exit 2.
 
 ### Error Safety
 

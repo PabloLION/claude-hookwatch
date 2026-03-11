@@ -63,35 +63,32 @@ actual interpreter executing the hook command.
 
 ```csv
 Severity,Condition,Exit code,Output
-fatal,"Server unreachable, port occupied, POST fails",2,JSON to stdout
-error,"Server OK, hookwatch had an issue","Wrapped: pass-through; Bare: 0",hookwatch_error in DB
-normal,No hookwatch error,"Wrapped: pass-through; Bare: 0",hookwatch_error NULL
+fatal,"Server unreachable, schema parse failure",0,"JSON stdout: systemMessage + hookwatch_fatal (no DB record)"
+error,"Server OK, hookwatch had an issue","Wrapped: pass-through; Bare: 0","hookwatch_log with [error] prefix"
+warn,"Non-critical issue (e.g. slow handler)","Wrapped: pass-through; Bare: 0","hookwatch_log with [warn] prefix"
+normal,No hookwatch issues,"Wrapped: pass-through; Bare: 0",hookwatch_log NULL
 ```
 
-### Never exit 1
+### Never exit 1 or 2
 
-Claude Code shows a generic `"hookname:subtype hook error"` message for exit 1.
-stderr is not surfaced to the user or to the coding agent. There is no way to
-convey useful information through exit 1.
-
-Exit 2 + JSON in stdout carries the actual error context and is displayed by
-Claude Code. Exit 2 is strictly better than exit 1 in every scenario.
+- **Exit 1**: Claude Code shows a generic `"hookname:subtype hook error"`.
+  stderr is not surfaced. Strictly useless.
+- **Exit 2**: JSON is ignored at exit 2 per Claude Code docs. May block
+  certain events (PreToolUse, PermissionRequest). Hookwatch must never block
+  Claude Code.
 
 ### Authenticity: pass through wrapped command output
 
 Wrapped command's stdout, stderr, and exit code are passed through unchanged.
-hookwatch is a transparent proxy.
+hookwatch is a transparent proxy. Signal-killed children use 128+signal
+convention (e.g. SIGKILL → 137).
 
-**Why**: A hook developer wrapping their broken hook with `hookwatch wrap` must
-see the real failure. If hookwatch rewrites exit 1 to exit 2 (agent-friendly
-JSON), the developer sees a clean exit and thinks their hook works — a false
-positive during debugging. hookwatch observes; it does not heal.
+### hookwatch_log column
 
-### hookwatch_error column
-
-Non-fatal errors are stored in the `hookwatch_error TEXT` column in the events
-table. Multiple errors during a single handler run are accumulated via a string
-builder and written as one value. NULL means no error.
+Non-fatal errors and warnings are stored in the `hookwatch_log TEXT` column in
+the events table. Entries use severity prefixes (`[error]`, `[warn]`). Multiple
+entries during a single handler run are joined with `'; '`. NULL means no
+issues.
 
 ## Hook Stdout Output Schema Strictness
 

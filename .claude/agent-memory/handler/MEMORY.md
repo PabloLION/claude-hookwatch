@@ -63,5 +63,5 @@ This bug was latent — no test used the shared runHandler before ch-qmy7.
 ## assertExitLegality()
 
 Lives in `src/test/handler-assertions.ts`, exported from `@/test`.
-Validates: exit 0 + (empty stdout OR JSON with `continue: boolean`), exit 2 + JSON with `hookwatch_fatal: string`.
+Validates: exit 0 + (empty stdout OR JSON with `continue: boolean`). Exit 2 abandoned — hookwatch always exits 0. Fatal errors use exit 0 + JSON with `hookwatch_fatal` and `systemMessage`.
 Handles wrapped mode: extracts last `{...}` block if full parse fails (child stdout precedes hook JSON).

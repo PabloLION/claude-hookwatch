@@ -133,7 +133,7 @@ Both modes share the same `handleHook()` pipeline. The branch point is
 
 ## Process Rules
 
-- **Handler errors:** Fatal errors exit 2 + JSON stdout (server unreachable). Non-fatal errors log to `hookwatch_log` DB column. Never exit 1 — Claude Code shows a generic "hook error" and does not surface stderr. Exit 2 + JSON is strictly better in every scenario.
+- **Handler errors:** Fatal errors exit 0 + JSON stdout with `systemMessage` (server unreachable, schema parse failure). Non-fatal errors log to `hookwatch_log` DB column. Never exit 1 (generic "hook error", useless) or exit 2 (JSON ignored per Claude Code docs). Hookwatch must never block Claude Code.
 - **Server errors:** Structured JSON `{ "error": { "code": "...", "message": "..." } }`
 - **UI errors:** Display server errors — never swallow silently
 - **Imports:** Use `@/` path alias (maps to `./src/`) — no relative `../` chains
