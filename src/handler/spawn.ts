@@ -56,6 +56,19 @@ async function waitForHealth(): Promise<number | null> {
 }
 
 /**
+ * Result returned by spawnServer().
+ *
+ * Discriminated on the `ok` field:
+ *   ok: true  → server is ready; `port` is the port it's listening on.
+ *   ok: false → server did not start; `failureKind` distinguishes:
+ *     'spawn'  — Bun.spawn() itself threw (e.g. binary not found, EACCES).
+ *     'retry'  — Bun.spawn() succeeded but health probe timed out.
+ */
+export type SpawnResult =
+  | { ok: true; port: number }
+  | { ok: false; failureKind: "spawn" | "retry" };
+
+/**
  * Spawns the hookwatch server as a detached background process.
  *
  * - Uses Bun.spawn() with detached: true
@@ -63,11 +76,12 @@ async function waitForHealth(): Promise<number | null> {
  * - Redirects server stdout/stderr to serverLogPath()
  * - Polls GET /health until ready (max 2s)
  *
- * Returns the port the server is listening on, or null if health check timed out.
+ * Returns a SpawnResult discriminated on ok. Callers use failureKind to
+ * distinguish a spawn failure ('spawn') from a health-probe timeout ('retry').
  *
  * Exported for reuse by cli/ui.ts (Story 2.5).
  */
-export async function spawnServer(): Promise<number | null> {
+export async function spawnServer(): Promise<SpawnResult> {
   const logPath = serverLogPath();
 
   // Ensure log directory exists.
@@ -100,7 +114,7 @@ export async function spawnServer(): Promise<number | null> {
   } catch (err) {
     const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to spawn server: ${msg}`);
-    return null;
+    return { ok: false, failureKind: "spawn" };
   }
 
   // Unref immediately — the handler must not wait for the server process
@@ -115,9 +129,9 @@ export async function spawnServer(): Promise<number | null> {
     console.error(
       `[hookwatch] Server health check timed out after ${(HEALTH_MAX_ATTEMPTS * HEALTH_POLL_INTERVAL_MS) / 1000}s`,
     );
-    return null;
+    return { ok: false, failureKind: "retry" };
   }
 
   console.error(`[hookwatch] Server ready on port ${port}`);
-  return port;
+  return { ok: true, port };
 }

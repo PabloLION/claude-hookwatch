@@ -247,11 +247,21 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   const postResult: PostEventResult = await postEvent(port, postPayload);
 
   if (!postResult.ok) {
-    // postEvent failures are non-fatal — record the reason so it appears in the
-    // systemMessage written to stdout, informing the user while never blocking
-    // Claude Code (passive observer principle).
     const reason = postResult.failureReason ?? "Failed to POST event to server";
     const detail = postResult.detail ? `: ${postResult.detail}` : "";
+
+    if (postResult.failureKind === "spawn" || postResult.failureKind === "retry") {
+      // Infrastructure broken — hookwatch cannot record events at all.
+      // Exit fatal so the user sees the error in systemMessage. In wrapped
+      // mode, infrastructure failure is also fatal: the wrapped command already
+      // exited, so we have nothing useful to forward. exitFatal() exits 0 +
+      // JSON stdout (passive observer — never blocks Claude Code).
+      exitFatal(reason);
+    }
+
+    // Transient failure ('http' or 'exception') — record the reason so it
+    // appears in systemMessage. The user is informed but Claude Code is never
+    // blocked (passive observer principle).
     logEntries.push(`[error] ${reason}${detail}`);
 
     if (wrapArgs !== null) {
