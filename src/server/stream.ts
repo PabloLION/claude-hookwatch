@@ -15,7 +15,7 @@
  *   Connection: keep-alive
  */
 
-import type { EventRow } from "@/db/queries.ts";
+import type { EventRow } from "@/types.ts";
 
 // ---------------------------------------------------------------------------
 // Client registry
