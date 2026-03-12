@@ -8,7 +8,7 @@
  *   to fill a viewport without transferring unnecessary data.
  * - default offset is 0: start from the beginning of the result set
  *   (callers paginate by incrementing offset in steps of limit).
- * - .passthrough() for forward compatibility: same convention as event schemas
+ * - .loose() for forward compatibility: same convention as event schemas
  *   (NFR12) — unknown filter fields added in future API versions are preserved,
  *   not stripped, so older server code does not reject newer client requests.
  *
@@ -34,6 +34,6 @@ export const queryFilterSchema = z
     limit: z.number().int().positive().max(1000).optional().default(100),
     offset: z.number().int().nonnegative().optional().default(0),
   })
-  .passthrough();
+  .loose();
 
 export type QueryFilter = z.infer<typeof queryFilterSchema>;
