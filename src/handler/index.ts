@@ -128,6 +128,103 @@ function parseEventSafely(
 }
 
 // ---------------------------------------------------------------------------
+// Unified pipeline helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Shape returned by readStdinAndWrapOutput() covering both bare and wrapped
+ * modes.
+ */
+interface StdinAndWrapOutput {
+  stdinJson: string;
+  childStdout: string | null;
+  childStderr: string | null;
+  childExitCode: number;
+  /** Signal-death warning from wrapped mode, if any. */
+  hookwatchLogFromWrap: string | undefined;
+}
+
+/**
+ * Steps 1+2: Reads stdin and — in wrapped mode — spawns the child process,
+ * tees its I/O, and captures its exit code.
+ *
+ * In bare mode, stdinJson is read from Bun.stdin and child* fields are null/0.
+ * In wrapped mode, runWrapped() supplies all fields.
+ */
+async function readStdinAndWrapOutput(wrapArgs: string[] | null): Promise<StdinAndWrapOutput> {
+  if (wrapArgs === null) {
+    return {
+      stdinJson: await Bun.stdin.text(),
+      childStdout: null,
+      childStderr: null,
+      childExitCode: 0,
+      hookwatchLogFromWrap: undefined,
+    };
+  }
+
+  // Wrapped mode: runWrapped() reads stdin, tees child I/O, returns everything
+  const wrapResult = await runWrapped(wrapArgs);
+  return {
+    stdinJson: wrapResult.stdin,
+    childStdout: wrapResult.stdout,
+    childStderr: wrapResult.stderr,
+    childExitCode: wrapResult.exitCode,
+    // Signal-death warning (if any): "[warn] exit 137 (likely SIGKILL …)"
+    hookwatchLogFromWrap: wrapResult.hookwatchLog,
+  };
+}
+
+/**
+ * Builds the EventPostPayload discriminated union for the given mode.
+ *
+ * In bare mode, stdout stores the preliminary hook output JSON (what Claude
+ * Code would see). In wrapped mode, stdout/stderr/exitCode are the child's
+ * captured values.
+ */
+function buildPostPayload(opts: {
+  event: ReturnType<typeof parseHookEvent>;
+  wrapArgs: string[] | null;
+  childStdout: string | null;
+  childStderr: string | null;
+  childExitCode: number;
+  elapsedMs: number;
+  hookwatchLog: string | null;
+  preliminaryHookOutputJson: string;
+}): EventPostPayload {
+  const {
+    event,
+    wrapArgs,
+    childStdout,
+    childStderr,
+    childExitCode,
+    elapsedMs,
+    hookwatchLog,
+    preliminaryHookOutputJson,
+  } = opts;
+
+  if (wrapArgs === null) {
+    return {
+      mode: 'bare',
+      event,
+      stdout: preliminaryHookOutputJson,
+      hookDurationMs: elapsedMs,
+      hookwatchLog,
+    };
+  }
+
+  return {
+    mode: 'wrapped',
+    event,
+    wrappedCommand: wrapArgs.join(' '),
+    stdout: childStdout as string,
+    stderr: childStderr as string,
+    exitCode: childExitCode,
+    hookDurationMs: elapsedMs,
+    hookwatchLog,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Unified pipeline: handleHook()
 // ---------------------------------------------------------------------------
 
@@ -159,27 +256,12 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // Step 1+2: Read stdin (and optionally spawn child in wrapped mode)
   // -------------------------------------------------------------------------
 
-  let stdinJson: string;
-  let childStdout: string | null = null;
-  let childStderr: string | null = null;
-  let childExitCode = 0;
+  const { stdinJson, childStdout, childStderr, childExitCode, hookwatchLogFromWrap } =
+    await readStdinAndWrapOutput(wrapArgs);
 
-  if (wrapArgs !== null) {
-    // Wrapped mode: runWrapped() reads stdin, tees child I/O, returns everything
-    const wrapResult = await runWrapped(wrapArgs);
-    stdinJson = wrapResult.stdin;
-    childStdout = wrapResult.stdout;
-    childStderr = wrapResult.stderr;
-    childExitCode = wrapResult.exitCode;
-    // Propagate signal-death warning (if any) into the log so it appears in
-    // hookwatch_log and systemMessage. Example: "[warn] exit 137 (likely SIGKILL
-    // — forced termination)".
-    if (wrapResult.hookwatchLog !== undefined) {
-      logEntries.push(wrapResult.hookwatchLog);
-    }
-  } else {
-    // Bare mode: read stdin directly
-    stdinJson = await Bun.stdin.text();
+  // Propagate signal-death warning from wrapped mode into logEntries
+  if (hookwatchLogFromWrap !== undefined) {
+    logEntries.push(hookwatchLogFromWrap);
   }
 
   // -------------------------------------------------------------------------
@@ -194,7 +276,8 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // In wrapped mode (fallbackExitCode = childExitCode): forwards child exit code
   // on parse failure (best-effort). In bare mode (fallbackExitCode = null):
   // calls exitFatal() → exit 0 + JSON stdout (fatal, non-blocking).
-  const event = parseEventSafely(stdinJson, wrapArgs !== null ? childExitCode : null);
+  const fallbackExitCode = wrapArgs === null ? null : childExitCode;
+  const event = parseEventSafely(stdinJson, fallbackExitCode);
 
   // -------------------------------------------------------------------------
   // Step 4: Resolve port
@@ -231,25 +314,16 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   const elapsedMs = Date.now() - startMs;
   const hookwatchLog = logEntries.length > 0 ? logEntries.join('; ') : null;
 
-  const postPayload: EventPostPayload =
-    wrapArgs !== null
-      ? {
-          mode: 'wrapped',
-          event,
-          wrappedCommand: wrapArgs.join(' '),
-          stdout: childStdout as string,
-          stderr: childStderr as string,
-          exitCode: childExitCode,
-          hookDurationMs: elapsedMs,
-          hookwatchLog,
-        }
-      : {
-          mode: 'bare',
-          event,
-          stdout: preliminaryHookOutputJson,
-          hookDurationMs: elapsedMs,
-          hookwatchLog,
-        };
+  const postPayload = buildPostPayload({
+    event,
+    wrapArgs,
+    childStdout,
+    childStderr,
+    childExitCode,
+    elapsedMs,
+    hookwatchLog,
+    preliminaryHookOutputJson,
+  });
   const postResult: PostEventResult = await postEvent(port, postPayload);
 
   if (!postResult.ok) {
@@ -348,5 +422,5 @@ if (import.meta.main) {
   // No .catch() here: runHandler() already has an inner .catch() that calls
   // exitFatal() → process.exit(0), so the process terminates before any outer
   // catch could fire. A second catch would be dead code.
-  runHandler(wrapArgs);
+  await runHandler(wrapArgs);
 }

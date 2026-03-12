@@ -17,38 +17,33 @@ function stringField(event: HookEvent, field: string): string | null {
 }
 
 /**
+ * Maps hook_event_name → the field name that contains the subtype string.
+ * Event types absent from this map have no meaningful subtype (return null).
+ */
+const SUBTYPE_FIELD: Record<string, string> = {
+  SessionStart: 'source',
+  SessionEnd: 'reason',
+  PreToolUse: 'tool_name',
+  PostToolUse: 'tool_name',
+  PostToolUseFailure: 'tool_name',
+  PermissionRequest: 'tool_name',
+  Notification: 'notification_type',
+  SubagentStart: 'agent_type',
+  SubagentStop: 'agent_type',
+  PreCompact: 'trigger',
+  ConfigChange: 'source',
+  InstructionsLoaded: 'trigger',
+};
+
+/**
  * Extracts a subtype string from the event based on the event type.
  * Returns null for event types that have no meaningful subtype, or when the
  * expected field is absent or not a string.
  */
 export function getEventSubtype(event: HookEvent): string | null {
-  const name = event.hook_event_name;
-  switch (name) {
-    case 'SessionStart':
-      return stringField(event, 'source');
-    case 'SessionEnd':
-      return stringField(event, 'reason');
-    case 'PreToolUse':
-    case 'PostToolUse':
-    case 'PostToolUseFailure':
-    case 'PermissionRequest':
-      return stringField(event, 'tool_name');
-    case 'Notification':
-      return stringField(event, 'notification_type');
-    case 'SubagentStart':
-    case 'SubagentStop':
-      return stringField(event, 'agent_type');
-    case 'PreCompact':
-      return stringField(event, 'trigger');
-    case 'ConfigChange':
-      return stringField(event, 'source');
-    case 'InstructionsLoaded':
-      return stringField(event, 'trigger');
-    default:
-      // Stop, UserPromptSubmit, TeammateIdle, TaskCompleted, WorktreeCreate,
-      // WorktreeRemove — no subtype
-      return null;
-  }
+  const field = SUBTYPE_FIELD[event.hook_event_name];
+  if (field === undefined) return null;
+  return stringField(event, field);
 }
 
 /**
@@ -67,9 +62,9 @@ export function getEventSubtype(event: HookEvent): string | null {
 export function buildSystemMessage(event: HookEvent, logEntries?: string[]): string {
   const subtype = getEventSubtype(event);
   const base =
-    subtype !== null
-      ? `hookwatch captured ${event.hook_event_name} (${subtype})`
-      : `hookwatch captured ${event.hook_event_name}`;
+    subtype === null
+      ? `hookwatch captured ${event.hook_event_name}`
+      : `hookwatch captured ${event.hook_event_name} (${subtype})`;
   if (logEntries && logEntries.length > 0) {
     return `${base} — ${logEntries.join('; ')}`;
   }
