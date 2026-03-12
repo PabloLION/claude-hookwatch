@@ -47,11 +47,13 @@ describe('database creation and WAL mode', () => {
 
   test('enables WAL journal mode', () => {
     const row = handle.db.query<{ journal_mode: string }, []>('PRAGMA journal_mode;').get();
+    expect(row).not.toBeNull();
     expect(row?.journal_mode).toBe('wal');
   });
 
   test('sets user_version to CURRENT_VERSION after schema application', () => {
     const row = handle.db.query<PragmaUserVersionRow, []>(PRAGMA_USER_VERSION).get();
+    expect(row).not.toBeNull();
     expect(row?.user_version).toBe(CURRENT_VERSION);
   });
 });
@@ -322,6 +324,7 @@ describe('schema idempotency', () => {
 
     const db = openDb(handle.dbPath);
     const row = db.query<PragmaUserVersionRow, []>(PRAGMA_USER_VERSION).get();
+    expect(row).not.toBeNull();
     expect(row?.user_version).toBe(CURRENT_VERSION);
   });
 });
@@ -355,6 +358,7 @@ describe('version mismatch — backup-and-recreate', () => {
 
     // New DB should be at version 3
     const row = db2.query<PragmaUserVersionRow, []>(PRAGMA_USER_VERSION).get();
+    expect(row).not.toBeNull();
     expect(row?.user_version).toBe(CURRENT_VERSION);
 
     // New DB should have the events table with hookwatch_log column
@@ -397,6 +401,7 @@ describe('version mismatch — backup-and-recreate', () => {
     rmSync(handle.dbPath);
     const db = openDb(handle.dbPath);
     const row = db.query<PragmaUserVersionRow, []>(PRAGMA_USER_VERSION).get();
+    expect(row).not.toBeNull();
     expect(row?.user_version).toBe(CURRENT_VERSION);
   });
 });
