@@ -119,7 +119,7 @@ describe('non-matching errors', () => {
   });
 
   test('generic Error with empty message → false', () => {
-    expect(isSqliteBusy(new Error())).toBe(false);
+    expect(isSqliteBusy(new Error('generic error'))).toBe(false);
   });
 
   test("Error about 'busy' without SQLITE_BUSY prefix → false", () => {

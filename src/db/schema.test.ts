@@ -3,9 +3,11 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { closeTestDb, setupTestDb, type TestDbHandle } from '@/test';
 import { close, openDb } from './connection.ts';
 import { getAllEvents, getEventById, insertEvent } from './queries.ts';
+import { CURRENT_VERSION } from './schema.ts';
 
 const PRAGMA_USER_VERSION = 'PRAGMA user_version;';
 const PRAGMA_TABLE_INFO = 'PRAGMA table_info(events);';
+const TEST_CWD = '/tmp/project';
 
 describe('database creation and WAL mode', () => {
   let handle: TestDbHandle;
@@ -28,9 +30,9 @@ describe('database creation and WAL mode', () => {
     expect(row.journal_mode).toBe('wal');
   });
 
-  test('sets user_version to 3 after schema application', () => {
+  test('sets user_version to CURRENT_VERSION after schema application', () => {
     const row = handle.db.query(PRAGMA_USER_VERSION).get() as { user_version: number };
-    expect(row.user_version).toBe(3);
+    expect(row.user_version).toBe(CURRENT_VERSION);
   });
 });
 
@@ -136,7 +138,7 @@ describe('insert and retrieve round-trip', () => {
     const payload = JSON.stringify({
       hook_event_name: 'PreToolUse',
       session_id: 'sess-001',
-      cwd: '/tmp/project',
+      cwd: TEST_CWD,
       tool_name: 'Bash',
       tool_input: { command: 'ls' },
     });
@@ -145,7 +147,7 @@ describe('insert and retrieve round-trip', () => {
       timestamp: Date.now(),
       event: 'PreToolUse',
       session_id: 'sess-001',
-      cwd: '/tmp/project',
+      cwd: TEST_CWD,
       tool_name: 'Bash',
       session_name: null,
       hook_duration_ms: 42,
@@ -163,7 +165,7 @@ describe('insert and retrieve round-trip', () => {
     expect(row).not.toBeNull();
     expect(row?.event).toBe('PreToolUse');
     expect(row?.session_id).toBe('sess-001');
-    expect(row?.cwd).toBe('/tmp/project');
+    expect(row?.cwd).toBe(TEST_CWD);
     expect(row?.tool_name).toBe('Bash');
     expect(row?.hook_duration_ms).toBe(42);
     expect(row?.stdin).toBe(payload);
@@ -312,7 +314,7 @@ describe('schema idempotency', () => {
 
     const db = openDb(handle.dbPath);
     const row = db.query(PRAGMA_USER_VERSION).get() as { user_version: number };
-    expect(row.user_version).toBe(3);
+    expect(row.user_version).toBe(CURRENT_VERSION);
   });
 });
 
@@ -345,7 +347,7 @@ describe('version mismatch — backup-and-recreate', () => {
 
     // New DB should be at version 3
     const row = db2.query(PRAGMA_USER_VERSION).get() as { user_version: number };
-    expect(row.user_version).toBe(3);
+    expect(row.user_version).toBe(CURRENT_VERSION);
 
     // New DB should have the events table with hookwatch_log column
     const cols = db2.query(PRAGMA_TABLE_INFO).all() as Array<{ name: string }>;
@@ -387,6 +389,6 @@ describe('version mismatch — backup-and-recreate', () => {
     rmSync(handle.dbPath);
     const db = openDb(handle.dbPath);
     const row = db.query(PRAGMA_USER_VERSION).get() as { user_version: number };
-    expect(row.user_version).toBe(3);
+    expect(row.user_version).toBe(CURRENT_VERSION);
   });
 });

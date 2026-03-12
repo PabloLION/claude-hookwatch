@@ -74,10 +74,11 @@ export function startTestServer(): TestServer {
     },
   });
 
+  const { port } = server;
+  if (port === undefined) throw new Error('Bun.serve() did not assign a port');
+
   return {
-    get port() {
-      return server.port;
-    },
+    port,
     events,
     get nextStatus() {
       return state.nextStatus;
