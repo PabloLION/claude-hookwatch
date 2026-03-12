@@ -8,7 +8,7 @@
  * - Limit exceeds 1000 → validation error
  * - Limit is 0 or negative → validation error
  * - Offset is negative → validation error
- * - Extra fields preserved via .passthrough()
+ * - Extra fields preserved via .loose()
  */
 
 import { describe, expect, test } from 'bun:test';
