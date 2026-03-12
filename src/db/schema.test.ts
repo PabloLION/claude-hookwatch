@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { closeTestDb, setupTestDb, type TestDbHandle } from '@/test';
+import { closeTestDb, setupTestDb, type TestDbHandle } from '@/test/setup.ts';
 import { close, openDb } from './connection.ts';
 import { getAllEvents, getEventById, insertEvent } from './queries.ts';
 import { CURRENT_VERSION } from './schema.ts';

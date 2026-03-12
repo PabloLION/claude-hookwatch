@@ -141,7 +141,7 @@ interface StdinAndWrapOutput {
   childStderr: string | null;
   childExitCode: number;
   /** Signal-death warning from wrapped mode, if any. */
-  hookwatchLogFromWrap: string | undefined;
+  hookwatchLogFromWrap: string | null;
 }
 
 /**
@@ -158,7 +158,7 @@ async function readStdinAndWrapOutput(wrapArgs: string[] | null): Promise<StdinA
       childStdout: null,
       childStderr: null,
       childExitCode: 0,
-      hookwatchLogFromWrap: undefined,
+      hookwatchLogFromWrap: null,
     };
   }
 
@@ -170,7 +170,7 @@ async function readStdinAndWrapOutput(wrapArgs: string[] | null): Promise<StdinA
     childStderr: wrapResult.stderr,
     childExitCode: wrapResult.exitCode,
     // Signal-death warning (if any): "[warn] exit 137 (likely SIGKILL …)"
-    hookwatchLogFromWrap: wrapResult.hookwatchLog,
+    hookwatchLogFromWrap: wrapResult.hookwatchLog ?? null,
   };
 }
 
@@ -205,23 +205,54 @@ function buildPostPayload(opts: {
   if (wrapArgs === null) {
     return {
       mode: 'bare',
-      event,
       stdout: preliminaryHookOutputJson,
       hookDurationMs: elapsedMs,
+      event,
       hookwatchLog,
     };
   }
 
   return {
     mode: 'wrapped',
-    event,
     wrappedCommand: wrapArgs.join(' '),
     stdout: childStdout as string,
     stderr: childStderr as string,
     exitCode: childExitCode,
     hookDurationMs: elapsedMs,
+    event,
     hookwatchLog,
   };
+}
+
+/**
+ * Processes the POST result: exits fatal on infrastructure failure, appends
+ * non-fatal error and version mismatch entries to logEntries.
+ */
+function processPostResult(
+  postResult: PostEventResult,
+  logEntries: string[],
+  wrapArgs: string[] | null,
+): void {
+  if (!postResult.ok) {
+    const reason = postResult.failureReason ?? 'Failed to POST event to server';
+    const detail = postResult.detail ? `: ${postResult.detail}` : '';
+
+    if (postResult.failureKind === 'spawn' || postResult.failureKind === 'retry') {
+      exitFatal(reason);
+    }
+
+    logEntries.push(`[error] ${reason}${detail}`);
+
+    if (wrapArgs !== null) {
+      console.error(
+        `[hookwatch] Failed to POST wrapped event (${reason}) — continuing (best-effort)`,
+      );
+    }
+  }
+
+  if (postResult.versionMismatchLog !== undefined) {
+    logEntries.push(postResult.versionMismatchLog);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -260,7 +291,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
     await readStdinAndWrapOutput(wrapArgs);
 
   // Propagate signal-death warning from wrapped mode into logEntries
-  if (hookwatchLogFromWrap !== undefined) {
+  if (hookwatchLogFromWrap !== null) {
     logEntries.push(hookwatchLogFromWrap);
   }
 
@@ -325,36 +356,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
     preliminaryHookOutputJson,
   });
   const postResult: PostEventResult = await postEvent(port, postPayload);
-
-  if (!postResult.ok) {
-    const reason = postResult.failureReason ?? 'Failed to POST event to server';
-    const detail = postResult.detail ? `: ${postResult.detail}` : '';
-
-    if (postResult.failureKind === 'spawn' || postResult.failureKind === 'retry') {
-      // Infrastructure broken — hookwatch cannot record events at all.
-      // Exit fatal so the user sees the error in systemMessage. In wrapped
-      // mode, infrastructure failure is also fatal: the wrapped command already
-      // exited, so we have nothing useful to forward. exitFatal() exits 0 +
-      // JSON stdout (passive observer — never blocks Claude Code).
-      exitFatal(reason);
-    }
-
-    // Transient failure ('http' or 'exception') — record the reason so it
-    // appears in systemMessage. The user is informed but Claude Code is never
-    // blocked (passive observer principle).
-    logEntries.push(`[error] ${reason}${detail}`);
-
-    if (wrapArgs !== null) {
-      console.error(
-        `[hookwatch] Failed to POST wrapped event (${reason}) — continuing (best-effort)`,
-      );
-    }
-  }
-
-  // Version mismatch is independent of POST success — present even when ok: true
-  if (postResult.versionMismatchLog !== undefined) {
-    logEntries.push(postResult.versionMismatchLog);
-  }
+  processPostResult(postResult, logEntries, wrapArgs);
 
   // -------------------------------------------------------------------------
   // Step 6: Build final hook output JSON and write to stdout (context injection)

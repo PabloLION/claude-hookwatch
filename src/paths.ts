@@ -8,6 +8,9 @@
 import { readFileSync } from 'node:fs';
 import { DEFAULT_PORT } from '@/config.ts';
 
+/** Maximum valid TCP port number. */
+const MAX_PORT = 65535;
+
 function xdgDataHome(): string {
   return process.env.XDG_DATA_HOME ?? `${process.env.HOME}/.local/share`;
 }
@@ -58,7 +61,7 @@ export function readPort(): ReadPortResult {
   try {
     const content = readFileSync(portFilePath(), 'utf8').trim();
     const port = Number.parseInt(content, 10);
-    if (Number.isNaN(port) || port <= 0 || port > 65535) {
+    if (Number.isNaN(port) || port <= 0 || port > MAX_PORT) {
       console.error(
         `[hookwatch] Port file contained invalid value "${content}", using fallback ${DEFAULT_PORT}`,
       );

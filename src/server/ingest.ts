@@ -23,8 +23,47 @@ import { isSqliteBusy } from '@/db/errors.ts';
 import { getEventById, insertEvent } from '@/db/queries.ts';
 import { parseHookEvent } from '@/schemas/events.ts';
 import { errorResponse } from '@/server/errors.ts';
+import {
+  HTTP_BAD_REQUEST,
+  HTTP_CREATED,
+  HTTP_INTERNAL_ERROR,
+  HTTP_SERVICE_UNAVAILABLE,
+} from '@/server/http-status.ts';
 import { broadcast } from '@/server/stream.ts';
 import { toKnownEventName } from '@/types.ts';
+
+// ---------------------------------------------------------------------------
+// Wrap fields
+// ---------------------------------------------------------------------------
+
+interface WrapFields {
+  wrappedCommand: string | null;
+  wrappedStdout: string | null;
+  wrappedStderr: string | null;
+  wrappedExitCode: number;
+  hookDurationMs: number | null;
+  hookwatchLog: string | null;
+}
+
+/**
+ * Extracts optional wrap fields from the raw request body object.
+ * These fields are present when the handler runs in wrapped mode (Story 3.1).
+ */
+function extractWrapFields(raw: unknown): WrapFields {
+  const bodyObj = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  return {
+    wrappedCommand: typeof bodyObj.wrapped_command === 'string' ? bodyObj.wrapped_command : null,
+    wrappedStdout: typeof bodyObj.stdout === 'string' ? bodyObj.stdout : null,
+    wrappedStderr: typeof bodyObj.stderr === 'string' ? bodyObj.stderr : null,
+    wrappedExitCode: typeof bodyObj.exit_code === 'number' ? bodyObj.exit_code : 0,
+    hookDurationMs: typeof bodyObj.hook_duration_ms === 'number' ? bodyObj.hook_duration_ms : null,
+    hookwatchLog: typeof bodyObj.hookwatch_log === 'string' ? bodyObj.hookwatch_log : null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Handler
+// ---------------------------------------------------------------------------
 
 export async function handleIngest(req: Request): Promise<Response> {
   // Parse JSON body
@@ -32,22 +71,20 @@ export async function handleIngest(req: Request): Promise<Response> {
   try {
     raw = await req.json();
   } catch {
-    return errorResponse('INVALID_QUERY', 'Request body is not valid JSON', 400);
+    return errorResponse('INVALID_QUERY', 'Request body is not valid JSON', HTTP_BAD_REQUEST);
   }
 
   // Extract optional wrap fields from the top-level body object before
   // handing raw to parseHookEvent (which uses .passthrough() so it won't strip
   // them, but we extract them explicitly here for DB storage).
-  const bodyObj = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
-  const wrappedCommand: string | null =
-    typeof bodyObj.wrapped_command === 'string' ? bodyObj.wrapped_command : null;
-  const wrappedStdout: string | null = typeof bodyObj.stdout === 'string' ? bodyObj.stdout : null;
-  const wrappedStderr: string | null = typeof bodyObj.stderr === 'string' ? bodyObj.stderr : null;
-  const wrappedExitCode: number = typeof bodyObj.exit_code === 'number' ? bodyObj.exit_code : 0;
-  const hookDurationMs: number | null =
-    typeof bodyObj.hook_duration_ms === 'number' ? bodyObj.hook_duration_ms : null;
-  const hookwatchLog: string | null =
-    typeof bodyObj.hookwatch_log === 'string' ? bodyObj.hookwatch_log : null;
+  const {
+    wrappedCommand,
+    wrappedStdout,
+    wrappedStderr,
+    wrappedExitCode,
+    hookDurationMs,
+    hookwatchLog,
+  } = extractWrapFields(raw);
 
   // Validate with Zod
   let event: ReturnType<typeof parseHookEvent>;
@@ -58,10 +95,10 @@ export async function handleIngest(req: Request): Promise<Response> {
       return errorResponse(
         'INVALID_QUERY',
         `Validation failed: ${err.issues.map((i) => i.message).join('; ')}`,
-        400,
+        HTTP_BAD_REQUEST,
       );
     }
-    return errorResponse('INVALID_QUERY', 'Payload validation failed', 400);
+    return errorResponse('INVALID_QUERY', 'Payload validation failed', HTTP_BAD_REQUEST);
   }
 
   // Insert into DB and broadcast to SSE clients
@@ -92,13 +129,17 @@ export async function handleIngest(req: Request): Promise<Response> {
       broadcast(row);
     }
 
-    return Response.json({ id }, { status: 201 });
+    return Response.json({ id }, { status: HTTP_CREATED });
   } catch (err) {
     // Detect SQLite BUSY / LOCKED errors
     if (isSqliteBusy(err)) {
-      return errorResponse('DB_LOCKED', 'Database is busy, retry shortly', 503);
+      return errorResponse(
+        'DB_LOCKED',
+        'Database is busy, retry shortly',
+        HTTP_SERVICE_UNAVAILABLE,
+      );
     }
     const message = err instanceof Error ? err.message : 'Unknown error';
-    return errorResponse('INTERNAL', message, 500);
+    return errorResponse('INTERNAL', message, HTTP_INTERNAL_ERROR);
   }
 }

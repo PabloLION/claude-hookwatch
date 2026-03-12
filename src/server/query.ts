@@ -19,6 +19,12 @@ import { isSqliteBusy } from '@/db/errors.ts';
 import { getDistinctSessions, queryEvents } from '@/db/queries.ts';
 import { queryFilterSchema } from '@/schemas/query.ts';
 import { errorResponse } from '@/server/errors.ts';
+import {
+  HTTP_BAD_REQUEST,
+  HTTP_INTERNAL_ERROR,
+  HTTP_OK,
+  HTTP_SERVICE_UNAVAILABLE,
+} from '@/server/http-status.ts';
 
 export async function handleQuery(req: Request): Promise<Response> {
   // Parse JSON body
@@ -26,7 +32,7 @@ export async function handleQuery(req: Request): Promise<Response> {
   try {
     raw = await req.json();
   } catch {
-    return errorResponse('INVALID_QUERY', 'Request body is not valid JSON', 400);
+    return errorResponse('INVALID_QUERY', 'Request body is not valid JSON', HTTP_BAD_REQUEST);
   }
 
   // Validate with Zod (applies defaults for limit/offset)
@@ -38,10 +44,10 @@ export async function handleQuery(req: Request): Promise<Response> {
       return errorResponse(
         'INVALID_QUERY',
         `Validation failed: ${err.issues.map((i) => i.message).join('; ')}`,
-        400,
+        HTTP_BAD_REQUEST,
       );
     }
-    return errorResponse('INVALID_QUERY', 'Payload validation failed', 400);
+    return errorResponse('INVALID_QUERY', 'Payload validation failed', HTTP_BAD_REQUEST);
   }
 
   // Query the database — route on queryType discriminator
@@ -49,15 +55,19 @@ export async function handleQuery(req: Request): Promise<Response> {
     const db = openDb();
     if (filter.queryType === 'sessions') {
       const sessions = getDistinctSessions(db);
-      return Response.json(sessions, { status: 200 });
+      return Response.json(sessions, { status: HTTP_OK });
     }
     const events = queryEvents(db, filter);
-    return Response.json(events, { status: 200 });
+    return Response.json(events, { status: HTTP_OK });
   } catch (err) {
     if (isSqliteBusy(err)) {
-      return errorResponse('DB_LOCKED', 'Database is busy, retry shortly', 503);
+      return errorResponse(
+        'DB_LOCKED',
+        'Database is busy, retry shortly',
+        HTTP_SERVICE_UNAVAILABLE,
+      );
     }
     const message = err instanceof Error ? err.message : 'Unknown error';
-    return errorResponse('INTERNAL', message, 500);
+    return errorResponse('INTERNAL', message, HTTP_INTERNAL_ERROR);
   }
 }

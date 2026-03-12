@@ -16,6 +16,21 @@ import { ZodError } from 'zod';
 import { queryFilterSchema } from './query.ts';
 
 // ---------------------------------------------------------------------------
+// Test constants
+// ---------------------------------------------------------------------------
+
+/** limit value used in the "all fields" test. */
+const TEST_LIMIT_ALL = 50;
+/** limit value used in the partial-filter test. */
+const TEST_LIMIT_PARTIAL = 25;
+/** offset value used in the large-offset test. */
+const TEST_OFFSET_LARGE = 200;
+/** A very large valid offset used to verify no upper-bound restriction on offset. */
+const TEST_OFFSET_VERY_LARGE = 99999;
+/** Arbitrary unknown field value for passthrough tests. */
+const TEST_UNKNOWN_VALUE = 42;
+
+// ---------------------------------------------------------------------------
 // Valid filters
 // ---------------------------------------------------------------------------
 
@@ -24,12 +39,12 @@ describe('queryFilterSchema — valid filter with all fields', () => {
     const result = queryFilterSchema.parse({
       session_id: 'f8b0e97c-a19e-461a-8290-05a5c03d3d8f',
       hook_event_name: 'PreToolUse',
-      limit: 50,
+      limit: TEST_LIMIT_ALL,
       offset: 10,
     });
     expect(result.session_id).toBe('f8b0e97c-a19e-461a-8290-05a5c03d3d8f');
     expect(result.hook_event_name).toBe('PreToolUse');
-    expect(result.limit).toBe(50);
+    expect(result.limit).toBe(TEST_LIMIT_ALL);
     expect(result.offset).toBe(10);
   });
 });
@@ -65,14 +80,14 @@ describe('queryFilterSchema — partial filters', () => {
   });
 
   test('only limit provided — offset defaults to 0', () => {
-    const result = queryFilterSchema.parse({ limit: 25 });
-    expect(result.limit).toBe(25);
+    const result = queryFilterSchema.parse({ limit: TEST_LIMIT_PARTIAL });
+    expect(result.limit).toBe(TEST_LIMIT_PARTIAL);
     expect(result.offset).toBe(0);
   });
 
   test('only offset provided — limit defaults to 100', () => {
-    const result = queryFilterSchema.parse({ offset: 200 });
-    expect(result.offset).toBe(200);
+    const result = queryFilterSchema.parse({ offset: TEST_OFFSET_LARGE });
+    expect(result.offset).toBe(TEST_OFFSET_LARGE);
     expect(result.limit).toBe(100);
   });
 });
@@ -104,8 +119,8 @@ describe('queryFilterSchema — offset boundary values', () => {
   });
 
   test('large offset is valid', () => {
-    const result = queryFilterSchema.parse({ offset: 99999 });
-    expect(result.offset).toBe(99999);
+    const result = queryFilterSchema.parse({ offset: TEST_OFFSET_VERY_LARGE });
+    expect(result.offset).toBe(TEST_OFFSET_VERY_LARGE);
   });
 });
 
@@ -164,11 +179,11 @@ describe('queryFilterSchema — passthrough preserves unknown fields', () => {
 
   test('multiple unknown fields are all preserved', () => {
     const result = queryFilterSchema.parse({
-      unknown_a: 42,
+      unknown_a: TEST_UNKNOWN_VALUE,
       unknown_b: true,
     });
     const r = result as Record<string, unknown>;
-    expect(r.unknown_a).toBe(42);
+    expect(r.unknown_a).toBe(TEST_UNKNOWN_VALUE);
     expect(r.unknown_b).toBe(true);
   });
 

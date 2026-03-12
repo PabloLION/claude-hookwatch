@@ -12,13 +12,10 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import type { HookEvent } from '@/schemas/events.ts';
-import {
-  BASE_SESSION_START,
-  createHandlerTestContext,
-  GENERIC_EVENT_BASE,
-  runHandler,
-  writePortFile,
-} from '@/test';
+import { BASE_SESSION_START, GENERIC_EVENT_BASE } from '@/test/fixtures.ts';
+import { createHandlerTestContext } from '@/test/setup.ts';
+import { runHandler } from '@/test/subprocess.ts';
+import { writePortFile } from '@/test/test-server.ts';
 import { buildSystemMessage, getEventSubtype } from './context.ts';
 
 // ---------------------------------------------------------------------------

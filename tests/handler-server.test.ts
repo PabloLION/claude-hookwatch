@@ -19,8 +19,9 @@ import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test
 import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { RunResult } from '@/test';
-import { BASE_SESSION_START, writePortFile } from '@/test';
+import { BASE_SESSION_START } from '@/test/fixtures.ts';
+import type { RunResult } from '@/test/subprocess.ts';
+import { writePortFile } from '@/test/test-server.ts';
 
 // ---------------------------------------------------------------------------
 // Shared test fixtures

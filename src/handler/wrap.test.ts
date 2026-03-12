@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { runWrapRunner } from '@/test';
+import { runWrapRunner } from '@/test/subprocess.ts';
 
 // ---------------------------------------------------------------------------
 // Constants

@@ -16,9 +16,13 @@
 
 import { join } from 'node:path';
 import { DEFAULT_PORT } from '@/config.ts';
+
 import type { WrapResult } from '@/types.ts';
 
-export type { WrapResult };
+export type { WrapResult } from '@/types.ts';
+
+/** Milliseconds to wait after SIGTERM before assuming the process has exited. */
+const KILL_WAIT_MS = 200;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -72,7 +76,7 @@ export async function killProcessOnPort(port: number = DEFAULT_PORT): Promise<vo
     }
     // Give the process a moment to terminate
     if (pids.length > 0) {
-      await new Promise<void>((resolve) => setTimeout(resolve, 200));
+      await new Promise<void>((resolve) => setTimeout(resolve, KILL_WAIT_MS));
     }
   } catch {
     // lsof may not be available or port may be unused

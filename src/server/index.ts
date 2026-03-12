@@ -19,6 +19,7 @@ import { close as closeDb } from '@/db/connection.ts';
 import { portFilePath } from '@/paths.ts';
 import { errorResponse } from '@/server/errors.ts';
 import { handleHealth } from '@/server/health.ts';
+import { HTTP_NOT_FOUND } from '@/server/http-status.ts';
 import { handleIngest } from '@/server/ingest.ts';
 import { handleQuery } from '@/server/query.ts';
 import { handleStatic } from '@/server/static.ts';
@@ -155,7 +156,7 @@ function dispatch(req: Request): Promise<Response> {
   }
 
   return withVersionHeader(
-    errorResponse('NOT_FOUND', `No route for ${req.method} ${url.pathname}`, 404),
+    errorResponse('NOT_FOUND', `No route for ${req.method} ${url.pathname}`, HTTP_NOT_FOUND),
   );
 }
 

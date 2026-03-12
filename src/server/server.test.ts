@@ -18,8 +18,35 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { close as closeDb } from '@/db/connection.ts';
 import { PortInUseError, startServer } from '@/server/index.ts';
-import { BASE_SESSION_START } from '@/test';
+import { BASE_SESSION_START } from '@/test/fixtures.ts';
 import { VERSION } from '@/version.ts';
+
+// ---------------------------------------------------------------------------
+// Test constants
+// ---------------------------------------------------------------------------
+
+/** Header name for the hookwatch version injected on every response. */
+const HEADER_HOOKWATCH_VERSION = 'X-Hookwatch-Version';
+/** Path for the event ingestion endpoint. */
+const PATH_API_EVENTS = '/api/events';
+/** Path for the query endpoint. */
+const PATH_API_QUERY = '/api/query';
+/** Response header name for content-type. */
+const HEADER_CONTENT_TYPE = 'content-type';
+/** HTTP 200 OK. */
+const HTTP_OK = 200;
+/** HTTP 201 Created. */
+const HTTP_CREATED = 201;
+/** HTTP 400 Bad Request. */
+const HTTP_BAD_REQUEST = 400;
+/** HTTP 404 Not Found. */
+const HTTP_NOT_FOUND = 404;
+/** Short sleep before reading the SSE connection (ms). */
+const SSE_CONNECTION_SLEEP_MS = 50;
+/** Timeout for waiting on an SSE broadcast chunk (ms). */
+const SSE_CHUNK_TIMEOUT_MS = 2000;
+/** Slice offset to strip the trailing "\n\n" from SSE frames. */
+const SSE_FRAME_TAIL = -2;
 
 // Use a temp in-memory DB path for tests to avoid polluting real data.
 // We override XDG_DATA_HOME so both connection.ts and index.ts use the temp dir.
@@ -53,14 +80,14 @@ function url(path: string): string {
 describe('GET /health', () => {
   test('returns 200 with status ok', async () => {
     const res = await fetch(url('/health'));
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(HTTP_OK);
     const body = await res.json();
     expect(body).toMatchObject({ status: 'ok' });
   });
 
   test('returns app and version fields in JSON body', async () => {
     const res = await fetch(url('/health'));
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(HTTP_OK);
     const body = await res.json();
     expect(body.app).toBe('hookwatch');
     expect(typeof body.version).toBe('string');
@@ -77,46 +104,46 @@ describe('GET /health', () => {
 describe('X-Hookwatch-Version header', () => {
   test('present on GET /health', async () => {
     const res = await fetch(url('/health'));
-    expect(res.headers.get('X-Hookwatch-Version')).toBe(VERSION);
+    expect(res.headers.get(HEADER_HOOKWATCH_VERSION)).toBe(VERSION);
   });
 
   test('present on POST /api/events (201)', async () => {
-    const res = await fetch(url('/api/events'), {
+    const res = await fetch(url(PATH_API_EVENTS), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(BASE_SESSION_START),
     });
-    expect(res.headers.get('X-Hookwatch-Version')).toBe(VERSION);
+    expect(res.headers.get(HEADER_HOOKWATCH_VERSION)).toBe(VERSION);
   });
 
   test('present on POST /api/events (400 error response)', async () => {
-    const res = await fetch(url('/api/events'), {
+    const res = await fetch(url(PATH_API_EVENTS), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: '{ invalid json',
     });
-    expect(res.status).toBe(400);
-    expect(res.headers.get('X-Hookwatch-Version')).toBe(VERSION);
+    expect(res.status).toBe(HTTP_BAD_REQUEST);
+    expect(res.headers.get(HEADER_HOOKWATCH_VERSION)).toBe(VERSION);
   });
 
   test('present on POST /api/query', async () => {
-    const res = await fetch(url('/api/query'), {
+    const res = await fetch(url(PATH_API_QUERY), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
     });
-    expect(res.headers.get('X-Hookwatch-Version')).toBe(VERSION);
+    expect(res.headers.get(HEADER_HOOKWATCH_VERSION)).toBe(VERSION);
   });
 
   test('present on GET / (static file)', async () => {
     const res = await fetch(url('/'));
-    expect(res.headers.get('X-Hookwatch-Version')).toBe(VERSION);
+    expect(res.headers.get(HEADER_HOOKWATCH_VERSION)).toBe(VERSION);
   });
 
   test('present on 404 for unknown route', async () => {
     const res = await fetch(url('/no-such-route-xyz'));
-    expect(res.status).toBe(404);
-    expect(res.headers.get('X-Hookwatch-Version')).toBe(VERSION);
+    expect(res.status).toBe(HTTP_NOT_FOUND);
+    expect(res.headers.get(HEADER_HOOKWATCH_VERSION)).toBe(VERSION);
   });
 });
 
@@ -128,31 +155,31 @@ const validSessionStart = BASE_SESSION_START;
 
 describe('POST /api/events', () => {
   test('returns 201 with id for valid payload', async () => {
-    const res = await fetch(url('/api/events'), {
+    const res = await fetch(url(PATH_API_EVENTS), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(validSessionStart),
     });
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(HTTP_CREATED);
     const body = await res.json();
     expect(typeof body.id).toBe('number');
     expect(body.id).toBeGreaterThan(0);
   });
 
   test('returns 400 for malformed JSON', async () => {
-    const res = await fetch(url('/api/events'), {
+    const res = await fetch(url(PATH_API_EVENTS), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: '{ not valid json',
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(HTTP_BAD_REQUEST);
     const body = await res.json();
     expect(body.error.code).toBe('INVALID_QUERY');
   });
 
   test('returns 400 when required Zod field is missing', async () => {
     // Missing session_id
-    const res = await fetch(url('/api/events'), {
+    const res = await fetch(url(PATH_API_EVENTS), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -164,13 +191,13 @@ describe('POST /api/events', () => {
         model: 'claude-opus-4-5',
       }),
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(HTTP_BAD_REQUEST);
     const body = await res.json();
     expect(body.error.code).toBe('INVALID_QUERY');
   });
 
   test('returns 400 when hook_event_name value is wrong type for known event', async () => {
-    const res = await fetch(url('/api/events'), {
+    const res = await fetch(url(PATH_API_EVENTS), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -179,13 +206,13 @@ describe('POST /api/events', () => {
         source: 'invalid_source_value',
       }),
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(HTTP_BAD_REQUEST);
     const body = await res.json();
     expect(body.error.code).toBe('INVALID_QUERY');
   });
 
   test('accepts unknown event type via fallback schema', async () => {
-    const res = await fetch(url('/api/events'), {
+    const res = await fetch(url(PATH_API_EVENTS), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -197,13 +224,13 @@ describe('POST /api/events', () => {
         extra_field: 'preserved',
       }),
     });
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(HTTP_CREATED);
   });
 
   test('accepts wrapped_command field and returns 201 (Story 3.1)', async () => {
     // When the handler runs in wrapped mode, it POSTs the event with an
     // additional wrapped_command field. The server should accept it.
-    const res = await fetch(url('/api/events'), {
+    const res = await fetch(url(PATH_API_EVENTS), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -212,7 +239,7 @@ describe('POST /api/events', () => {
         wrapped_command: './my-hook.sh arg1',
       }),
     });
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(HTTP_CREATED);
     const body = await res.json();
     expect(typeof body.id).toBe('number');
   });
@@ -225,7 +252,7 @@ describe('POST /api/events', () => {
 describe('unknown routes', () => {
   test('returns 404 for GET /nonexistent', async () => {
     const res = await fetch(url('/nonexistent'));
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(HTTP_NOT_FOUND);
     const body = await res.json();
     expect(body.error.code).toBe('NOT_FOUND');
   });
@@ -255,7 +282,7 @@ describe('fixed port', () => {
 describe('POST /api/query', () => {
   // Insert a known event before running query tests
   beforeAll(async () => {
-    await fetch(url('/api/events'), {
+    await fetch(url(PATH_API_EVENTS), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(validSessionStart),
@@ -263,24 +290,24 @@ describe('POST /api/query', () => {
   });
 
   test('returns 200 with an array for empty filter (uses defaults)', async () => {
-    const res = await fetch(url('/api/query'), {
+    const res = await fetch(url(PATH_API_QUERY), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(HTTP_OK);
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
     expect(body.length).toBeGreaterThan(0);
   });
 
   test('filters by session_id and returns matching events', async () => {
-    const res = await fetch(url('/api/query'), {
+    const res = await fetch(url(PATH_API_QUERY), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: validSessionStart.session_id }),
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(HTTP_OK);
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
     expect(body.length).toBeGreaterThan(0);
@@ -290,46 +317,46 @@ describe('POST /api/query', () => {
   });
 
   test('returns empty array when no events match the filter', async () => {
-    const res = await fetch(url('/api/query'), {
+    const res = await fetch(url(PATH_API_QUERY), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: 'no-such-session-xyz' }),
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(HTTP_OK);
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
     expect(body.length).toBe(0);
   });
 
   test('returns 400 INVALID_QUERY when limit is not a number', async () => {
-    const res = await fetch(url('/api/query'), {
+    const res = await fetch(url(PATH_API_QUERY), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ limit: 'not-a-number' }),
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(HTTP_BAD_REQUEST);
     const body = await res.json();
     expect(body.error.code).toBe('INVALID_QUERY');
   });
 
   test('returns 400 INVALID_QUERY for malformed JSON body', async () => {
-    const res = await fetch(url('/api/query'), {
+    const res = await fetch(url(PATH_API_QUERY), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: '{ bad json',
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(HTTP_BAD_REQUEST);
     const body = await res.json();
     expect(body.error.code).toBe('INVALID_QUERY');
   });
 
   test('filters by hook_event_name', async () => {
-    const res = await fetch(url('/api/query'), {
+    const res = await fetch(url(PATH_API_QUERY), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ hook_event_name: 'SessionStart' }),
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(HTTP_OK);
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
     for (const row of body) {
@@ -345,8 +372,8 @@ describe('POST /api/query', () => {
 describe('GET /', () => {
   test('serves index.html with text/html content-type', async () => {
     const res = await fetch(url('/'));
-    expect(res.status).toBe(200);
-    const ct = res.headers.get('content-type') ?? '';
+    expect(res.status).toBe(HTTP_OK);
+    const ct = res.headers.get(HEADER_CONTENT_TYPE) ?? '';
     expect(ct).toContain('text/html');
     const body = await res.text();
     expect(body).toContain('<!doctype html');
@@ -356,8 +383,8 @@ describe('GET /', () => {
 describe('GET /app.ts', () => {
   test('transpiles .ts file and serves as application/javascript', async () => {
     const res = await fetch(url('/app.ts'));
-    expect(res.status).toBe(200);
-    const ct = res.headers.get('content-type') ?? '';
+    expect(res.status).toBe(HTTP_OK);
+    const ct = res.headers.get(HEADER_CONTENT_TYPE) ?? '';
     expect(ct).toContain('application/javascript');
     const body = await res.text();
     // The transpiler output should not contain TypeScript-only syntax
@@ -368,7 +395,7 @@ describe('GET /app.ts', () => {
 describe('GET missing UI file', () => {
   test('returns 404 NOT_FOUND for non-existent asset', async () => {
     const res = await fetch(url('/does-not-exist.html'));
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(HTTP_NOT_FOUND);
     const body = await res.json();
     expect(body.error.code).toBe('NOT_FOUND');
   });
@@ -388,7 +415,7 @@ describe('GET /api/events/stream', () => {
     const ssePromise = fetch(url('/api/events/stream'), { signal: abort.signal });
 
     // Give the server a moment to accept the connection and register the client
-    await Bun.sleep(50);
+    await Bun.sleep(SSE_CONNECTION_SLEEP_MS);
 
     // Post a new event — this should trigger broadcast to our SSE client
     const payload = {
@@ -401,7 +428,7 @@ describe('GET /api/events/stream', () => {
       model: 'claude-opus-4-5',
     };
 
-    await fetch(url('/api/events'), {
+    await fetch(url(PATH_API_EVENTS), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -409,7 +436,7 @@ describe('GET /api/events/stream', () => {
 
     // Now await the SSE response headers — they should already be available
     const sseRes = await ssePromise;
-    expect(sseRes.status).toBe(200);
+    expect(sseRes.status).toBe(HTTP_OK);
     const ct = sseRes.headers.get('content-type') ?? '';
     expect(ct).toContain('text/event-stream');
 
@@ -419,7 +446,10 @@ describe('GET /api/events/stream', () => {
     const reader = sseRes.body.getReader();
     const chunkPromise = reader.read();
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('SSE chunk timeout — broadcast not received')), 2000),
+      setTimeout(
+        () => reject(new Error('SSE chunk timeout — broadcast not received')),
+        SSE_CHUNK_TIMEOUT_MS,
+      ),
     );
 
     const { value, done } = await Promise.race([chunkPromise, timeoutPromise]);
@@ -429,7 +459,7 @@ describe('GET /api/events/stream', () => {
     expect(text.startsWith('data: ')).toBe(true);
     expect(text.endsWith('\n\n')).toBe(true);
 
-    const json = text.slice('data: '.length, -2);
+    const json = text.slice('data: '.length, SSE_FRAME_TAIL);
     const row = JSON.parse(json);
     expect(row.event).toBe('SessionStart');
     expect(row.session_id).toBe('sse-integration-test');

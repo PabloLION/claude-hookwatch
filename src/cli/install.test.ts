@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, it } from 'bun:test';
-import { EXPECTED_EVENT_TYPE_COUNT } from '@/test';
+import { EXPECTED_EVENT_TYPE_COUNT } from '@/test/constants.ts';
 import { EVENT_TYPES, type EventType } from './events.ts';
 
 // ---------------------------------------------------------------------------

@@ -14,6 +14,25 @@
 import { describe, expect, test } from 'bun:test';
 
 // ---------------------------------------------------------------------------
+// Test constants
+// ---------------------------------------------------------------------------
+
+/** Base-36 radix used for generating a random suffix in temp dir names. */
+const RADIX_36 = 36;
+/** Number of keep-alive request cycles in the activity test. */
+const KEEPALIVE_CYCLES = 3;
+/** Interval between keep-alive requests (ms). */
+const KEEPALIVE_INTERVAL_MS = 200;
+/** Extra sleep margin added on top of the timeout in the first test (ms). */
+const NO_ACTIVITY_MARGIN_MS = 400;
+/** Extra sleep margin after requests stop in the second test (ms). */
+const POST_ACTIVITY_MARGIN_MS = 300;
+/** bun:test timeout for the no-activity test (ms). */
+const NO_ACTIVITY_TEST_TIMEOUT_MS = 5000;
+/** bun:test timeout for the keep-alive test (ms). */
+const KEEPALIVE_TEST_TIMEOUT_MS = 8000;
+
+// ---------------------------------------------------------------------------
 // Unit tests — verify resetIdleTimer is exported and callable
 // ---------------------------------------------------------------------------
 
@@ -48,9 +67,9 @@ describe('resetIdleTimer (unit)', () => {
  * servers started by server.test.ts.
  */
 function spawnServerWithTimeout(timeoutMs: number): Bun.Subprocess {
-  const tmpDataHome = `/tmp/hookwatch-idle-test-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const tmpDataHome = `/tmp/hookwatch-idle-test-${Date.now()}-${Math.random().toString(RADIX_36).slice(2)}`;
 
-  const script = /* ts */ `
+  const script = String.raw`
     import { mkdirSync, rmSync, writeFileSync } from "node:fs";
     import { dirname } from "node:path";
 
@@ -64,7 +83,7 @@ function spawnServerWithTimeout(timeoutMs: number): Bun.Subprocess {
     function resetIdleTimer() {
       if (idleTimer !== null) clearTimeout(idleTimer);
       idleTimer = setTimeout(() => {
-        process.stderr.write("[hookwatch-test] Idle timeout reached — shutting down\\n");
+        process.stderr.write("[hookwatch-test] Idle timeout reached — shutting down\n");
         process.exit(0);
       }, IDLE_TIMEOUT_MS);
       idleTimer.unref();
@@ -82,7 +101,7 @@ function spawnServerWithTimeout(timeoutMs: number): Bun.Subprocess {
         });
 
         // Signal readiness to the parent process
-        process.stdout.write(String(port) + "\\n");
+        process.stdout.write(String(port) + "\n");
 
         // Start the initial idle timer
         resetIdleTimer();
@@ -120,56 +139,65 @@ async function readLine(subprocess: Bun.Subprocess): Promise<string> {
 }
 
 describe('idle timeout integration', () => {
-  test('server exits with code 0 after idle timeout with no activity', async () => {
-    const TIMEOUT_MS = 300;
-    const subprocess = spawnServerWithTimeout(TIMEOUT_MS);
+  test(
+    'server exits with code 0 after idle timeout with no activity',
+    async () => {
+      const TIMEOUT_MS = 300;
+      const subprocess = spawnServerWithTimeout(TIMEOUT_MS);
 
-    // Verify the server started by reading its port
-    const portStr = await readLine(subprocess);
-    const port = Number.parseInt(portStr, 10);
-    expect(port).toBeGreaterThan(0);
+      // Verify the server started by reading its port
+      const portStr = await readLine(subprocess);
+      const port = Number.parseInt(portStr, 10);
+      expect(port).toBeGreaterThan(0);
 
-    // Wait well beyond the idle timeout
-    await Bun.sleep(TIMEOUT_MS + 400);
+      // Wait well beyond the idle timeout
+      await Bun.sleep(TIMEOUT_MS + NO_ACTIVITY_MARGIN_MS);
 
-    const exitCode = subprocess.exitCode;
-    if (exitCode === null) {
-      subprocess.kill();
-      throw new Error(`Server did not exit after idle timeout (${TIMEOUT_MS}ms + 400ms margin)`);
-    }
-    expect(exitCode).toBe(0);
-  }, 5000);
-
-  test('server stays alive while requests keep arriving, exits after activity stops', async () => {
-    const TIMEOUT_MS = 400;
-    const subprocess = spawnServerWithTimeout(TIMEOUT_MS);
-
-    // Verify the server started
-    const portStr = await readLine(subprocess);
-    const port = Number.parseInt(portStr, 10);
-    expect(port).toBeGreaterThan(0);
-
-    // Send requests every 200ms for 3 cycles — each resets the timer.
-    // Total active window: ~600ms, well beyond one timeout window (400ms).
-    for (let i = 0; i < 3; i++) {
-      await Bun.sleep(200);
-      try {
-        await fetch(`http://127.0.0.1:${port}/`);
-      } catch {
-        // Fetch errors are acceptable — the subprocess serves a minimal handler
+      const exitCode = subprocess.exitCode;
+      if (exitCode === null) {
+        subprocess.kill();
+        throw new Error(
+          `Server did not exit after idle timeout (${TIMEOUT_MS}ms + ${NO_ACTIVITY_MARGIN_MS}ms margin)`,
+        );
       }
-      // Server must still be running after each request
-      expect(subprocess.exitCode).toBeNull();
-    }
+      expect(exitCode).toBe(0);
+    },
+    NO_ACTIVITY_TEST_TIMEOUT_MS,
+  );
 
-    // Stop sending requests. Wait for one full timeout + margin.
-    await Bun.sleep(TIMEOUT_MS + 300);
+  test(
+    'server stays alive while requests keep arriving, exits after activity stops',
+    async () => {
+      const TIMEOUT_MS = 400;
+      const subprocess = spawnServerWithTimeout(TIMEOUT_MS);
 
-    const exitCode = subprocess.exitCode;
-    if (exitCode === null) {
-      subprocess.kill();
-      throw new Error('Server did not exit after requests stopped');
-    }
-    expect(exitCode).toBe(0);
-  }, 8000);
+      // Verify the server started
+      const portStr = await readLine(subprocess);
+      const port = Number.parseInt(portStr, 10);
+      expect(port).toBeGreaterThan(0);
+
+      // Send requests every KEEPALIVE_INTERVAL_MS for KEEPALIVE_CYCLES — each resets the timer.
+      for (let i = 0; i < KEEPALIVE_CYCLES; i++) {
+        await Bun.sleep(KEEPALIVE_INTERVAL_MS);
+        try {
+          await fetch(`http://127.0.0.1:${port}/`);
+        } catch {
+          // Fetch errors are acceptable — the subprocess serves a minimal handler
+        }
+        // Server must still be running after each request
+        expect(subprocess.exitCode).toBeNull();
+      }
+
+      // Stop sending requests. Wait for one full timeout + margin.
+      await Bun.sleep(TIMEOUT_MS + POST_ACTIVITY_MARGIN_MS);
+
+      const exitCode = subprocess.exitCode;
+      if (exitCode === null) {
+        subprocess.kill();
+        throw new Error('Server did not exit after requests stopped');
+      }
+      expect(exitCode).toBe(0);
+    },
+    KEEPALIVE_TEST_TIMEOUT_MS,
+  );
 });

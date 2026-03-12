@@ -20,18 +20,11 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import type { parseHookEvent } from '@/schemas/events.ts';
-import {
-  assertBareExitLegality,
-  assertWrappedExitLegality,
-  BASE_SESSION_START,
-  createHandlerTestContext,
-  firstEventBody,
-  killProcessOnPort,
-  runHandler,
-  runHandlerWrapped,
-  startTestServer,
-  writePortFile,
-} from '@/test';
+import { BASE_SESSION_START } from '@/test/fixtures.ts';
+import { assertBareExitLegality, assertWrappedExitLegality } from '@/test/handler-assertions.ts';
+import { createHandlerTestContext } from '@/test/setup.ts';
+import { killProcessOnPort, runHandler, runHandlerWrapped } from '@/test/subprocess.ts';
+import { firstEventBody, startTestServer, writePortFile } from '@/test/test-server.ts';
 import { VERSION } from '@/version.ts';
 import type { PostEventResult } from './post-event.ts';
 import { postEvent } from './post-event.ts';

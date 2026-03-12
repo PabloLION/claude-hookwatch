@@ -20,13 +20,8 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DEFAULT_PORT } from '@/config.ts';
 import { startServer } from '@/server/index.ts';
-import {
-  createTempXdgHome,
-  type TempXdgHome,
-  UNUSED_PORT_A,
-  UNUSED_PORT_B,
-  UNUSED_PORT_C,
-} from '@/test';
+import { UNUSED_PORT_A, UNUSED_PORT_B, UNUSED_PORT_C } from '@/test/constants.ts';
+import { createTempXdgHome, type TempXdgHome } from '@/test/setup.ts';
 import { isPortOccupied, isServerRunning, openBrowser, readPortFile } from './ui.ts';
 
 // ---------------------------------------------------------------------------

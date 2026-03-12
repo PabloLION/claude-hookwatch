@@ -21,12 +21,25 @@ import {
 } from './events.ts';
 
 // ---------------------------------------------------------------------------
+// Test constants
+// ---------------------------------------------------------------------------
+
+/** Standard test description for the happy-path parse test in every event type suite. */
+const VALID_PAYLOAD_TEST_NAME = 'valid payload parses successfully';
+/** Model string used in SessionStart / PreCompact / Stop tests. */
+const TEST_MODEL = 'claude-sonnet-4-6';
+/** Transcript path used in the base fixture and standalone validation tests. */
+const TEST_TRANSCRIPT_PATH = '/home/user/.claude/transcript.jsonl';
+/** Arbitrary numeric value used in passthrough tests — must not conflict with real field values. */
+const PASSTHROUGH_EXTRA_NUMBER = 42;
+
+// ---------------------------------------------------------------------------
 // Shared base fields for test payloads
 // ---------------------------------------------------------------------------
 
 const base = {
   session_id: 'f8b0e97c-a19e-461a-8290-05a5c03d3d8f',
-  transcript_path: '/home/user/.claude/transcript.jsonl',
+  transcript_path: TEST_TRANSCRIPT_PATH,
   cwd: '/home/user/project',
   permission_mode: 'default',
 };
@@ -37,12 +50,12 @@ const base = {
 // ---------------------------------------------------------------------------
 
 describe('parseHookEvent — SessionStart', () => {
-  test('valid payload parses successfully', () => {
+  test(VALID_PAYLOAD_TEST_NAME, () => {
     const result = parseHookEvent({
       ...base,
       hook_event_name: 'SessionStart',
       source: 'startup',
-      model: 'claude-sonnet-4-6',
+      model: TEST_MODEL,
     });
     expect(result.hook_event_name).toBe('SessionStart');
     expect((result as { source: string }).source).toBe('startup');
@@ -53,7 +66,7 @@ describe('parseHookEvent — SessionStart', () => {
       ...base,
       hook_event_name: 'SessionStart',
       source: 'resume',
-      model: 'claude-sonnet-4-6',
+      model: TEST_MODEL,
       agent_type: 'Explore',
     });
     expect((result as { agent_type?: string }).agent_type).toBe('Explore');
@@ -61,7 +74,7 @@ describe('parseHookEvent — SessionStart', () => {
 });
 
 describe('parseHookEvent — SessionEnd', () => {
-  test('valid payload parses successfully', () => {
+  test(VALID_PAYLOAD_TEST_NAME, () => {
     const result = parseHookEvent({
       ...base,
       hook_event_name: 'SessionEnd',
@@ -72,7 +85,7 @@ describe('parseHookEvent — SessionEnd', () => {
 });
 
 describe('parseHookEvent — UserPromptSubmit', () => {
-  test('valid payload parses successfully', () => {
+  test(VALID_PAYLOAD_TEST_NAME, () => {
     const result = parseHookEvent({
       ...base,
       hook_event_name: 'UserPromptSubmit',
@@ -83,7 +96,7 @@ describe('parseHookEvent — UserPromptSubmit', () => {
 });
 
 describe('parseHookEvent — PreToolUse', () => {
-  test('valid payload parses successfully', () => {
+  test(VALID_PAYLOAD_TEST_NAME, () => {
     const result = parseHookEvent({
       ...base,
       hook_event_name: 'PreToolUse',
@@ -96,7 +109,7 @@ describe('parseHookEvent — PreToolUse', () => {
 });
 
 describe('parseHookEvent — PostToolUse', () => {
-  test('valid payload parses successfully', () => {
+  test(VALID_PAYLOAD_TEST_NAME, () => {
     const result = parseHookEvent({
       ...base,
       hook_event_name: 'PostToolUse',
@@ -110,7 +123,7 @@ describe('parseHookEvent — PostToolUse', () => {
 });
 
 describe('parseHookEvent — PostToolUseFailure', () => {
-  test('valid payload parses successfully', () => {
+  test(VALID_PAYLOAD_TEST_NAME, () => {
     const result = parseHookEvent({
       ...base,
       hook_event_name: 'PostToolUseFailure',
@@ -164,7 +177,7 @@ describe('parseHookEvent — PermissionRequest', () => {
 });
 
 describe('parseHookEvent — Notification', () => {
-  test('valid payload parses successfully', () => {
+  test(VALID_PAYLOAD_TEST_NAME, () => {
     const result = parseHookEvent({
       ...base,
       hook_event_name: 'Notification',
@@ -187,7 +200,7 @@ describe('parseHookEvent — Notification', () => {
 });
 
 describe('parseHookEvent — SubagentStart', () => {
-  test('valid payload parses successfully', () => {
+  test(VALID_PAYLOAD_TEST_NAME, () => {
     const result = parseHookEvent({
       ...base,
       hook_event_name: 'SubagentStart',
@@ -199,7 +212,7 @@ describe('parseHookEvent — SubagentStart', () => {
 });
 
 describe('parseHookEvent — SubagentStop', () => {
-  test('valid payload parses successfully', () => {
+  test(VALID_PAYLOAD_TEST_NAME, () => {
     const result = parseHookEvent({
       ...base,
       hook_event_name: 'SubagentStop',
@@ -214,7 +227,7 @@ describe('parseHookEvent — SubagentStop', () => {
 });
 
 describe('parseHookEvent — Stop', () => {
-  test('valid payload parses successfully', () => {
+  test(VALID_PAYLOAD_TEST_NAME, () => {
     const result = parseHookEvent({
       ...base,
       hook_event_name: 'Stop',
@@ -248,7 +261,7 @@ describe('parseHookEvent — PreCompact', () => {
 });
 
 describe('parseHookEvent — TeammateIdle', () => {
-  test('valid payload parses successfully', () => {
+  test(VALID_PAYLOAD_TEST_NAME, () => {
     const result = parseHookEvent({
       ...base,
       hook_event_name: 'TeammateIdle',
@@ -285,7 +298,7 @@ describe('parseHookEvent — TaskCompleted', () => {
 });
 
 describe('parseHookEvent — ConfigChange', () => {
-  test('valid payload parses successfully', () => {
+  test(VALID_PAYLOAD_TEST_NAME, () => {
     const result = parseHookEvent({
       ...base,
       hook_event_name: 'ConfigChange',
@@ -308,7 +321,7 @@ describe('parseHookEvent — ConfigChange', () => {
 });
 
 describe('parseHookEvent — WorktreeCreate', () => {
-  test('valid payload parses successfully', () => {
+  test(VALID_PAYLOAD_TEST_NAME, () => {
     const result = parseHookEvent({
       ...base,
       hook_event_name: 'WorktreeCreate',
@@ -319,7 +332,7 @@ describe('parseHookEvent — WorktreeCreate', () => {
 });
 
 describe('parseHookEvent — WorktreeRemove', () => {
-  test('valid payload parses successfully', () => {
+  test(VALID_PAYLOAD_TEST_NAME, () => {
     const result = parseHookEvent({
       ...base,
       hook_event_name: 'WorktreeRemove',
@@ -332,7 +345,7 @@ describe('parseHookEvent — WorktreeRemove', () => {
 });
 
 describe('parseHookEvent — InstructionsLoaded', () => {
-  test('valid payload parses successfully', () => {
+  test(VALID_PAYLOAD_TEST_NAME, () => {
     const result = parseHookEvent({
       ...base,
       hook_event_name: 'InstructionsLoaded',
@@ -364,10 +377,10 @@ describe('passthrough — unknown fields are preserved', () => {
       ...base,
       hook_event_name: 'SessionStart',
       source: 'startup',
-      model: 'claude-sonnet-4-6',
-      extra: 42,
+      model: TEST_MODEL,
+      extra: PASSTHROUGH_EXTRA_NUMBER,
     });
-    expect((result as Record<string, unknown>).extra).toBe(42);
+    expect((result as Record<string, unknown>).extra).toBe(PASSTHROUGH_EXTRA_NUMBER);
   });
 });
 
@@ -403,7 +416,7 @@ describe('validation failure — missing required fields', () => {
   test('missing session_id fails', () => {
     expect(() =>
       parseHookEvent({
-        transcript_path: '/home/user/.claude/transcript.jsonl',
+        transcript_path: TEST_TRANSCRIPT_PATH,
         cwd: '/home/user/project',
         permission_mode: 'default',
         hook_event_name: 'FutureEvent',
@@ -415,7 +428,7 @@ describe('validation failure — missing required fields', () => {
     expect(() =>
       parseHookEvent({
         session_id: 'f8b0e97c-a19e-461a-8290-05a5c03d3d8f',
-        transcript_path: '/home/user/.claude/transcript.jsonl',
+        transcript_path: TEST_TRANSCRIPT_PATH,
         permission_mode: 'default',
         hook_event_name: 'FutureEvent',
       }),
@@ -437,7 +450,7 @@ describe('validation failure — missing required fields', () => {
       parseHookEvent({
         ...base,
         hook_event_name: 'SessionStart',
-        model: 'claude-sonnet-4-6',
+        model: TEST_MODEL,
         // source is missing
       }),
     ).toThrow(ZodError);
@@ -449,7 +462,7 @@ describe('validation failure — missing required fields', () => {
         ...base,
         hook_event_name: 'SessionStart',
         source: 'invalid_source',
-        model: 'claude-sonnet-4-6',
+        model: TEST_MODEL,
       }),
     ).toThrow(ZodError);
   });

@@ -21,6 +21,9 @@
 import { expect } from 'bun:test';
 import type { RunResult } from './subprocess.ts';
 
+/** Maximum valid Unix process exit code. */
+const MAX_EXIT_CODE = 255;
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -46,14 +49,14 @@ function validateHookOutputJson(stdout: string, tag: string): void {
     parsed = JSON.parse(stdout);
   } catch {
     const lastBrace = stdout.lastIndexOf('{');
-    if (lastBrace !== -1) {
+    if (lastBrace === -1) {
+      parseError = stdout;
+    } else {
       try {
         parsed = JSON.parse(stdout.slice(lastBrace));
       } catch {
         parseError = stdout;
       }
-    } else {
-      parseError = stdout;
     }
   }
   if (parseError !== null) {
@@ -122,7 +125,7 @@ export function assertWrappedExitLegality(result: RunResult, label = ''): void {
   expect(result.exitCode, `exit code must not be null${tag}`).not.toBeNull();
 
   const code = result.exitCode as number;
-  expect(code >= 0 && code <= 255, `exit code must be 0-255${tag}`).toBe(true);
+  expect(code >= 0 && code <= MAX_EXIT_CODE, `exit code must be 0-255${tag}`).toBe(true);
 
   if (code === 0) {
     // Exit 0: validate hook JSON (child stdout may precede it)

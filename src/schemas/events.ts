@@ -17,7 +17,7 @@
  * Naming: camelCase + Schema suffix (e.g. sessionStartSchema), PascalCase inferred types.
  */
 
-import { type ZodSchema, z } from 'zod';
+import { type ZodType, z } from 'zod';
 import type { EVENT_NAMES } from '@/types.ts';
 
 // ---------------------------------------------------------------------------
@@ -309,7 +309,7 @@ export type HookEvent =
  * Adding a new event type requires only a schema definition above and one
  * entry here; no switch case needed.
  */
-export const SCHEMA_MAP: Record<(typeof EVENT_NAMES)[number], ZodSchema> = {
+export const SCHEMA_MAP: Record<(typeof EVENT_NAMES)[number], ZodType> = {
   SessionStart: sessionStartSchema,
   SessionEnd: sessionEndSchema,
   UserPromptSubmit: userPromptSubmitSchema,
@@ -344,7 +344,7 @@ export const SCHEMA_MAP: Record<(typeof EVENT_NAMES)[number], ZodSchema> = {
 export function parseHookEvent(raw: unknown): HookEvent {
   // Extract hook_event_name from the raw payload to discriminate.
   const name = (raw as Record<string, unknown>)?.hook_event_name;
-  const schema = typeof name === 'string' ? SCHEMA_MAP[name] : undefined;
+  const schema = typeof name === 'string' ? SCHEMA_MAP[name as keyof typeof SCHEMA_MAP] : undefined;
   // Unknown event type — validate common fields only, preserve everything else.
-  return (schema ?? unknownEventSchema).parse(raw);
+  return (schema ?? unknownEventSchema).parse(raw) as HookEvent;
 }

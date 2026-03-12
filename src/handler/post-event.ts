@@ -52,19 +52,20 @@ export interface WrappedEventPayload extends BaseEventPayload {
 /** Discriminated union for postEvent() payload — bare vs wrapped mode. */
 export type EventPostPayload = BareEventPayload | WrappedEventPayload;
 
+const CONNECTION_ERROR_PATTERNS = [
+  'connection refused',
+  'econnrefused',
+  'unable to connect',
+  'failed to fetch',
+  'fetch failed',
+] as const;
+
 /**
  * Returns true if the error message (lowercased) matches a known connection
- * refusal pattern. Kept separate from isConnectionError() to limit the number
- * of conditional operators in a single function (S1067).
+ * refusal pattern.
  */
 function matchesConnectionMessage(msg: string): boolean {
-  return (
-    msg.includes('connection refused') ||
-    msg.includes('econnrefused') ||
-    msg.includes('unable to connect') ||
-    msg.includes('failed to fetch') ||
-    msg.includes('fetch failed')
-  );
+  return CONNECTION_ERROR_PATTERNS.some((pattern) => msg.includes(pattern));
 }
 
 /**

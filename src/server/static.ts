@@ -16,15 +16,18 @@
 import { statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { errorResponse } from '@/server/errors.ts';
+import { HTTP_NOT_FOUND, HTTP_OK } from '@/server/http-status.ts';
 
 // Resolve src/ui/ relative to this file's directory (src/server/ → ../ui/)
 const UI_DIR = resolve(import.meta.dir, '../ui');
 
+const CONTENT_TYPE_JS = 'application/javascript; charset=utf-8';
+
 const CONTENT_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
-  '.js': 'application/javascript; charset=utf-8',
-  '.ts': 'application/javascript; charset=utf-8',
+  '.js': CONTENT_TYPE_JS,
+  '.ts': CONTENT_TYPE_JS,
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
@@ -77,7 +80,7 @@ export async function handleStatic(pathname: string): Promise<Response> {
 
   const filePath = resolveUiPath(normalised);
   if (filePath === null) {
-    return errorResponse('NOT_FOUND', 'Path not allowed', 404);
+    return errorResponse('NOT_FOUND', 'Path not allowed', HTTP_NOT_FOUND);
   }
 
   // Check file existence
@@ -85,7 +88,7 @@ export async function handleStatic(pathname: string): Promise<Response> {
   try {
     stat = statSync(filePath);
   } catch {
-    return errorResponse('NOT_FOUND', `File not found: ${normalised}`, 404);
+    return errorResponse('NOT_FOUND', `File not found: ${normalised}`, HTTP_NOT_FOUND);
   }
 
   const mtime = stat.mtimeMs;
@@ -99,15 +102,15 @@ export async function handleStatic(pathname: string): Promise<Response> {
     if (cached !== undefined && cached.mtime === mtime) {
       content = cached.content;
     } else {
-      const file = Bun.file(filePath);
-      const source = await file.text();
+      const tsFile = Bun.file(filePath);
+      const source = await tsFile.text();
       content = transpiler.transformSync(source);
       transpileCache.set(filePath, { mtime, content });
     }
 
     return new Response(content, {
-      status: 200,
-      headers: { 'Content-Type': 'application/javascript; charset=utf-8' },
+      status: HTTP_OK,
+      headers: { 'Content-Type': CONTENT_TYPE_JS },
     });
   }
 
@@ -115,7 +118,7 @@ export async function handleStatic(pathname: string): Promise<Response> {
   const contentType = CONTENT_TYPES[ext] ?? 'application/octet-stream';
   const file = Bun.file(filePath);
   return new Response(file, {
-    status: 200,
+    status: HTTP_OK,
     headers: { 'Content-Type': contentType },
   });
 }

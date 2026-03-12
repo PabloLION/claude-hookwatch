@@ -15,6 +15,19 @@ import { ZodError } from 'zod';
 import { hookOutputSchema, preToolUseOutputSchema, stopOutputSchema } from './output.ts';
 
 // ---------------------------------------------------------------------------
+// Test constants
+// ---------------------------------------------------------------------------
+
+/** systemMessage injected by hookwatch for a SessionStart (startup) event. */
+const MSG_SESSION_START = 'hookwatch captured SessionStart (startup)';
+/** systemMessage injected by hookwatch for a Stop event. */
+const MSG_STOP = 'hookwatch captured Stop';
+/** systemMessage injected by hookwatch for a PreToolUse (Bash) event. */
+const MSG_PRE_TOOL_USE_BASH = 'hookwatch captured PreToolUse (Bash)';
+/** Standard test description for passthrough tests that verify an unknown SDK field survives. */
+const FUTURE_SDK_TEST_NAME = 'future SDK field is preserved';
+
+// ---------------------------------------------------------------------------
 // hookOutputSchema — base schema, all hooks
 // ---------------------------------------------------------------------------
 
@@ -41,25 +54,25 @@ describe('hookOutputSchema — valid output', () => {
 
   test('systemMessage is preserved when present', () => {
     const result = hookOutputSchema.parse({
-      systemMessage: 'hookwatch captured SessionStart (startup)',
+      systemMessage: MSG_SESSION_START,
     });
-    expect(result.systemMessage).toBe('hookwatch captured SessionStart (startup)');
+    expect(result.systemMessage).toBe(MSG_SESSION_START);
   });
 
   test('all three base fields together', () => {
     const result = hookOutputSchema.parse({
       continue: true,
       suppressOutput: false,
-      systemMessage: 'hookwatch captured Stop',
+      systemMessage: MSG_STOP,
     });
     expect(result.continue).toBe(true);
     expect(result.suppressOutput).toBe(false);
-    expect(result.systemMessage).toBe('hookwatch captured Stop');
+    expect(result.systemMessage).toBe(MSG_STOP);
   });
 });
 
 describe('hookOutputSchema — passthrough allows unknown fields', () => {
-  test('future SDK field is preserved', () => {
+  test(FUTURE_SDK_TEST_NAME, () => {
     const result = hookOutputSchema.parse({
       continue: true,
       futureSdkField: 'preserved',
@@ -141,14 +154,14 @@ describe('preToolUseOutputSchema — valid output', () => {
     const result = preToolUseOutputSchema.parse({
       continue: true,
       suppressOutput: false,
-      systemMessage: 'hookwatch captured PreToolUse (Bash)',
+      systemMessage: MSG_PRE_TOOL_USE_BASH,
       hookSpecificOutput: {
         permissionDecision: 'allow',
         updatedInput: { command: 'echo hello' },
       },
     });
     expect(result.hookSpecificOutput?.permissionDecision).toBe('allow');
-    expect(result.systemMessage).toBe('hookwatch captured PreToolUse (Bash)');
+    expect(result.systemMessage).toBe(MSG_PRE_TOOL_USE_BASH);
   });
 
   test('systemMessage is optional — valid without it', () => {
@@ -160,7 +173,7 @@ describe('preToolUseOutputSchema — valid output', () => {
 });
 
 describe('preToolUseOutputSchema — passthrough allows unknown fields', () => {
-  test('future SDK field is preserved', () => {
+  test(FUTURE_SDK_TEST_NAME, () => {
     const result = preToolUseOutputSchema.parse({
       hookSpecificOutput: { permissionDecision: 'allow' },
       futureSdkExtension: 'value',
@@ -233,16 +246,16 @@ describe('stopOutputSchema — valid output', () => {
   test('systemMessage is preserved when present', () => {
     const result = stopOutputSchema.parse({
       decision: 'approve',
-      systemMessage: 'hookwatch captured Stop',
+      systemMessage: MSG_STOP,
     });
-    expect(result.systemMessage).toBe('hookwatch captured Stop');
+    expect(result.systemMessage).toBe(MSG_STOP);
   });
 
   test('full Stop output with all fields', () => {
     const result = stopOutputSchema.parse({
       continue: false,
       suppressOutput: false,
-      systemMessage: 'hookwatch captured Stop',
+      systemMessage: MSG_STOP,
       decision: 'block',
       reason: 'Linting errors detected',
     });
@@ -253,7 +266,7 @@ describe('stopOutputSchema — valid output', () => {
 });
 
 describe('stopOutputSchema — passthrough allows unknown fields', () => {
-  test('future SDK field is preserved', () => {
+  test(FUTURE_SDK_TEST_NAME, () => {
     const result = stopOutputSchema.parse({
       decision: 'approve',
       futureSdkField: 'preserved',
@@ -282,7 +295,7 @@ describe('stopOutputSchema — validation failures', () => {
 
 describe('systemMessage format — hookwatch convention', () => {
   test('format with subtype: hookwatch captured {EventType} ({subtype})', () => {
-    const msg = 'hookwatch captured PreToolUse (Bash)';
+    const msg = MSG_PRE_TOOL_USE_BASH;
     const result = preToolUseOutputSchema.parse({
       hookSpecificOutput: { permissionDecision: 'allow' },
       systemMessage: msg,
@@ -292,7 +305,7 @@ describe('systemMessage format — hookwatch convention', () => {
   });
 
   test('Stop event systemMessage has no subtype', () => {
-    const msg = 'hookwatch captured Stop';
+    const msg = MSG_STOP;
     const result = stopOutputSchema.parse({
       decision: 'approve',
       systemMessage: msg,
@@ -301,7 +314,7 @@ describe('systemMessage format — hookwatch convention', () => {
   });
 
   test('base schema systemMessage follows format', () => {
-    const msg = 'hookwatch captured SessionStart (startup)';
+    const msg = MSG_SESSION_START;
     const result = hookOutputSchema.parse({ systemMessage: msg });
     expect(result.systemMessage).toMatch(/^hookwatch captured \w+( \(.+\))?$/);
   });

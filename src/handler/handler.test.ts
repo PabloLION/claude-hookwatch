@@ -25,15 +25,11 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-  assertBareExitLegality,
-  BASE_SESSION_START,
-  createHandlerTestContext,
-  firstEventBody,
-  killProcessOnPort,
-  runHandler,
-  writePortFile,
-} from '@/test';
+import { BASE_SESSION_START } from '@/test/fixtures.ts';
+import { assertBareExitLegality } from '@/test/handler-assertions.ts';
+import { createHandlerTestContext } from '@/test/setup.ts';
+import { killProcessOnPort, runHandler } from '@/test/subprocess.ts';
+import { firstEventBody, writePortFile } from '@/test/test-server.ts';
 
 // ---------------------------------------------------------------------------
 // Shared test fixtures and constants

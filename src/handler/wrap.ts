@@ -31,7 +31,7 @@ import type { WrapResult } from '@/types.ts';
 import { errorMsg } from './errors.ts';
 import { describeExitCode, signalExitCode } from './signals.ts';
 
-export type { WrapResult };
+export type { WrapResult } from '@/types.ts';
 
 /**
  * Runs the given command as a child process with tee behaviour:
@@ -81,8 +81,8 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
   // Tee stdout and stderr concurrently while waiting for the child to exit.
   const [rawExitCode, capturedStdout, capturedStderr] = await Promise.all([
     child.exited,
-    teeStream(child.stdout, process.stdout),
-    teeStream(child.stderr, process.stderr),
+    teeStream(child.stdout as ReadableStream<Uint8Array>, process.stdout),
+    teeStream(child.stderr as ReadableStream<Uint8Array>, process.stderr),
   ]);
 
   // In Bun, proc.exited resolves to the 128+N value for signal-killed children
@@ -97,14 +97,14 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
   //   - Normal exit: rawExitCode is the numeric exit code (0-255)
   //   - Signal kill: rawExitCode is already 128+N from Bun; signalExitCode is
   //     the fallback if rawExitCode is somehow null
-  const exitCode = rawExitCode !== null ? rawExitCode : signalExitCode(signalCode);
+  const exitCode = rawExitCode === null ? signalExitCode(signalCode) : rawExitCode;
 
   // Build a [warn] log entry for signal deaths so the caller can store it in
   // hookwatch_log and surface it in the systemMessage.
   let hookwatchLog: string | undefined;
   if (isSignalKill) {
     const description = describeExitCode(exitCode);
-    const label = description !== null ? ` (${description})` : '';
+    const label = description === null ? '' : ` (${description})`;
     hookwatchLog = `[warn] exit ${exitCode}${label}`;
     console.error(`[hookwatch] Child killed by signal: ${hookwatchLog}`);
   }
