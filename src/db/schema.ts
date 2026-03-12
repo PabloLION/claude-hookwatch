@@ -45,13 +45,14 @@ export const CREATE_EVENTS_TABLE = `
 /**
  * Indexes for common query patterns.
  * event, session_id, timestamp, and tool_name are the most frequently filtered columns.
+ * Each statement is a separate string because db.run() executes one statement at a time.
  */
-export const CREATE_INDEXES = `
-  CREATE INDEX IF NOT EXISTS idx_events_event      ON events(event);
-  CREATE INDEX IF NOT EXISTS idx_events_session_id ON events(session_id);
-  CREATE INDEX IF NOT EXISTS idx_events_timestamp   ON events(timestamp);
-  CREATE INDEX IF NOT EXISTS idx_events_tool_name  ON events(tool_name);
-`;
+export const CREATE_INDEXES: readonly string[] = [
+  'CREATE INDEX IF NOT EXISTS idx_events_event      ON events(event);',
+  'CREATE INDEX IF NOT EXISTS idx_events_session_id ON events(session_id);',
+  'CREATE INDEX IF NOT EXISTS idx_events_timestamp   ON events(timestamp);',
+  'CREATE INDEX IF NOT EXISTS idx_events_tool_name  ON events(tool_name);',
+];
 
 /**
  * Return value from checkVersion():
@@ -80,7 +81,9 @@ export function checkVersion(db: Database): VersionStatus {
  * Called for brand-new databases (user_version=0) and after backup-recreate.
  */
 export function applyFreshSchema(db: Database): void {
-  db.exec(CREATE_EVENTS_TABLE);
-  db.exec(CREATE_INDEXES);
-  db.exec(`PRAGMA user_version = ${CURRENT_VERSION};`);
+  db.run(CREATE_EVENTS_TABLE);
+  for (const stmt of CREATE_INDEXES) {
+    db.run(stmt);
+  }
+  db.run(`PRAGMA user_version = ${CURRENT_VERSION};`);
 }
