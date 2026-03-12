@@ -18,7 +18,8 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { defineCommand } from 'citty';
-import { DEFAULT_PORT, portFilePath } from '@/paths.ts';
+import { DEFAULT_PORT } from '@/config.ts';
+import { portFilePath } from '@/paths.ts';
 import { spawnServer } from '@/server-spawn.ts';
 
 const HEALTH_FETCH_TIMEOUT_MS = 1000;

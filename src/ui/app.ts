@@ -14,7 +14,6 @@ import { html } from './shared/html.ts';
 import { startSseClient } from './shared/sse-client.ts';
 
 // Cross-component signal — owns the current event list
-// TODO: configurable via config.toml (ch-1ex5.1) — default query limit
 export const eventList = signal<EventRow[]>([]);
 
 // Cross-component signal — null means "all sessions", a string means filter

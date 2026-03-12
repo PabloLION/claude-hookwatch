@@ -20,7 +20,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DEFAULT_PORT, readPort } from './paths.ts';
+import { DEFAULT_PORT } from '@/config.ts';
+import { readPort } from './paths.ts';
 
 // ---------------------------------------------------------------------------
 // Test setup: isolated XDG_DATA_HOME per test

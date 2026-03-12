@@ -14,8 +14,9 @@
 
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { DEFAULT_PORT, IDLE_TIMEOUT_MS } from '@/config.ts';
 import { close as closeDb } from '@/db/connection.ts';
-import { DEFAULT_PORT, portFilePath } from '@/paths.ts';
+import { portFilePath } from '@/paths.ts';
 import { errorResponse } from '@/server/errors.ts';
 import { handleHealth } from '@/server/health.ts';
 import { handleIngest } from '@/server/ingest.ts';
@@ -29,11 +30,6 @@ const HOSTNAME = '127.0.0.1';
 // ---------------------------------------------------------------------------
 // Idle timeout
 // ---------------------------------------------------------------------------
-
-/** Duration of inactivity before the server self-terminates.
- * TODO: configurable via config.toml (ch-1ex5.1)
- */
-const IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
 
 let idleTimer: ReturnType<typeof setTimeout> | null = null;
 let shutdownCallback: (() => void) | null = null;

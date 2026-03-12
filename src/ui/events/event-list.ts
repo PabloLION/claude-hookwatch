@@ -18,12 +18,10 @@
 
 import type { Signal } from '@preact/signals';
 import { useEffect, useState } from 'preact/hooks';
+import { DEFAULT_QUERY_LIMIT } from '@/config.ts';
 import type { EventRow } from '@/types.ts';
 import { html } from '../shared/html.ts';
 import { EventDetail } from './event-detail.ts';
-
-// TODO: configurable via config.toml (ch-1ex5.1)
-const DEFAULT_QUERY_LIMIT = 100;
 
 interface EventListProps {
   eventList: Signal<EventRow[]>;
