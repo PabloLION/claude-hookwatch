@@ -58,7 +58,7 @@ const UNUSED_AUTO_START_PORT_B = 19998;
 function makeBarePayload(): Parameters<typeof postEvent>[1] {
   return {
     mode: 'bare',
-    // Partial mock — postEvent() only reads hook_event_name
+    // Partial mock — postEvent() passes event to buildRequestBody() which spreads it
     event: { hook_event_name: 'SessionStart' } as unknown as ReturnType<typeof parseHookEvent>,
     stdout: JSON.stringify({ continue: true, systemMessage: 'test' }),
     hookDurationMs: 0,
