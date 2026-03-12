@@ -123,7 +123,9 @@ function assertUsesTimestampIndex(
   sql: string,
   bindings: SQLQueryBindings[] = [],
 ): void {
-  const planRows = db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...bindings) as QueryPlanRow[];
+  const planRows = db
+    .prepare<QueryPlanRow, SQLQueryBindings[]>(`EXPLAIN QUERY PLAN ${sql}`)
+    .all(...bindings);
   const usesIndex = planRows.some((r) => r.detail.includes('idx_events_timestamp'));
   expect(
     usesIndex,

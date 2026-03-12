@@ -15,6 +15,7 @@
  */
 
 import type { Signal } from '@preact/signals';
+import type { JSX } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { html } from '../shared/html.ts';
 import { fetchSessions, formatSessionId } from './session-list.ts';
@@ -35,9 +36,8 @@ export function SessionFilter({ activeSession }: SessionFilterProps) {
     })();
   }, []);
 
-  function handleChange(e: Event): void {
-    const select = e.target as HTMLSelectElement;
-    const value = select.value;
+  function handleChange(e: JSX.TargetedEvent<HTMLSelectElement>): void {
+    const value = e.currentTarget.value;
     activeSession.value = value === '' ? null : value;
   }
 

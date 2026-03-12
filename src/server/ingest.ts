@@ -21,6 +21,7 @@ import { ZodError } from 'zod';
 import { openDb } from '@/db/connection.ts';
 import { isSqliteBusy } from '@/db/errors.ts';
 import { getEventById, insertEvent } from '@/db/queries.ts';
+import { isRecord } from '@/guards.ts';
 import { parseHookEvent } from '@/schemas/events.ts';
 import { errorResponse } from '@/server/errors.ts';
 import {
@@ -50,7 +51,7 @@ interface WrapFields {
  * These fields are present when the handler runs in wrapped mode (Story 3.1).
  */
 function extractWrapFields(raw: unknown): WrapFields {
-  const bodyObj = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const bodyObj = isRecord(raw) ? raw : {};
   return {
     wrappedCommand: typeof bodyObj.wrapped_command === 'string' ? bodyObj.wrapped_command : null,
     wrappedStdout: typeof bodyObj.stdout === 'string' ? bodyObj.stdout : null,

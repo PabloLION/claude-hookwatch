@@ -16,6 +16,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DEFAULT_PORT, IDLE_TIMEOUT_MS } from '@/config.ts';
 import { close as closeDb } from '@/db/connection.ts';
+import { isErrnoException } from '@/guards.ts';
 import { portFilePath } from '@/paths.ts';
 import { errorResponse } from '@/server/errors.ts';
 import { handleHealth } from '@/server/health.ts';
@@ -54,8 +55,8 @@ export function resetIdleTimer(): void {
   // Without this, Node/Bun keeps the event loop alive indefinitely.
   // .unref() is a Bun/Node extension that prevents the timer from keeping the
   // process alive. It may not be present when setTimeout is mocked in tests.
-  if (typeof (idleTimer as { unref?: () => void }).unref === 'function') {
-    (idleTimer as { unref: () => void }).unref();
+  if (idleTimer !== null && 'unref' in idleTimer && typeof idleTimer.unref === 'function') {
+    idleTimer.unref();
   }
 }
 
@@ -182,11 +183,10 @@ export async function startServer(): Promise<{ port: number; stop: () => void }>
       fetch: dispatch,
     });
   } catch (err) {
+    // Bun exposes .code on the error object; message text varies by platform
     const isAddrInUse =
-      err instanceof Error &&
-      // Bun exposes .code on the error object; message text varies by platform
-      ((err as NodeJS.ErrnoException).code === 'EADDRINUSE' ||
-        err.message.includes('address already in use'));
+      (isErrnoException(err) && err.code === 'EADDRINUSE') ||
+      (err instanceof Error && err.message.includes('address already in use'));
 
     if (isAddrInUse) {
       throw new PortInUseError(DEFAULT_PORT);

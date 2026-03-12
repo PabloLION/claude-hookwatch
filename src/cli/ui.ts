@@ -19,6 +19,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { defineCommand } from 'citty';
 import { DEFAULT_PORT } from '@/config.ts';
+import { isErrnoException } from '@/guards.ts';
 import { portFilePath } from '@/paths.ts';
 import { spawnServer } from '@/server-spawn.ts';
 
@@ -73,9 +74,11 @@ export async function isPortOccupied(port: number): Promise<boolean> {
     return true;
   } catch (err) {
     // Connection refused / timeout → port is free
-    const code = (err as NodeJS.ErrnoException).cause
-      ? ((err as NodeJS.ErrnoException).cause as NodeJS.ErrnoException)?.code
-      : (err as NodeJS.ErrnoException).code;
+    // Bun wraps connection errors: the code may be on err itself or on err.cause
+    const outerCode = isErrnoException(err) ? err.code : undefined;
+    const cause = err instanceof Error ? err.cause : undefined;
+    const innerCode = isErrnoException(cause) ? cause.code : undefined;
+    const code = outerCode ?? innerCode;
     // If the fetch itself errored (not just a bad status), port is not occupied
     // unless the error is a non-connection error (e.g., timeout with something listening)
     if (code === 'ConnectionRefused' || code === 'ECONNREFUSED') {

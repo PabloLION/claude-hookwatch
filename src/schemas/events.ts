@@ -18,6 +18,7 @@
  */
 
 import { type ZodType, z } from 'zod';
+import { isRecord } from '@/guards.ts';
 import type { EVENT_NAMES } from '@/types.ts';
 
 // ---------------------------------------------------------------------------
@@ -333,11 +334,6 @@ export const SCHEMA_MAP = {
 // ---------------------------------------------------------------------------
 // Discriminated parse function
 // ---------------------------------------------------------------------------
-
-/** Type guard: narrows unknown to a string-keyed object. */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
 
 /** Type predicate: narrows a string to a known event name key in SCHEMA_MAP. */
 function isKnownEventName(name: string): name is keyof typeof SCHEMA_MAP {

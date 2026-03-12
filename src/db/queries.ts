@@ -39,8 +39,8 @@ export function insertEvent(db: Database, params: InsertEventParams): number {
  * Returns null if not found.
  */
 export function getEventById(db: Database, id: number): EventRow | null {
-  const stmt = db.prepare(`SELECT * FROM events WHERE id = ?`);
-  return (stmt.get(id) as EventRow | null) ?? null;
+  const stmt = db.prepare<EventRow, [number]>(`SELECT * FROM events WHERE id = ?`);
+  return stmt.get(id) ?? null;
 }
 
 /**
@@ -48,24 +48,28 @@ export function getEventById(db: Database, id: number): EventRow | null {
  * For production use, callers should add LIMIT/OFFSET filters via selectEvents().
  */
 export function getAllEvents(db: Database): EventRow[] {
-  const stmt = db.prepare(`SELECT * FROM events ORDER BY timestamp ASC`);
-  return stmt.all() as EventRow[];
+  const stmt = db.prepare<EventRow, []>(`SELECT * FROM events ORDER BY timestamp ASC`);
+  return stmt.all();
 }
 
 /**
  * Retrieve events filtered by session_id.
  */
 export function getEventsBySession(db: Database, sessionId: string): EventRow[] {
-  const stmt = db.prepare(`SELECT * FROM events WHERE session_id = ? ORDER BY timestamp ASC`);
-  return stmt.all(sessionId) as EventRow[];
+  const stmt = db.prepare<EventRow, [string]>(
+    `SELECT * FROM events WHERE session_id = ? ORDER BY timestamp ASC`,
+  );
+  return stmt.all(sessionId);
 }
 
 /**
  * Retrieve events filtered by event type.
  */
 export function getEventsByType(db: Database, eventType: string): EventRow[] {
-  const stmt = db.prepare(`SELECT * FROM events WHERE event = ? ORDER BY timestamp ASC`);
-  return stmt.all(eventType) as EventRow[];
+  const stmt = db.prepare<EventRow, [string]>(
+    `SELECT * FROM events WHERE event = ? ORDER BY timestamp ASC`,
+  );
+  return stmt.all(eventType);
 }
 
 /**
@@ -74,8 +78,10 @@ export function getEventsByType(db: Database, eventType: string): EventRow[] {
  * ch-lar: no user input — static query, no parameterization needed.
  */
 export function getDistinctSessions(db: Database): string[] {
-  const stmt = db.prepare(`SELECT DISTINCT session_id FROM events ORDER BY timestamp DESC`);
-  return (stmt.all() as Array<{ session_id: string }>).map((r) => r.session_id);
+  const stmt = db.prepare<{ session_id: string }, []>(
+    `SELECT DISTINCT session_id FROM events ORDER BY timestamp DESC`,
+  );
+  return stmt.all().map((r) => r.session_id);
 }
 
 /**
@@ -106,6 +112,11 @@ export function queryEvents(db: Database, filter: QueryFilter): EventRow[] {
   const sql = `SELECT * FROM events ${where} ORDER BY timestamp DESC LIMIT ? OFFSET ?`;
   bindings.push(filter.limit, filter.offset);
 
+  // bun:sqlite Statement<T> requires params type at prepare() time, but
+  // queryEvents() builds dynamic SQL with variable-length bindings. A single
+  // cast at this boundary is unavoidable — the generic param list cannot be
+  // inferred from runtime-constructed SQL. All other query functions use typed
+  // prepare<EventRow, [...]>() to avoid casts.
   const stmt = db.prepare(sql);
   return stmt.all(...bindings) as EventRow[];
 }

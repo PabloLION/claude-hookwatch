@@ -16,6 +16,7 @@
  */
 
 import type { Signal } from '@preact/signals';
+import { isRecord } from '@/guards.ts';
 import type { EventRow } from '@/types.ts';
 
 const SSE_ENDPOINT = '/api/events/stream';
@@ -39,7 +40,7 @@ export function startSseClient(
   source.onmessage = (ev: MessageEvent<string>) => {
     let parsed: unknown;
     try {
-      parsed = JSON.parse(ev.data) as unknown;
+      parsed = JSON.parse(ev.data);
     } catch {
       console.error('hookwatch: SSE received non-JSON data', ev.data);
       return;
@@ -83,7 +84,8 @@ function hasRequiredFields(obj: Record<string, unknown>): boolean {
 }
 
 function isEventRow(value: unknown): value is EventRow {
-  if (value === null || typeof value !== 'object') return false;
-  const obj = value as Record<string, unknown>;
-  return hasRequiredFields(obj) && typeof obj.event === 'string' && typeof obj.stdin === 'string';
+  if (!isRecord(value)) return false;
+  return (
+    hasRequiredFields(value) && typeof value.event === 'string' && typeof value.stdin === 'string'
+  );
 }

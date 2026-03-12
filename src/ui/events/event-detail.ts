@@ -13,6 +13,7 @@
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
+import { isRecord } from '@/guards.ts';
 import type { EventRow } from '@/types.ts';
 import { html } from '../shared/html.ts';
 import { WrapViewer } from '../wrap/wrap-viewer.ts';
@@ -46,8 +47,8 @@ function parseStdin(stdinJson: string): unknown {
  * Returns null when the field is absent or not a string.
  */
 function extractStringField(parsed: unknown, field: string): string | null {
-  if (parsed !== null && typeof parsed === 'object' && field in parsed) {
-    const value = (parsed as Record<string, unknown>)[field];
+  if (isRecord(parsed) && field in parsed) {
+    const value = parsed[field];
     if (typeof value === 'string') return value;
   }
   return null;
@@ -58,8 +59,8 @@ function extractStringField(parsed: unknown, field: string): string | null {
  * Returns null when absent.
  */
 function extractToolInput(parsed: unknown): unknown {
-  if (parsed !== null && typeof parsed === 'object' && 'tool_input' in parsed) {
-    return (parsed as Record<string, unknown>).tool_input;
+  if (isRecord(parsed) && 'tool_input' in parsed) {
+    return parsed.tool_input;
   }
   return null;
 }

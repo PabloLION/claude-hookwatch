@@ -11,13 +11,32 @@
 
 import { describe, expect, test } from 'bun:test';
 import { ZodError } from 'zod';
+import { expectEventType, type ParsedEventFields } from '@/test/types.ts';
 import {
+  type ConfigChange,
   commonFieldsSchema,
+  type InstructionsLoaded,
+  type Notification,
+  type PermissionRequest,
+  type PostToolUse,
+  type PostToolUseFailure,
+  type PreCompact,
+  type PreToolUse,
   parseHookEvent,
   postToolUseSchema,
   preToolUseSchema,
+  type SessionEnd,
+  type SessionStart,
+  type Stop,
+  type SubagentStart,
+  type SubagentStop,
   sessionEndSchema,
   sessionStartSchema,
+  type TaskCompleted,
+  type TeammateIdle,
+  type UserPromptSubmit,
+  type WorktreeCreate,
+  type WorktreeRemove,
 } from './events.ts';
 
 // ---------------------------------------------------------------------------
@@ -57,8 +76,8 @@ describe('parseHookEvent — SessionStart', () => {
       source: 'startup',
       model: TEST_MODEL,
     });
-    expect(result.hook_event_name).toBe('SessionStart');
-    expect((result as { source: string }).source).toBe('startup');
+    const typed = expectEventType<SessionStart>(result, 'SessionStart');
+    expect(typed.source).toBe('startup');
   });
 
   test('optional agent_type field is preserved when present', () => {
@@ -69,7 +88,8 @@ describe('parseHookEvent — SessionStart', () => {
       model: TEST_MODEL,
       agent_type: 'Explore',
     });
-    expect((result as { agent_type?: string }).agent_type).toBe('Explore');
+    const typed = expectEventType<SessionStart>(result, 'SessionStart');
+    expect(typed.agent_type).toBe('Explore');
   });
 });
 
@@ -80,7 +100,8 @@ describe('parseHookEvent — SessionEnd', () => {
       hook_event_name: 'SessionEnd',
       reason: 'logout',
     });
-    expect((result as { reason: string }).reason).toBe('logout');
+    const typed = expectEventType<SessionEnd>(result, 'SessionEnd');
+    expect(typed.reason).toBe('logout');
   });
 });
 
@@ -91,7 +112,8 @@ describe('parseHookEvent — UserPromptSubmit', () => {
       hook_event_name: 'UserPromptSubmit',
       prompt: 'Hello Claude',
     });
-    expect((result as { prompt: string }).prompt).toBe('Hello Claude');
+    const typed = expectEventType<UserPromptSubmit>(result, 'UserPromptSubmit');
+    expect(typed.prompt).toBe('Hello Claude');
   });
 });
 
@@ -104,7 +126,8 @@ describe('parseHookEvent — PreToolUse', () => {
       tool_use_id: 'toolu_01ABC123',
       tool_input: { command: 'ls -la' },
     });
-    expect((result as { tool_name: string }).tool_name).toBe('Bash');
+    const typed = expectEventType<PreToolUse>(result, 'PreToolUse');
+    expect(typed.tool_name).toBe('Bash');
   });
 });
 
@@ -118,7 +141,8 @@ describe('parseHookEvent — PostToolUse', () => {
       tool_input: { file_path: '/etc/hosts' },
       tool_response: { content: '127.0.0.1 localhost' },
     });
-    expect((result as { tool_name: string }).tool_name).toBe('Read');
+    const typed = expectEventType<PostToolUse>(result, 'PostToolUse');
+    expect(typed.tool_name).toBe('Read');
   });
 });
 
@@ -132,7 +156,8 @@ describe('parseHookEvent — PostToolUseFailure', () => {
       tool_input: { command: 'bad-cmd' },
       error: 'command not found',
     });
-    expect((result as { error: string }).error).toBe('command not found');
+    const typed = expectEventType<PostToolUseFailure>(result, 'PostToolUseFailure');
+    expect(typed.error).toBe('command not found');
   });
 
   test('optional is_interrupt field is preserved', () => {
@@ -145,7 +170,8 @@ describe('parseHookEvent — PostToolUseFailure', () => {
       error: 'interrupted',
       is_interrupt: true,
     });
-    expect((result as { is_interrupt?: boolean }).is_interrupt).toBe(true);
+    const typed = expectEventType<PostToolUseFailure>(result, 'PostToolUseFailure');
+    expect(typed.is_interrupt).toBe(true);
   });
 });
 
@@ -157,9 +183,11 @@ describe('parseHookEvent — PermissionRequest', () => {
       tool_name: 'Bash',
       tool_input: { command: 'rm -rf /tmp/test' },
     });
-    expect((result as { tool_name: string }).tool_name).toBe('Bash');
+    const typed = expectEventType<PermissionRequest>(result, 'PermissionRequest');
+    expect(typed.tool_name).toBe('Bash');
     // PermissionRequest has no tool_use_id — verify it is not set
-    expect((result as { tool_use_id?: string }).tool_use_id).toBeUndefined();
+    const fields = result as ParsedEventFields;
+    expect(fields.tool_use_id).toBeUndefined();
   });
 
   test('optional permission_suggestions field is preserved', () => {
@@ -170,9 +198,8 @@ describe('parseHookEvent — PermissionRequest', () => {
       tool_input: { command: 'rm -rf /tmp/test' },
       permission_suggestions: [{ type: 'toolAlwaysAllow', tool: 'Bash' }],
     });
-    expect((result as { permission_suggestions?: unknown[] }).permission_suggestions).toHaveLength(
-      1,
-    );
+    const typed = expectEventType<PermissionRequest>(result, 'PermissionRequest');
+    expect(typed.permission_suggestions).toHaveLength(1);
   });
 });
 
@@ -184,7 +211,8 @@ describe('parseHookEvent — Notification', () => {
       message: 'Permission required',
       notification_type: 'permission_prompt',
     });
-    expect((result as { notification_type: string }).notification_type).toBe('permission_prompt');
+    const typed = expectEventType<Notification>(result, 'Notification');
+    expect(typed.notification_type).toBe('permission_prompt');
   });
 
   test('optional title field is preserved', () => {
@@ -195,7 +223,8 @@ describe('parseHookEvent — Notification', () => {
       title: 'My Title',
       notification_type: 'auth_success',
     });
-    expect((result as { title?: string }).title).toBe('My Title');
+    const typed = expectEventType<Notification>(result, 'Notification');
+    expect(typed.title).toBe('My Title');
   });
 });
 
@@ -207,7 +236,8 @@ describe('parseHookEvent — SubagentStart', () => {
       agent_id: 'agent-001',
       agent_type: 'Explore',
     });
-    expect((result as { agent_id: string }).agent_id).toBe('agent-001');
+    const typed = expectEventType<SubagentStart>(result, 'SubagentStart');
+    expect(typed.agent_id).toBe('agent-001');
   });
 });
 
@@ -222,7 +252,8 @@ describe('parseHookEvent — SubagentStop', () => {
       agent_transcript_path: '/home/user/.claude/subagents/agent-001.jsonl',
       last_assistant_message: 'Done.',
     });
-    expect((result as { stop_hook_active: boolean }).stop_hook_active).toBe(false);
+    const typed = expectEventType<SubagentStop>(result, 'SubagentStop');
+    expect(typed.stop_hook_active).toBe(false);
   });
 });
 
@@ -234,7 +265,8 @@ describe('parseHookEvent — Stop', () => {
       stop_hook_active: true,
       last_assistant_message: 'Task complete.',
     });
-    expect((result as { stop_hook_active: boolean }).stop_hook_active).toBe(true);
+    const typed = expectEventType<Stop>(result, 'Stop');
+    expect(typed.stop_hook_active).toBe(true);
   });
 });
 
@@ -246,7 +278,8 @@ describe('parseHookEvent — PreCompact', () => {
       trigger: 'manual',
       custom_instructions: 'Focus on the last 10 messages',
     });
-    expect((result as { trigger: string }).trigger).toBe('manual');
+    const typed = expectEventType<PreCompact>(result, 'PreCompact');
+    expect(typed.trigger).toBe('manual');
   });
 
   test('auto trigger with empty custom_instructions', () => {
@@ -256,7 +289,8 @@ describe('parseHookEvent — PreCompact', () => {
       trigger: 'auto',
       custom_instructions: '',
     });
-    expect((result as { trigger: string }).trigger).toBe('auto');
+    const typed = expectEventType<PreCompact>(result, 'PreCompact');
+    expect(typed.trigger).toBe('auto');
   });
 });
 
@@ -268,7 +302,8 @@ describe('parseHookEvent — TeammateIdle', () => {
       teammate_name: 'Alice',
       team_name: 'dev-team',
     });
-    expect((result as { teammate_name: string }).teammate_name).toBe('Alice');
+    const typed = expectEventType<TeammateIdle>(result, 'TeammateIdle');
+    expect(typed.teammate_name).toBe('Alice');
   });
 });
 
@@ -280,7 +315,8 @@ describe('parseHookEvent — TaskCompleted', () => {
       task_id: 'task-42',
       task_subject: 'Deploy to staging',
     });
-    expect((result as { task_id: string }).task_id).toBe('task-42');
+    const typed = expectEventType<TaskCompleted>(result, 'TaskCompleted');
+    expect(typed.task_id).toBe('task-42');
   });
 
   test('optional fields are preserved when present', () => {
@@ -293,7 +329,8 @@ describe('parseHookEvent — TaskCompleted', () => {
       teammate_name: 'Bob',
       team_name: 'ops-team',
     });
-    expect((result as { teammate_name?: string }).teammate_name).toBe('Bob');
+    const typed = expectEventType<TaskCompleted>(result, 'TaskCompleted');
+    expect(typed.teammate_name).toBe('Bob');
   });
 });
 
@@ -304,7 +341,8 @@ describe('parseHookEvent — ConfigChange', () => {
       hook_event_name: 'ConfigChange',
       source: 'user_settings',
     });
-    expect((result as { source: string }).source).toBe('user_settings');
+    const typed = expectEventType<ConfigChange>(result, 'ConfigChange');
+    expect(typed.source).toBe('user_settings');
   });
 
   test('optional file_path is preserved', () => {
@@ -314,9 +352,8 @@ describe('parseHookEvent — ConfigChange', () => {
       source: 'project_settings',
       file_path: '/home/user/project/.claude/settings.json',
     });
-    expect((result as { file_path?: string }).file_path).toBe(
-      '/home/user/project/.claude/settings.json',
-    );
+    const typed = expectEventType<ConfigChange>(result, 'ConfigChange');
+    expect(typed.file_path).toBe('/home/user/project/.claude/settings.json');
   });
 });
 
@@ -327,7 +364,8 @@ describe('parseHookEvent — WorktreeCreate', () => {
       hook_event_name: 'WorktreeCreate',
       name: 'bold-oak-a3f2',
     });
-    expect((result as { name: string }).name).toBe('bold-oak-a3f2');
+    const typed = expectEventType<WorktreeCreate>(result, 'WorktreeCreate');
+    expect(typed.name).toBe('bold-oak-a3f2');
   });
 });
 
@@ -338,9 +376,8 @@ describe('parseHookEvent — WorktreeRemove', () => {
       hook_event_name: 'WorktreeRemove',
       worktree_path: '/home/user/project/.git/worktrees/bold-oak-a3f2',
     });
-    expect((result as { worktree_path: string }).worktree_path).toBe(
-      '/home/user/project/.git/worktrees/bold-oak-a3f2',
-    );
+    const typed = expectEventType<WorktreeRemove>(result, 'WorktreeRemove');
+    expect(typed.worktree_path).toBe('/home/user/project/.git/worktrees/bold-oak-a3f2');
   });
 });
 
@@ -351,7 +388,8 @@ describe('parseHookEvent — InstructionsLoaded', () => {
       hook_event_name: 'InstructionsLoaded',
       trigger: 'init',
     });
-    expect((result as { trigger: string }).trigger).toBe('init');
+    const typed = expectEventType<InstructionsLoaded>(result, 'InstructionsLoaded');
+    expect(typed.trigger).toBe('init');
   });
 });
 
@@ -369,7 +407,8 @@ describe('passthrough — unknown fields are preserved', () => {
       tool_input: { command: 'echo hi' },
       future_sdk_field: 'preserved',
     });
-    expect((result as Record<string, unknown>).future_sdk_field).toBe('preserved');
+    const fields = result as ParsedEventFields;
+    expect(fields.future_sdk_field).toBe('preserved');
   });
 
   test('SessionStart preserves unknown fields', () => {
@@ -380,7 +419,8 @@ describe('passthrough — unknown fields are preserved', () => {
       model: TEST_MODEL,
       extra: PASSTHROUGH_EXTRA_NUMBER,
     });
-    expect((result as Record<string, unknown>).extra).toBe(PASSTHROUGH_EXTRA_NUMBER);
+    const fields = result as ParsedEventFields;
+    expect(fields.extra).toBe(PASSTHROUGH_EXTRA_NUMBER);
   });
 });
 
@@ -396,7 +436,8 @@ describe('fallback schema — unknown event types', () => {
       some_new_field: 'new_value',
     });
     expect(result.hook_event_name).toBe('FutureEvent');
-    expect((result as Record<string, unknown>).some_new_field).toBe('new_value');
+    const fields = result as ParsedEventFields;
+    expect(fields.some_new_field).toBe('new_value');
   });
 
   test('empty string hook_event_name uses fallback', () => {
@@ -515,6 +556,7 @@ describe('postToolUseSchema direct parse', () => {
       tool_input: { command: 'echo hi' },
       tool_response: { output: 'hi\n', exit_code: 0 },
     });
-    expect((result.tool_response as { exit_code: number }).exit_code).toBe(0);
+    const response = result.tool_response as ParsedEventFields;
+    expect(response.exit_code).toBe(0);
   });
 });

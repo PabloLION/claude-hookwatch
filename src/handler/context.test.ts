@@ -11,7 +11,27 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
-import type { HookEvent } from '@/schemas/events.ts';
+import type {
+  CommonFields,
+  ConfigChange,
+  InstructionsLoaded,
+  Notification,
+  PermissionRequest,
+  PostToolUse,
+  PostToolUseFailure,
+  PreCompact,
+  PreToolUse,
+  SessionEnd,
+  SessionStart,
+  Stop,
+  SubagentStart,
+  SubagentStop,
+  TaskCompleted,
+  TeammateIdle,
+  UserPromptSubmit,
+  WorktreeCreate,
+  WorktreeRemove,
+} from '@/schemas/events.ts';
 import { BASE_SESSION_START, GENERIC_EVENT_BASE } from '@/test/fixtures.ts';
 import { createHandlerTestContext } from '@/test/setup.ts';
 import { runHandler } from '@/test/subprocess.ts';
@@ -22,134 +42,216 @@ import { buildSystemMessage, getEventSubtype } from './context.ts';
 // Unit tests: getEventSubtype
 // ---------------------------------------------------------------------------
 
+/** Common fields shared by every HookEvent — avoids repetition across fixtures. */
+const TEST_COMMON = {
+  session_id: 'test-session-apple',
+  transcript_path: '/test/transcript.jsonl',
+  cwd: '/test/cwd',
+  permission_mode: 'default',
+} as const;
+
 describe('getEventSubtype', () => {
   test('SessionStart returns source field', () => {
-    const event = { hook_event_name: 'SessionStart', source: 'startup' } as unknown as HookEvent;
+    const event: SessionStart = {
+      ...TEST_COMMON,
+      hook_event_name: 'SessionStart',
+      source: 'startup',
+      model: 'test-model',
+    };
     expect(getEventSubtype(event)).toBe('startup');
   });
 
   test('SessionEnd returns reason field', () => {
-    const event = { hook_event_name: 'SessionEnd', reason: 'normal' } as unknown as HookEvent;
-    expect(getEventSubtype(event)).toBe('normal');
+    const event: SessionEnd = {
+      ...TEST_COMMON,
+      hook_event_name: 'SessionEnd',
+      reason: 'other',
+    };
+    expect(getEventSubtype(event)).toBe('other');
   });
 
   test('PreToolUse returns tool_name', () => {
-    const event = { hook_event_name: 'PreToolUse', tool_name: 'Bash' } as unknown as HookEvent;
+    const event: PreToolUse = {
+      ...TEST_COMMON,
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Bash',
+      tool_use_id: 'toolu_test',
+      tool_input: {},
+    };
     expect(getEventSubtype(event)).toBe('Bash');
   });
 
   test('PostToolUse returns tool_name', () => {
-    const event = { hook_event_name: 'PostToolUse', tool_name: 'Read' } as unknown as HookEvent;
+    const event: PostToolUse = {
+      ...TEST_COMMON,
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Read',
+      tool_use_id: 'toolu_test',
+      tool_input: {},
+      tool_response: {},
+    };
     expect(getEventSubtype(event)).toBe('Read');
   });
 
   test('PostToolUseFailure returns tool_name', () => {
-    const event = {
+    const event: PostToolUseFailure = {
+      ...TEST_COMMON,
       hook_event_name: 'PostToolUseFailure',
       tool_name: 'Write',
-    } as unknown as HookEvent;
+      tool_use_id: 'toolu_test',
+      tool_input: {},
+      error: 'test error',
+    };
     expect(getEventSubtype(event)).toBe('Write');
   });
 
   test('PermissionRequest returns tool_name', () => {
-    const event = {
+    const event: PermissionRequest = {
+      ...TEST_COMMON,
       hook_event_name: 'PermissionRequest',
       tool_name: 'Bash',
-    } as unknown as HookEvent;
+      tool_input: {},
+    };
     expect(getEventSubtype(event)).toBe('Bash');
   });
 
   test('Notification returns notification_type', () => {
-    const event = {
+    const event: Notification = {
+      ...TEST_COMMON,
       hook_event_name: 'Notification',
-      notification_type: 'info',
-    } as unknown as HookEvent;
-    expect(getEventSubtype(event)).toBe('info');
+      message: 'test',
+      notification_type: 'permission_prompt',
+    };
+    expect(getEventSubtype(event)).toBe('permission_prompt');
   });
 
   test('SubagentStart returns agent_type', () => {
-    const event = {
+    const event: SubagentStart = {
+      ...TEST_COMMON,
       hook_event_name: 'SubagentStart',
+      agent_id: 'agent-test',
       agent_type: 'coder',
-    } as unknown as HookEvent;
+    };
     expect(getEventSubtype(event)).toBe('coder');
   });
 
   test('SubagentStop returns agent_type', () => {
-    const event = {
+    const event: SubagentStop = {
+      ...TEST_COMMON,
       hook_event_name: 'SubagentStop',
+      agent_id: 'agent-test',
       agent_type: 'coder',
-    } as unknown as HookEvent;
+      stop_hook_active: false,
+      agent_transcript_path: '/test/transcript.jsonl',
+      last_assistant_message: 'Done.',
+    };
     expect(getEventSubtype(event)).toBe('coder');
   });
 
   test('PreCompact returns trigger', () => {
-    const event = {
+    const event: PreCompact = {
+      ...TEST_COMMON,
       hook_event_name: 'PreCompact',
       trigger: 'manual',
-    } as unknown as HookEvent;
+      custom_instructions: '',
+    };
     expect(getEventSubtype(event)).toBe('manual');
   });
 
   test('ConfigChange returns source', () => {
-    const event = { hook_event_name: 'ConfigChange', source: 'user' } as unknown as HookEvent;
-    expect(getEventSubtype(event)).toBe('user');
+    const event: ConfigChange = {
+      ...TEST_COMMON,
+      hook_event_name: 'ConfigChange',
+      source: 'user_settings',
+    };
+    expect(getEventSubtype(event)).toBe('user_settings');
   });
 
   test('InstructionsLoaded returns trigger', () => {
-    const event = {
+    const event: InstructionsLoaded = {
+      ...TEST_COMMON,
       hook_event_name: 'InstructionsLoaded',
-      trigger: 'startup',
-    } as unknown as HookEvent;
-    expect(getEventSubtype(event)).toBe('startup');
+      trigger: 'init',
+    };
+    expect(getEventSubtype(event)).toBe('init');
   });
 
   test('Stop returns null (no subtype)', () => {
-    const event = { hook_event_name: 'Stop' } as unknown as HookEvent;
+    const event: Stop = {
+      ...TEST_COMMON,
+      hook_event_name: 'Stop',
+      stop_hook_active: false,
+      last_assistant_message: 'Done.',
+    };
     expect(getEventSubtype(event)).toBeNull();
   });
 
   test('UserPromptSubmit returns null (no subtype)', () => {
-    const event = { hook_event_name: 'UserPromptSubmit' } as unknown as HookEvent;
+    const event: UserPromptSubmit = {
+      ...TEST_COMMON,
+      hook_event_name: 'UserPromptSubmit',
+      prompt: 'test prompt',
+    };
     expect(getEventSubtype(event)).toBeNull();
   });
 
   test('TeammateIdle returns null (no subtype)', () => {
-    const event = { hook_event_name: 'TeammateIdle' } as unknown as HookEvent;
+    const event: TeammateIdle = {
+      ...TEST_COMMON,
+      hook_event_name: 'TeammateIdle',
+      teammate_name: 'Alice',
+      team_name: 'dev-team',
+    };
     expect(getEventSubtype(event)).toBeNull();
   });
 
   test('TaskCompleted returns null (no subtype)', () => {
-    const event = { hook_event_name: 'TaskCompleted' } as unknown as HookEvent;
+    const event: TaskCompleted = {
+      ...TEST_COMMON,
+      hook_event_name: 'TaskCompleted',
+      task_id: 'task-1',
+      task_subject: 'Test task',
+    };
     expect(getEventSubtype(event)).toBeNull();
   });
 
   test('WorktreeCreate returns null (no subtype)', () => {
-    const event = { hook_event_name: 'WorktreeCreate' } as unknown as HookEvent;
+    const event: WorktreeCreate = {
+      ...TEST_COMMON,
+      hook_event_name: 'WorktreeCreate',
+      name: 'test-worktree',
+    };
     expect(getEventSubtype(event)).toBeNull();
   });
 
   test('WorktreeRemove returns null (no subtype)', () => {
-    const event = { hook_event_name: 'WorktreeRemove' } as unknown as HookEvent;
+    const event: WorktreeRemove = {
+      ...TEST_COMMON,
+      hook_event_name: 'WorktreeRemove',
+      worktree_path: '/test/worktree',
+    };
     expect(getEventSubtype(event)).toBeNull();
   });
 
-  // Runtime guard tests: missing fields must return null, not "undefined"
+  // Runtime guard tests: missing fields must return null, not "undefined".
+  // These use CommonFields (which satisfies the UnknownEvent branch of HookEvent)
+  // to represent malformed data that lacks event-specific required fields.
   test("SessionStart with missing source returns null, not 'undefined'", () => {
-    const event = { hook_event_name: 'SessionStart' } as unknown as HookEvent;
+    const event: CommonFields = { ...TEST_COMMON, hook_event_name: 'SessionStart' };
     expect(getEventSubtype(event)).toBeNull();
   });
 
   test("PreToolUse with missing tool_name returns null, not 'undefined'", () => {
-    const event = { hook_event_name: 'PreToolUse' } as unknown as HookEvent;
+    const event: CommonFields = { ...TEST_COMMON, hook_event_name: 'PreToolUse' };
     expect(getEventSubtype(event)).toBeNull();
   });
 
   test('Notification with non-string notification_type returns null', () => {
-    const event = {
+    const event: CommonFields = {
+      ...TEST_COMMON,
       hook_event_name: 'Notification',
       notification_type: 42,
-    } as unknown as HookEvent;
+    };
     expect(getEventSubtype(event)).toBeNull();
   });
 });
@@ -162,65 +264,77 @@ describe('getEventSubtype', () => {
 const CAPTURED_STOP = 'hookwatch captured Stop';
 
 describe('buildSystemMessage', () => {
+  const sessionStartEvent: SessionStart = {
+    ...TEST_COMMON,
+    hook_event_name: 'SessionStart',
+    source: 'startup',
+    model: 'test-model',
+  };
+
+  const stopEvent: Stop = {
+    ...TEST_COMMON,
+    hook_event_name: 'Stop',
+    stop_hook_active: false,
+    last_assistant_message: 'Done.',
+  };
+
+  const preToolUseEvent: PreToolUse = {
+    ...TEST_COMMON,
+    hook_event_name: 'PreToolUse',
+    tool_name: 'Bash',
+    tool_use_id: 'toolu_test',
+    tool_input: {},
+  };
+
+  const postToolUseEvent: PostToolUse = {
+    ...TEST_COMMON,
+    hook_event_name: 'PostToolUse',
+    tool_name: 'Read',
+    tool_use_id: 'toolu_test',
+    tool_input: {},
+    tool_response: {},
+  };
+
   test('formats message with subtype when subtype is present', () => {
-    const event = {
-      hook_event_name: 'SessionStart',
-      source: 'startup',
-    } as unknown as HookEvent;
-    expect(buildSystemMessage(event)).toBe('hookwatch captured SessionStart (startup)');
+    expect(buildSystemMessage(sessionStartEvent)).toBe('hookwatch captured SessionStart (startup)');
   });
 
   test('formats message without parenthetical when subtype is null', () => {
-    const event = { hook_event_name: 'Stop' } as unknown as HookEvent;
-    expect(buildSystemMessage(event)).toBe(CAPTURED_STOP);
+    expect(buildSystemMessage(stopEvent)).toBe(CAPTURED_STOP);
   });
 
   test('formats PreToolUse with tool_name as subtype', () => {
-    const event = {
-      hook_event_name: 'PreToolUse',
-      tool_name: 'Bash',
-    } as unknown as HookEvent;
-    expect(buildSystemMessage(event)).toBe('hookwatch captured PreToolUse (Bash)');
+    expect(buildSystemMessage(preToolUseEvent)).toBe('hookwatch captured PreToolUse (Bash)');
   });
 
   test('formats PostToolUse with tool_name as subtype', () => {
-    const event = {
-      hook_event_name: 'PostToolUse',
-      tool_name: 'Read',
-    } as unknown as HookEvent;
-    expect(buildSystemMessage(event)).toBe('hookwatch captured PostToolUse (Read)');
+    expect(buildSystemMessage(postToolUseEvent)).toBe('hookwatch captured PostToolUse (Read)');
   });
 
   test('appends single log entry after em-dash when logEntries provided', () => {
-    const event = { hook_event_name: 'Stop' } as unknown as HookEvent;
-    expect(buildSystemMessage(event, ['[error] Server returned HTTP 500'])).toBe(
+    expect(buildSystemMessage(stopEvent, ['[error] Server returned HTTP 500'])).toBe(
       `${CAPTURED_STOP} — [error] Server returned HTTP 500`,
     );
   });
 
   test('appends multiple log entries joined by semicolon', () => {
-    const event = { hook_event_name: 'Stop' } as unknown as HookEvent;
-    expect(buildSystemMessage(event, ['[error] first', '[warn] second'])).toBe(
+    expect(buildSystemMessage(stopEvent, ['[error] first', '[warn] second'])).toBe(
       `${CAPTURED_STOP} — [error] first; [warn] second`,
     );
   });
 
   test('returns base message when logEntries is empty array', () => {
-    const event = { hook_event_name: 'Stop' } as unknown as HookEvent;
-    expect(buildSystemMessage(event, [])).toBe(CAPTURED_STOP);
+    expect(buildSystemMessage(stopEvent, [])).toBe(CAPTURED_STOP);
   });
 
   test('returns base message when logEntries is undefined', () => {
-    const event = { hook_event_name: 'Stop' } as unknown as HookEvent;
-    expect(buildSystemMessage(event)).toBe(CAPTURED_STOP);
+    expect(buildSystemMessage(stopEvent)).toBe(CAPTURED_STOP);
   });
 
   test('appends log entries to message that has a subtype', () => {
-    const event = {
-      hook_event_name: 'SessionStart',
-      source: 'startup',
-    } as unknown as HookEvent;
-    expect(buildSystemMessage(event, ['[error] Spawn failed — server did not start'])).toBe(
+    expect(
+      buildSystemMessage(sessionStartEvent, ['[error] Spawn failed — server did not start']),
+    ).toBe(
       'hookwatch captured SessionStart (startup) — [error] Spawn failed — server did not start',
     );
   });

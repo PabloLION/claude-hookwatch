@@ -23,7 +23,12 @@ import type { parseHookEvent } from '@/schemas/events.ts';
 import { BASE_SESSION_START } from '@/test/fixtures.ts';
 import { assertBareExitLegality, assertWrappedExitLegality } from '@/test/handler-assertions.ts';
 import { createHandlerTestContext } from '@/test/setup.ts';
-import { killProcessOnPort, runHandler, runHandlerWrapped } from '@/test/subprocess.ts';
+import {
+  killProcessOnPort,
+  parseStdout,
+  runHandler,
+  runHandlerWrapped,
+} from '@/test/subprocess.ts';
 import { firstEventBody, startTestServer, writePortFile } from '@/test/test-server.ts';
 import { VERSION } from '@/version.ts';
 import type { PostEventResult } from './post-event.ts';
@@ -53,6 +58,7 @@ const UNUSED_AUTO_START_PORT_B = 19998;
 function makeBarePayload(): Parameters<typeof postEvent>[1] {
   return {
     mode: 'bare',
+    // Deliberate partial mock — postEvent() only reads hook_event_name from the event
     event: { hook_event_name: 'SessionStart' } as unknown as ReturnType<typeof parseHookEvent>,
     stdout: JSON.stringify({ continue: true, systemMessage: 'test' }),
     hookDurationMs: 0,
@@ -100,7 +106,7 @@ describe('server non-2xx response', () => {
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain('500');
     // Non-fatal: stdout is normal hook output JSON (not hookwatch_fatal)
-    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    const parsed = parseStdout(result.stdout);
     expect(parsed.hookwatch_fatal).toBeUndefined();
     expect(parsed.continue).toBe(true);
     expect(typeof parsed.systemMessage).toBe('string');
@@ -131,7 +137,7 @@ describe('server non-2xx response', () => {
 
     assertBareExitLegality(result, 'stdout-post-failure');
     expect(result.exitCode).toBe(0);
-    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    const parsed = parseStdout(result.stdout);
     expect(parsed.continue).toBe(true);
     // systemMessage must contain the HTTP status so the user can see the issue
     expect(typeof parsed.systemMessage).toBe('string');
@@ -409,7 +415,7 @@ describe('version mismatch detection', () => {
     // No version error in stderr
     expect(result.stderr).not.toContain(VERSION_MISMATCH_SUBSTR);
     // No version error in systemMessage
-    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    const parsed = parseStdout(result.stdout);
     expect(parsed.systemMessage as string).not.toContain(VERSION_MISMATCH_SUBSTR);
   });
 
@@ -431,7 +437,7 @@ describe('version mismatch detection', () => {
     expect(result.stderr).toContain(VERSION_MISMATCH_SUBSTR);
     expect(result.stderr).toContain(staleVersion);
     // Version mismatch appears in systemMessage (visible to Claude Code agent)
-    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    const parsed = parseStdout(result.stdout);
     expect(parsed.continue).toBe(true);
     expect(parsed.systemMessage as string).toContain('[error] Version mismatch');
     expect(parsed.systemMessage as string).toContain(staleVersion);
@@ -466,7 +472,7 @@ describe('version mismatch detection', () => {
     assertBareExitLegality(result, 'version-header-absent');
     expect(result.exitCode).toBe(0);
     expect(result.stderr).not.toContain(VERSION_MISMATCH_SUBSTR);
-    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    const parsed = parseStdout(result.stdout);
     expect(parsed.systemMessage as string).not.toContain(VERSION_MISMATCH_SUBSTR);
   });
 });
@@ -545,6 +551,7 @@ describe('failureKind — postEvent() unit tests', () => {
       throw new DOMException('The operation was aborted', 'AbortError');
     };
     mockFetch.preconnect = (_url: string) => {};
+    // Deliberate cast — mock implements only the fetch subset needed (call + preconnect)
     globalThis.fetch = mockFetch as typeof fetch;
 
     try {
@@ -574,7 +581,7 @@ describe('failureKind — integration: non-fatal dispatch in handleHook()', () =
 
     assertBareExitLegality(result, 'fk-http-nonfatal');
     expect(result.exitCode).toBe(0);
-    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    const parsed = parseStdout(result.stdout);
     // Non-fatal: hookwatch_fatal must NOT be present
     expect(parsed.hookwatch_fatal).toBeUndefined();
     // Failure reason appears in systemMessage (user-visible, non-blocking)
@@ -593,7 +600,7 @@ describe('failureKind — integration: non-fatal dispatch in handleHook()', () =
 
     assertBareExitLegality(result, 'fk-http-503');
     expect(result.exitCode).toBe(0);
-    const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+    const parsed = parseStdout(result.stdout);
     expect(parsed.hookwatch_fatal).toBeUndefined();
     expect(parsed.systemMessage as string).toContain('503');
   });

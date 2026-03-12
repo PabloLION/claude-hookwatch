@@ -6,6 +6,7 @@
  */
 
 import { SYSTEM_MESSAGE_PREFIX } from '@/config.ts';
+import { isRecord } from '@/guards.ts';
 import type { HookEvent } from '@/schemas/events.ts';
 
 /**
@@ -13,7 +14,11 @@ import type { HookEvent } from '@/schemas/events.ts';
  * absent or not a string, preventing "undefined" from leaking into the output.
  */
 function stringField(event: HookEvent, field: string): string | null {
-  const value = (event as Record<string, unknown>)[field];
+  // HookEvent uses .loose() schemas — extra fields exist at runtime but are
+  // not part of the static type. isRecord() narrows to Record<string, unknown>
+  // so we can access arbitrary field names without a cast.
+  if (!isRecord(event)) return null;
+  const value = event[field];
   return typeof value === 'string' ? value : null;
 }
 

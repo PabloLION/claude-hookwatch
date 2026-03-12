@@ -13,6 +13,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { ZodError } from 'zod';
+import type { ParsedEventFields } from '@/test/types.ts';
 import { queryFilterSchema } from './query.ts';
 
 // ---------------------------------------------------------------------------
@@ -174,7 +175,8 @@ describe('queryFilterSchema — passthrough preserves unknown fields', () => {
       session_id: 'abc-123',
       future_filter_field: 'some-value',
     });
-    expect((result as Record<string, unknown>).future_filter_field).toBe('some-value');
+    const fields = result as ParsedEventFields;
+    expect(fields.future_filter_field).toBe('some-value');
   });
 
   test('multiple unknown fields are all preserved', () => {
@@ -182,9 +184,9 @@ describe('queryFilterSchema — passthrough preserves unknown fields', () => {
       unknown_a: TEST_UNKNOWN_VALUE,
       unknown_b: true,
     });
-    const r = result as Record<string, unknown>;
-    expect(r.unknown_a).toBe(TEST_UNKNOWN_VALUE);
-    expect(r.unknown_b).toBe(true);
+    const fields = result as ParsedEventFields;
+    expect(fields.unknown_a).toBe(TEST_UNKNOWN_VALUE);
+    expect(fields.unknown_b).toBe(true);
   });
 
   test('extra field does not interfere with defaults', () => {
@@ -193,6 +195,7 @@ describe('queryFilterSchema — passthrough preserves unknown fields', () => {
     });
     expect(result.limit).toBe(100);
     expect(result.offset).toBe(0);
-    expect((result as Record<string, unknown>).extra).toBe('preserved');
+    const fields = result as ParsedEventFields;
+    expect(fields.extra).toBe('preserved');
   });
 });

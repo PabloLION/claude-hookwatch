@@ -7,6 +7,7 @@
 
 import { readFileSync } from 'node:fs';
 import { DEFAULT_PORT } from '@/config.ts';
+import { isErrnoException } from '@/guards.ts';
 
 /** Maximum valid TCP port number. */
 const MAX_PORT = 65535;
@@ -69,7 +70,7 @@ export function readPort(): ReadPortResult {
     }
     return { port, warning: null };
   } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
+    const code = isErrnoException(err) ? err.code : undefined;
     if (code === 'ENOENT') {
       // File absent — server not started yet or running on default port
       return { port: DEFAULT_PORT, warning: null };

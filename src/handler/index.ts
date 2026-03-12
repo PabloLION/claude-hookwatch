@@ -212,11 +212,17 @@ function buildPostPayload(opts: {
     };
   }
 
+  // In wrapped mode, childStdout/childStderr are always non-null (set by
+  // runWrapped()). The null branch is only for bare mode, handled above.
+  if (childStdout === null || childStderr === null) {
+    throw new Error('childStdout/childStderr must be non-null in wrapped mode');
+  }
+
   return {
     mode: 'wrapped',
     wrappedCommand: wrapArgs.join(' '),
-    stdout: childStdout as string,
-    stderr: childStderr as string,
+    stdout: childStdout,
+    stderr: childStderr,
     exitCode: childExitCode,
     hookDurationMs: elapsedMs,
     event,

@@ -33,12 +33,16 @@ const clients = new Set<ReadableStreamDefaultController>();
  * On disconnect (stream cancel), removes the controller from clients.
  */
 export function handleStream(_req: Request): Response {
+  // Capture the controller from start() in a closure — cancel() receives the
+  // cancel reason (not the controller), so we cannot use its parameter.
+  let streamController: ReadableStreamDefaultController;
   const stream = new ReadableStream({
     start(controller) {
+      streamController = controller;
       clients.add(controller);
     },
-    cancel(controller) {
-      clients.delete(controller as ReadableStreamDefaultController);
+    cancel() {
+      clients.delete(streamController);
     },
   });
 

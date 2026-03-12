@@ -12,6 +12,7 @@
 
 import { describe, expect, test } from 'bun:test';
 import { ZodError } from 'zod';
+import type { ParsedEventFields } from '@/test/types.ts';
 import { hookOutputSchema, preToolUseOutputSchema, stopOutputSchema } from './output.ts';
 
 // ---------------------------------------------------------------------------
@@ -77,7 +78,8 @@ describe('hookOutputSchema — passthrough allows unknown fields', () => {
       continue: true,
       futureSdkField: 'preserved',
     });
-    expect((result as Record<string, unknown>).futureSdkField).toBe('preserved');
+    const fields = result as ParsedEventFields;
+    expect(fields.futureSdkField).toBe('preserved');
   });
 
   test('multiple unknown fields are all preserved', () => {
@@ -86,10 +88,10 @@ describe('hookOutputSchema — passthrough allows unknown fields', () => {
       unknownB: 'two',
       unknownC: { nested: true },
     });
-    const r = result as Record<string, unknown>;
-    expect(r.unknownA).toBe(1);
-    expect(r.unknownB).toBe('two');
-    expect(r.unknownC).toEqual({ nested: true });
+    const fields = result as ParsedEventFields;
+    expect(fields.unknownA).toBe(1);
+    expect(fields.unknownB).toBe('two');
+    expect(fields.unknownC).toEqual({ nested: true });
   });
 });
 
@@ -178,7 +180,8 @@ describe('preToolUseOutputSchema — passthrough allows unknown fields', () => {
       hookSpecificOutput: { permissionDecision: 'allow' },
       futureSdkExtension: 'value',
     });
-    expect((result as Record<string, unknown>).futureSdkExtension).toBe('value');
+    const fields = result as ParsedEventFields;
+    expect(fields.futureSdkExtension).toBe('value');
   });
 });
 
@@ -206,7 +209,8 @@ describe('preToolUseOutputSchema — validation failures', () => {
       hookSpecificOutput: { permissionDecision: 'allow' },
     });
     // Passthrough preserves it, but it is not typed in HookOutput
-    expect((result as Record<string, unknown>).hookSpecificOutput).toBeDefined();
+    const fields = result as ParsedEventFields;
+    expect(fields.hookSpecificOutput).toBeDefined();
   });
 });
 
@@ -271,7 +275,8 @@ describe('stopOutputSchema — passthrough allows unknown fields', () => {
       decision: 'approve',
       futureSdkField: 'preserved',
     });
-    expect((result as Record<string, unknown>).futureSdkField).toBe('preserved');
+    const fields = result as ParsedEventFields;
+    expect(fields.futureSdkField).toBe('preserved');
   });
 });
 

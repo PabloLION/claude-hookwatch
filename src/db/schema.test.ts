@@ -10,6 +10,20 @@ const PRAGMA_TABLE_INFO = 'PRAGMA table_info(events);';
 const TEST_CWD = '/tmp/project';
 const TEST_HOOK_DURATION_MS = 42;
 
+/** Row shape returned by PRAGMA user_version. */
+interface PragmaUserVersionRow {
+  user_version: number;
+}
+
+/** Row shape returned by PRAGMA table_info(). */
+interface PragmaTableInfoRow {
+  name: string;
+  type: string;
+  notnull: number;
+  dflt_value: string | null;
+  pk: number;
+}
+
 /** Test timestamps — deliberately out of order to verify sorting. */
 const TS_EARLY = 1000;
 const TS_MID = 2000;
@@ -32,13 +46,13 @@ describe('database creation and WAL mode', () => {
   });
 
   test('enables WAL journal mode', () => {
-    const row = handle.db.query('PRAGMA journal_mode;').get() as { journal_mode: string };
-    expect(row.journal_mode).toBe('wal');
+    const row = handle.db.query<{ journal_mode: string }, []>('PRAGMA journal_mode;').get();
+    expect(row?.journal_mode).toBe('wal');
   });
 
   test('sets user_version to CURRENT_VERSION after schema application', () => {
-    const row = handle.db.query(PRAGMA_USER_VERSION).get() as { user_version: number };
-    expect(row.user_version).toBe(CURRENT_VERSION);
+    const row = handle.db.query<PragmaUserVersionRow, []>(PRAGMA_USER_VERSION).get();
+    expect(row?.user_version).toBe(CURRENT_VERSION);
   });
 });
 
@@ -55,11 +69,7 @@ describe('events table existence and structure', () => {
 
   test('events table exists with all required columns', () => {
     const db = handle.db;
-    const rows = db.query(PRAGMA_TABLE_INFO).all() as Array<{
-      name: string;
-      type: string;
-      notnull: number;
-    }>;
+    const rows = db.query<PragmaTableInfoRow, []>(PRAGMA_TABLE_INFO).all();
 
     const cols = Object.fromEntries(rows.map((r) => [r.name, r]));
 
@@ -81,10 +91,7 @@ describe('events table existence and structure', () => {
 
   test('required columns are NOT NULL', () => {
     const db = handle.db;
-    const rows = db.query(PRAGMA_TABLE_INFO).all() as Array<{
-      name: string;
-      notnull: number;
-    }>;
+    const rows = db.query<PragmaTableInfoRow, []>(PRAGMA_TABLE_INFO).all();
 
     const cols = Object.fromEntries(rows.map((r) => [r.name, r]));
 
@@ -97,10 +104,7 @@ describe('events table existence and structure', () => {
 
   test('nullable columns allow NULL', () => {
     const db = handle.db;
-    const rows = db.query(PRAGMA_TABLE_INFO).all() as Array<{
-      name: string;
-      notnull: number;
-    }>;
+    const rows = db.query<PragmaTableInfoRow, []>(PRAGMA_TABLE_INFO).all();
 
     const cols = Object.fromEntries(rows.map((r) => [r.name, r]));
 
@@ -115,11 +119,7 @@ describe('events table existence and structure', () => {
 
   test('exit_code is NOT NULL with DEFAULT 0', () => {
     const db = handle.db;
-    const rows = db.query(PRAGMA_TABLE_INFO).all() as Array<{
-      name: string;
-      notnull: number;
-      dflt_value: string | null;
-    }>;
+    const rows = db.query<PragmaTableInfoRow, []>(PRAGMA_TABLE_INFO).all();
 
     const cols = Object.fromEntries(rows.map((r) => [r.name, r]));
 
@@ -321,8 +321,8 @@ describe('schema idempotency', () => {
     }).not.toThrow();
 
     const db = openDb(handle.dbPath);
-    const row = db.query(PRAGMA_USER_VERSION).get() as { user_version: number };
-    expect(row.user_version).toBe(CURRENT_VERSION);
+    const row = db.query<PragmaUserVersionRow, []>(PRAGMA_USER_VERSION).get();
+    expect(row?.user_version).toBe(CURRENT_VERSION);
   });
 });
 
@@ -354,11 +354,11 @@ describe('version mismatch — backup-and-recreate', () => {
     expect(existsSync(backupPath)).toBe(true);
 
     // New DB should be at version 3
-    const row = db2.query(PRAGMA_USER_VERSION).get() as { user_version: number };
-    expect(row.user_version).toBe(CURRENT_VERSION);
+    const row = db2.query<PragmaUserVersionRow, []>(PRAGMA_USER_VERSION).get();
+    expect(row?.user_version).toBe(CURRENT_VERSION);
 
     // New DB should have the events table with hookwatch_log column
-    const cols = db2.query(PRAGMA_TABLE_INFO).all() as Array<{ name: string }>;
+    const cols = db2.query<PragmaTableInfoRow, []>(PRAGMA_TABLE_INFO).all();
     const colNames = cols.map((r) => r.name);
     expect(colNames).toContain('hookwatch_log');
     expect(colNames).not.toContain('hookwatch_error');
@@ -396,7 +396,7 @@ describe('version mismatch — backup-and-recreate', () => {
     close();
     rmSync(handle.dbPath);
     const db = openDb(handle.dbPath);
-    const row = db.query(PRAGMA_USER_VERSION).get() as { user_version: number };
-    expect(row.user_version).toBe(CURRENT_VERSION);
+    const row = db.query<PragmaUserVersionRow, []>(PRAGMA_USER_VERSION).get();
+    expect(row?.user_version).toBe(CURRENT_VERSION);
   });
 });
