@@ -89,7 +89,12 @@ export async function killProcessOnPort(port: number = DEFAULT_PORT): Promise<vo
 
 /** Parse handler subprocess stdout as a JSON record. */
 export function parseStdout(stdout: string): Record<string, unknown> {
-  return JSON.parse(stdout) as Record<string, unknown>;
+  try {
+    return JSON.parse(stdout) as Record<string, unknown>;
+  } catch (err) {
+    const preview = stdout.length > 200 ? `${stdout.slice(0, 200)}…` : stdout;
+    throw new Error(`Failed to parse handler stdout as JSON: ${preview}`, { cause: err });
+  }
 }
 
 // ---------------------------------------------------------------------------

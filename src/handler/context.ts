@@ -6,17 +6,16 @@
  */
 
 import { SYSTEM_MESSAGE_PREFIX } from '@/config.ts';
-import { isRecord } from '@/guards.ts';
 import type { HookEvent } from '@/schemas/events.ts';
 
 /**
- * Reads a string field from an unknown record. Returns null if the field is
- * absent or not a string, preventing "undefined" from leaking into the output.
+ * Reads a string field from a HookEvent. Returns null if the field is absent
+ * or not a string, preventing "undefined" from leaking into the output.
+ *
+ * HookEvent types use .loose() schemas, so they have an index signature
+ * ([key: string]: unknown) that allows accessing fields not in the static type.
  */
 function stringField(event: HookEvent, field: string): string | null {
-  // .loose() schemas have runtime fields not in the static type — isRecord()
-  // widens the type so we can access arbitrary field names.
-  if (!isRecord(event)) return null;
   const value = event[field];
   return typeof value === 'string' ? value : null;
 }

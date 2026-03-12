@@ -7,7 +7,7 @@ export function isErrnoException(err: unknown): err is NodeJS.ErrnoException {
   return err instanceof Error && 'code' in err;
 }
 
-/** Narrows unknown to a string-keyed record. */
+/** Narrows unknown to a string-keyed record (excludes arrays). */
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
