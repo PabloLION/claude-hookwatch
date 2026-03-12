@@ -51,10 +51,8 @@ export function resetIdleTimer(): void {
     removePortFile();
     process.exit(0);
   }, IDLE_TIMEOUT_MS);
-  // Allow the process to exit even while the timer is pending.
-  // Without this, Node/Bun keeps the event loop alive indefinitely.
-  // .unref() is a Bun/Node extension that prevents the timer from keeping the
-  // process alive. It may not be present when setTimeout is mocked in tests.
+  // .unref() prevents the timer from keeping the process alive.
+  // Guard: may be absent when setTimeout is mocked in tests.
   if (idleTimer !== null && 'unref' in idleTimer && typeof idleTimer.unref === 'function') {
     idleTimer.unref();
   }

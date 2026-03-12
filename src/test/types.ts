@@ -10,20 +10,13 @@ import type { ChildProcess } from 'node:child_process';
 import type { HookEvent } from '@/schemas/events.ts';
 
 // ---------------------------------------------------------------------------
-// Deliberate test-boundary casts
+// Deliberate test-boundary cast types
 // ---------------------------------------------------------------------------
 
 /**
- * Parsed stdout from a hookwatch handler subprocess.
- * JSON.parse returns `any` — this cast is a deliberate test boundary:
- * we verify the shape through assertions, not static typing.
- */
-export type ParsedHandlerOutput = Record<string, unknown>;
-
-/**
- * Parsed event with dynamic field access for test assertions.
- * Zod parse returns a union — this cast is a deliberate test boundary:
- * the test is verifying specific fields exist with specific values.
+ * Dynamic field access for test assertions on parsed events.
+ * Zod parse returns a typed union, but passthrough tests need to access
+ * fields that are not in the static type.
  */
 export type ParsedEventFields = Record<string, unknown>;
 
@@ -32,9 +25,8 @@ export type ParsedEventFields = Record<string, unknown>;
 // ---------------------------------------------------------------------------
 
 /**
- * Narrow a parsed event to a specific type, failing the test if the
- * hook_event_name does not match. The single deliberate cast lives here
- * instead of being scattered across every test assertion.
+ * Narrow a parsed HookEvent to a specific event type, failing the test
+ * if hook_event_name does not match.
  */
 export function expectEventType<T extends HookEvent>(
   event: HookEvent,
@@ -43,22 +35,6 @@ export function expectEventType<T extends HookEvent>(
   expect(event.hook_event_name).toBe(name);
   return event as T;
 }
-
-// ---------------------------------------------------------------------------
-// SQLite PRAGMA result types
-// ---------------------------------------------------------------------------
-
-/** PRAGMA user_version result row — cast is deliberate: bun:sqlite returns untyped rows. */
-export type PragmaUserVersion = { user_version: number };
-
-/** PRAGMA table_info result row — cast is deliberate: bun:sqlite returns untyped rows. */
-export type PragmaTableInfo = {
-  name: string;
-  type: string;
-  notnull: number;
-  dflt_value: string | null;
-  pk: number;
-};
 
 /**
  * A handle to a running hookwatch server subprocess.

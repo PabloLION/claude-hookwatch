@@ -14,9 +14,8 @@ import type { HookEvent } from '@/schemas/events.ts';
  * absent or not a string, preventing "undefined" from leaking into the output.
  */
 function stringField(event: HookEvent, field: string): string | null {
-  // HookEvent uses .loose() schemas — extra fields exist at runtime but are
-  // not part of the static type. isRecord() narrows to Record<string, unknown>
-  // so we can access arbitrary field names without a cast.
+  // .loose() schemas have runtime fields not in the static type — isRecord()
+  // widens the type so we can access arbitrary field names.
   if (!isRecord(event)) return null;
   const value = event[field];
   return typeof value === 'string' ? value : null;

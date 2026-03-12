@@ -112,11 +112,8 @@ export function queryEvents(db: Database, filter: QueryFilter): EventRow[] {
   const sql = `SELECT * FROM events ${where} ORDER BY timestamp DESC LIMIT ? OFFSET ?`;
   bindings.push(filter.limit, filter.offset);
 
-  // bun:sqlite Statement<T> requires params type at prepare() time, but
-  // queryEvents() builds dynamic SQL with variable-length bindings. A single
-  // cast at this boundary is unavoidable — the generic param list cannot be
-  // inferred from runtime-constructed SQL. All other query functions use typed
-  // prepare<EventRow, [...]>() to avoid casts.
+  // Cast unavoidable: dynamic SQL with variable-length bindings cannot satisfy
+  // prepare<T>'s fixed generic params. Other query functions use typed prepare<>.
   const stmt = db.prepare(sql);
   return stmt.all(...bindings) as EventRow[];
 }

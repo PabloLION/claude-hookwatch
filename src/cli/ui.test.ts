@@ -189,9 +189,8 @@ const TEST_UI_URL = 'http://localhost:6004';
 function makeSpawnMock(spawnedCommands: string[][]): typeof Bun.spawn {
   return ((cmd: string[]) => {
     spawnedCommands.push(cmd);
-    // Deliberate partial mock — only `exited` is exercised by openBrowser()
+    // Partial mock — only `exited` is exercised by openBrowser()
     return { exited: Promise.resolve(0) } as ReturnType<typeof Bun.spawn>;
-    // Deliberate cast — mock implements only the call-signature subset under test
   }) as unknown as typeof Bun.spawn;
 }
 

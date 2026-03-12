@@ -16,12 +16,7 @@
 
 import { constants as osConstants } from 'node:os';
 
-/**
- * Lookup table: signal name → number, populated once at module load.
- * os.constants.signals is typed as { [key in NodeJS.Signals]: number } —
- * assignable to Record<string, number> without a cast since signal names
- * are string literal subtypes.
- */
+/** Lookup table: signal name → number, populated once at module load. */
 const SIGNAL_NUMBERS: Readonly<Record<string, number>> = osConstants.signals;
 
 /**

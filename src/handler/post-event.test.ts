@@ -58,7 +58,7 @@ const UNUSED_AUTO_START_PORT_B = 19998;
 function makeBarePayload(): Parameters<typeof postEvent>[1] {
   return {
     mode: 'bare',
-    // Deliberate partial mock — postEvent() only reads hook_event_name from the event
+    // Partial mock — postEvent() only reads hook_event_name
     event: { hook_event_name: 'SessionStart' } as unknown as ReturnType<typeof parseHookEvent>,
     stdout: JSON.stringify({ continue: true, systemMessage: 'test' }),
     hookDurationMs: 0,
@@ -551,7 +551,7 @@ describe('failureKind — postEvent() unit tests', () => {
       throw new DOMException('The operation was aborted', 'AbortError');
     };
     mockFetch.preconnect = (_url: string) => {};
-    // Deliberate cast — mock implements only the fetch subset needed (call + preconnect)
+    // Mock implements only call + preconnect
     globalThis.fetch = mockFetch as typeof fetch;
 
     try {
