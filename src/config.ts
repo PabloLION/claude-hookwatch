@@ -13,3 +13,6 @@ export const IDLE_TIMEOUT_MS = 3_600_000; // 1 hour
 
 /** Default event query limit for the UI. */
 export const DEFAULT_QUERY_LIMIT = 100;
+
+/** Prefix for the systemMessage injected into Claude Code's context. */
+export const SYSTEM_MESSAGE_PREFIX = 'hookwatch captured';

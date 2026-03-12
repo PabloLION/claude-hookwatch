@@ -5,6 +5,7 @@
  * hookwatch context into the agent's conversation.
  */
 
+import { SYSTEM_MESSAGE_PREFIX } from '@/config.ts';
 import type { HookEvent } from '@/schemas/events.ts';
 
 /**
@@ -56,15 +57,13 @@ export function getEventSubtype(event: HookEvent): string | null {
  * When logEntries are provided (non-empty), they are appended to the message
  * so the user can see non-fatal hookwatch issues (e.g. POST failure reason)
  * without blocking Claude Code.
- *
- * TODO: configurable via config.toml (ch-1ex5.1)
  */
 export function buildSystemMessage(event: HookEvent, logEntries?: string[]): string {
   const subtype = getEventSubtype(event);
   const base =
     subtype === null
-      ? `hookwatch captured ${event.hook_event_name}`
-      : `hookwatch captured ${event.hook_event_name} (${subtype})`;
+      ? `${SYSTEM_MESSAGE_PREFIX} ${event.hook_event_name}`
+      : `${SYSTEM_MESSAGE_PREFIX} ${event.hook_event_name} (${subtype})`;
   if (logEntries && logEntries.length > 0) {
     return `${base} — ${logEntries.join('; ')}`;
   }
