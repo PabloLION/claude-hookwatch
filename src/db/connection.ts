@@ -51,7 +51,7 @@ function openAndInit(path: string): Database {
   }
 
   // Enable WAL mode on every connection open
-  conn.exec('PRAGMA journal_mode=wal;');
+  conn.run('PRAGMA journal_mode=wal;');
 
   const status = checkVersion(conn);
 
@@ -74,7 +74,7 @@ function openAndInit(path: string): Database {
   );
 
   // Close before rename so WAL is flushed and the file can be moved
-  conn.exec('PRAGMA wal_checkpoint(TRUNCATE);');
+  conn.run('PRAGMA wal_checkpoint(TRUNCATE);');
   conn.close();
 
   try {
@@ -83,7 +83,7 @@ function openAndInit(path: string): Database {
     // Open a brand-new database at the original path
     conn = new Database(path);
     chmodSync(path, DB_FILE_MODE);
-    conn.exec('PRAGMA journal_mode=wal;');
+    conn.run('PRAGMA journal_mode=wal;');
     applyFreshSchema(conn);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

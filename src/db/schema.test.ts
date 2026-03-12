@@ -339,7 +339,7 @@ describe('version mismatch — backup-and-recreate', () => {
 
   test('renames old DB to .v<version> and opens a fresh schema-v3 DB on version mismatch', () => {
     // Bootstrap a v2 DB by opening, applying schema, then manually downgrading version
-    handle.db.exec('PRAGMA user_version = 2;');
+    handle.db.run('PRAGMA user_version = 2;');
     close();
 
     // Verify the file exists before we test
@@ -366,7 +366,7 @@ describe('version mismatch — backup-and-recreate', () => {
 
   test('throws and logs error when DB creation fails after version mismatch backup', () => {
     // Downgrade version to trigger mismatch
-    handle.db.exec('PRAGMA user_version = 2;');
+    handle.db.run('PRAGMA user_version = 2;');
     close();
 
     // Pre-create a directory at the backup path so renameSync throws EISDIR.
