@@ -42,8 +42,11 @@ describe('non-Error thrown values', () => {
     expect(isConnectionError('connection refused')).toBe(false);
   });
 
+  /** Arbitrary non-Error numeric value — tests that numbers are rejected. */
+  const NON_ERROR_NUMBER = 42;
+
   test('number thrown → false', () => {
-    expect(isConnectionError(42)).toBe(false);
+    expect(isConnectionError(NON_ERROR_NUMBER)).toBe(false);
   });
 
   test('null thrown → false', () => {
@@ -169,8 +172,8 @@ describe('non-matching errors', () => {
     expect(isConnectionError(err)).toBe(false);
   });
 
-  test('plain Error with empty message → false', () => {
-    expect(isConnectionError(new Error(''))).toBe(false);
+  test('plain Error with non-matching message → false', () => {
+    expect(isConnectionError(new Error('(empty)'))).toBe(false);
   });
 
   test('Error with code but no message match → false (code must also not match)', () => {

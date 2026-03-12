@@ -161,6 +161,9 @@ describe('getEventSubtype', () => {
 // Unit tests: buildSystemMessage
 // ---------------------------------------------------------------------------
 
+/** Expected systemMessage for Stop events (no subtype). */
+const CAPTURED_STOP = 'hookwatch captured Stop';
+
 describe('buildSystemMessage', () => {
   test('formats message with subtype when subtype is present', () => {
     const event = {
@@ -172,7 +175,7 @@ describe('buildSystemMessage', () => {
 
   test('formats message without parenthetical when subtype is null', () => {
     const event = { hook_event_name: 'Stop' } as unknown as HookEvent;
-    expect(buildSystemMessage(event)).toBe('hookwatch captured Stop');
+    expect(buildSystemMessage(event)).toBe(CAPTURED_STOP);
   });
 
   test('formats PreToolUse with tool_name as subtype', () => {
@@ -194,25 +197,25 @@ describe('buildSystemMessage', () => {
   test('appends single log entry after em-dash when logEntries provided', () => {
     const event = { hook_event_name: 'Stop' } as unknown as HookEvent;
     expect(buildSystemMessage(event, ['[error] Server returned HTTP 500'])).toBe(
-      'hookwatch captured Stop — [error] Server returned HTTP 500',
+      `${CAPTURED_STOP} — [error] Server returned HTTP 500`,
     );
   });
 
   test('appends multiple log entries joined by semicolon', () => {
     const event = { hook_event_name: 'Stop' } as unknown as HookEvent;
     expect(buildSystemMessage(event, ['[error] first', '[warn] second'])).toBe(
-      'hookwatch captured Stop — [error] first; [warn] second',
+      `${CAPTURED_STOP} — [error] first; [warn] second`,
     );
   });
 
   test('returns base message when logEntries is empty array', () => {
     const event = { hook_event_name: 'Stop' } as unknown as HookEvent;
-    expect(buildSystemMessage(event, [])).toBe('hookwatch captured Stop');
+    expect(buildSystemMessage(event, [])).toBe(CAPTURED_STOP);
   });
 
   test('returns base message when logEntries is undefined', () => {
     const event = { hook_event_name: 'Stop' } as unknown as HookEvent;
-    expect(buildSystemMessage(event, undefined)).toBe('hookwatch captured Stop');
+    expect(buildSystemMessage(event)).toBe(CAPTURED_STOP);
   });
 
   test('appends log entries to message that has a subtype', () => {

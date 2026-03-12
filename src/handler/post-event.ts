@@ -53,6 +53,21 @@ export interface WrappedEventPayload extends BaseEventPayload {
 export type EventPostPayload = BareEventPayload | WrappedEventPayload;
 
 /**
+ * Returns true if the error message (lowercased) matches a known connection
+ * refusal pattern. Kept separate from isConnectionError() to limit the number
+ * of conditional operators in a single function (S1067).
+ */
+function matchesConnectionMessage(msg: string): boolean {
+  return (
+    msg.includes('connection refused') ||
+    msg.includes('econnrefused') ||
+    msg.includes('unable to connect') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('fetch failed')
+  );
+}
+
+/**
  * Returns true if the error indicates the server is not reachable (connection
  * refused, network error, etc.) — these are the cases where we should attempt
  * to auto-start the server and retry.
@@ -65,16 +80,8 @@ export function isConnectionError(err: unknown): boolean {
   // message like "Unable to connect. Is the computer able to access the url?"
   // Node.js uses code "ECONNREFUSED". Both are handled here.
   const code = (err as NodeJS.ErrnoException).code ?? '';
-  const msg = err.message.toLowerCase();
-  return (
-    code === 'ConnectionRefused' ||
-    code === 'ECONNREFUSED' ||
-    msg.includes('connection refused') ||
-    msg.includes('econnrefused') ||
-    msg.includes('unable to connect') ||
-    msg.includes('failed to fetch') ||
-    msg.includes('fetch failed')
-  );
+  if (code === 'ConnectionRefused' || code === 'ECONNREFUSED') return true;
+  return matchesConnectionMessage(err.message.toLowerCase());
 }
 
 /** Result returned by postEvent(). */
@@ -200,7 +207,7 @@ export async function postEvent(port: number, opts: EventPostPayload): Promise<P
       const text = await res.text().catch(() => '(unreadable)');
       const failureReason = `Server returned HTTP ${res.status}`;
       console.error(`[hookwatch] ${failureReason}: ${text}`);
-      return { ok: false, failureKind: 'http', failureReason, detail: text };
+      return { ok: false, failureKind: 'http', detail: text, failureReason };
     }
 
     const versionMismatchLog = checkVersionHeader(res);
@@ -246,7 +253,7 @@ export async function postEvent(port: number, opts: EventPostPayload): Promise<P
       const text = await res.text().catch(() => '(unreadable)');
       const failureReason = `Retry exhausted — server returned HTTP ${res.status}`;
       console.error(`[hookwatch] ${failureReason}: ${text}`);
-      return { ok: false, failureKind: 'http', failureReason, detail: text };
+      return { ok: false, failureKind: 'http', detail: text, failureReason };
     }
 
     const versionMismatchLog = checkVersionHeader(res);

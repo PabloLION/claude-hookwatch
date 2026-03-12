@@ -36,8 +36,11 @@ import {
 } from '@/test';
 
 // ---------------------------------------------------------------------------
-// Shared test fixtures
+// Shared test fixtures and constants
 // ---------------------------------------------------------------------------
+
+/** Prefix used in hookwatch stderr log lines. */
+const HOOKWATCH_LOG_PREFIX = '[hookwatch]';
 
 const UNKNOWN_EVENT = {
   session_id: 'test-session-002',
@@ -98,7 +101,7 @@ describe('port file', () => {
     assertBareExitLegality(result, 'port-absent');
     // Auto-start succeeds — event is delivered to the spawned server
     expect(result.exitCode).toBe(0);
-    expect(result.stderr).toContain('[hookwatch]');
+    expect(result.stderr).toContain(HOOKWATCH_LOG_PREFIX);
   }, 10000);
 
   test('ignores invalid port file content and uses fallback, then auto-starts server', async () => {
@@ -113,7 +116,7 @@ describe('port file', () => {
     assertBareExitLegality(result, 'port-invalid');
     // Auto-start fires because fallback port 6004 has no server → connection error
     // stderr should mention the invalid value/fallback and the spawn attempt
-    expect(result.stderr).toContain('[hookwatch]');
+    expect(result.stderr).toContain(HOOKWATCH_LOG_PREFIX);
     // Exit code depends on whether auto-start succeeds — primary assertion is no crash
     expect(result.exitCode).not.toBeNull();
   }, 10000);
@@ -150,7 +153,7 @@ describe('stdin parsing', () => {
 
     assertBareExitLegality(result, 'stdin-invalid');
     expect(result.exitCode).toBe(0);
-    expect(result.stderr).toContain('[hookwatch]');
+    expect(result.stderr).toContain(HOOKWATCH_LOG_PREFIX);
     expect(ctx.server.events).toHaveLength(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe('string');
@@ -216,7 +219,7 @@ describe('Zod validation', () => {
 
     assertBareExitLegality(result, 'zod-missing-field');
     expect(result.exitCode).toBe(0);
-    expect(result.stderr).toContain('[hookwatch]');
+    expect(result.stderr).toContain(HOOKWATCH_LOG_PREFIX);
     expect(ctx.server.events).toHaveLength(0);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(typeof parsed.hookwatch_fatal).toBe('string');

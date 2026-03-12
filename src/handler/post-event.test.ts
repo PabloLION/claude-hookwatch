@@ -19,6 +19,7 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
+import type { parseHookEvent } from '@/schemas/events.ts';
 import {
   assertBareExitLegality,
   assertWrappedExitLegality,
@@ -34,6 +35,37 @@ import {
 import { VERSION } from '@/version.ts';
 import type { PostEventResult } from './post-event.ts';
 import { postEvent } from './post-event.ts';
+
+// ---------------------------------------------------------------------------
+// Module-level constants
+// ---------------------------------------------------------------------------
+
+/** Prefix used in hookwatch stderr log lines. */
+const HOOKWATCH_LOG_PREFIX = '[hookwatch]';
+
+/** Substring present in version mismatch log/systemMessage entries. */
+const VERSION_MISMATCH_SUBSTR = 'Version mismatch';
+
+/** Port with no server running — triggers auto-start path. */
+const UNUSED_AUTO_START_PORT_A = 19999;
+
+/** Port with no server running — triggers auto-start in wrapped mode. */
+const UNUSED_AUTO_START_PORT_B = 19998;
+
+/**
+ * Builds a minimal BareEventPayload for unit-level postEvent() calls.
+ * The event shape is cast to satisfy the type; real validation happens
+ * inside the handler, not inside postEvent().
+ */
+function makeBarePayload(): Parameters<typeof postEvent>[1] {
+  return {
+    mode: 'bare',
+    event: { hook_event_name: 'SessionStart' } as unknown as ReturnType<typeof parseHookEvent>,
+    stdout: JSON.stringify({ continue: true, systemMessage: 'test' }),
+    hookDurationMs: 0,
+    hookwatchLog: null,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Test setup
@@ -122,7 +154,7 @@ describe('auto-start (server unavailable)', () => {
   test('server unavailable triggers auto-start (Story 1.5)', async () => {
     const xdgHome = join(ctx.tmpDir, 'server-unavailable');
     // Point at a port where no server is running — triggers auto-start
-    writePortFile(xdgHome, 19999);
+    writePortFile(xdgHome, UNUSED_AUTO_START_PORT_A);
 
     const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
       XDG_DATA_HOME: xdgHome,
@@ -132,13 +164,13 @@ describe('auto-start (server unavailable)', () => {
     assertBareExitLegality(result, 'server-unavailable');
     // Auto-start fires: spawned server writes port file, health probe discovers
     // new port, handler retries and succeeds.
-    expect(result.stderr).toContain('[hookwatch]');
+    expect(result.stderr).toContain(HOOKWATCH_LOG_PREFIX);
     expect(result.exitCode).not.toBeNull();
   }, 10000);
 
   test('wrapped mode: server down, child exit code still forwarded (best-effort)', async () => {
     const xdgHome = join(ctx.tmpDir, 'wrap-server-down');
-    writePortFile(xdgHome, 19998);
+    writePortFile(xdgHome, UNUSED_AUTO_START_PORT_B);
 
     const result = await runHandlerWrapped(
       JSON.stringify(BASE_SESSION_START),
@@ -151,7 +183,7 @@ describe('auto-start (server unavailable)', () => {
 
     // Child exits 0 — even if server POST fails, exit code is forwarded
     expect(result.exitCode).not.toBeNull();
-    expect(result.stderr).toContain('[hookwatch]');
+    expect(result.stderr).toContain(HOOKWATCH_LOG_PREFIX);
   }, 10000);
 });
 
@@ -258,7 +290,7 @@ describe('wrapped mode', () => {
     // Child exits 0, but event parsing fails — handler exits with child code
     expect(result.exitCode).toBe(0);
     // Error logged to stderr about parsing failure
-    expect(result.stderr).toContain('[hookwatch]');
+    expect(result.stderr).toContain(HOOKWATCH_LOG_PREFIX);
   });
 });
 
@@ -382,10 +414,10 @@ describe('version mismatch detection', () => {
     assertBareExitLegality(result, 'version-match');
     expect(result.exitCode).toBe(0);
     // No version error in stderr
-    expect(result.stderr).not.toContain('Version mismatch');
+    expect(result.stderr).not.toContain(VERSION_MISMATCH_SUBSTR);
     // No version error in systemMessage
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
-    expect(parsed.systemMessage as string).not.toContain('Version mismatch');
+    expect(parsed.systemMessage as string).not.toContain(VERSION_MISMATCH_SUBSTR);
   });
 
   test('mismatched versions: [error] log entry appears in systemMessage', async () => {
@@ -403,7 +435,7 @@ describe('version mismatch detection', () => {
     assertBareExitLegality(result, 'version-mismatch');
     expect(result.exitCode).toBe(0);
     // Version mismatch logged to stderr
-    expect(result.stderr).toContain('Version mismatch');
+    expect(result.stderr).toContain(VERSION_MISMATCH_SUBSTR);
     expect(result.stderr).toContain(staleVersion);
     // Version mismatch appears in systemMessage (visible to Claude Code agent)
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
@@ -440,9 +472,9 @@ describe('version mismatch detection', () => {
 
     assertBareExitLegality(result, 'version-header-absent');
     expect(result.exitCode).toBe(0);
-    expect(result.stderr).not.toContain('Version mismatch');
+    expect(result.stderr).not.toContain(VERSION_MISMATCH_SUBSTR);
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
-    expect(parsed.systemMessage as string).not.toContain('Version mismatch');
+    expect(parsed.systemMessage as string).not.toContain(VERSION_MISMATCH_SUBSTR);
   });
 });
 
@@ -481,22 +513,6 @@ describe('failureKind — postEvent() unit tests', () => {
     unitServer.events.splice(0);
   });
 
-  /**
-   * Builds a minimal BareEventPayload for unit-level postEvent() calls.
-   * The event shape is cast to satisfy the type; real validation happens
-   * inside the handler, not inside postEvent().
-   */
-  function makeBarePayload(): Parameters<typeof postEvent>[1] {
-    return {
-      mode: 'bare',
-      // biome-ignore lint/suspicious/noExplicitAny: test fixture, shape matches BareEventPayload
-      event: { hook_event_name: 'SessionStart' } as any,
-      stdout: JSON.stringify({ continue: true, systemMessage: 'test' }),
-      hookDurationMs: 0,
-      hookwatchLog: null,
-    };
-  }
-
   test("'http' failureKind: non-2xx response returns ok:false with failureKind:'http'", async () => {
     unitServer.nextStatus = 500;
 
@@ -532,9 +548,11 @@ describe('failureKind — postEvent() unit tests', () => {
     // failureKind: 'exception', no spawn attempt).
     const originalFetch = globalThis.fetch;
 
-    globalThis.fetch = async () => {
+    const mockFetch = async () => {
       throw new DOMException('The operation was aborted', 'AbortError');
     };
+    mockFetch.preconnect = (_url: string) => {};
+    globalThis.fetch = mockFetch as typeof fetch;
 
     try {
       const result: PostEventResult = await postEvent(unitServer.port, makeBarePayload());

@@ -18,6 +18,22 @@ import { describe, expect, test } from 'bun:test';
 import { runWrapRunner } from '@/test';
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** Arbitrary non-zero exit code for forwarding tests. */
+const EXIT_CODE_ARBITRARY = 3;
+
+/** Exit code for SIGKILL: 128 + signal 9. */
+const EXIT_CODE_SIGKILL = 137;
+
+/** Arbitrary non-zero clean exit code (not signal-killed). */
+const EXIT_CODE_CLEAN_NONZERO = 42;
+
+/** Shell command that sends SIGKILL to itself. */
+const SIGKILL_SELF_CMD = 'kill -9 $$';
+
+// ---------------------------------------------------------------------------
 // Tests: tee and capture
 // ---------------------------------------------------------------------------
 
@@ -90,10 +106,10 @@ describe('runWrapped — exit code forwarding', () => {
   });
 
   test('forwards arbitrary non-zero exit code (3)', async () => {
-    const result = await runWrapRunner(['sh', '-c', 'exit 3'], '');
+    const result = await runWrapRunner(['sh', '-c', `exit ${EXIT_CODE_ARBITRARY}`], '');
 
-    expect(result.runnerExitCode).toBe(3);
-    expect(result.wrapResult?.exitCode).toBe(3);
+    expect(result.runnerExitCode).toBe(EXIT_CODE_ARBITRARY);
+    expect(result.wrapResult?.exitCode).toBe(EXIT_CODE_ARBITRARY);
   });
 });
 
@@ -119,23 +135,23 @@ describe('runWrapped — error handling', () => {
 describe('runWrapped — signal-killed child', () => {
   test('SIGKILL child returns exit code 137 (128+9)', async () => {
     // `kill -9 $$` kills the shell with SIGKILL inside the child process
-    const result = await runWrapRunner(['sh', '-c', 'kill -9 $$'], '');
+    const result = await runWrapRunner(['sh', '-c', SIGKILL_SELF_CMD], '');
 
     // exit code 137 = 128 + SIGKILL(9)
-    expect(result.wrapResult?.exitCode).toBe(137);
+    expect(result.wrapResult?.exitCode).toBe(EXIT_CODE_SIGKILL);
   });
 
   test('SIGKILL child: hookwatchLog contains [warn] with exit code', async () => {
-    const result = await runWrapRunner(['sh', '-c', 'kill -9 $$'], '');
+    const result = await runWrapRunner(['sh', '-c', SIGKILL_SELF_CMD], '');
 
     const log = result.wrapResult?.hookwatchLog;
     expect(typeof log).toBe('string');
     expect(log).toContain('[warn]');
-    expect(log).toContain('137');
+    expect(log).toContain(String(EXIT_CODE_SIGKILL));
   });
 
   test('SIGKILL child: hookwatchLog describes likely SIGKILL', async () => {
-    const result = await runWrapRunner(['sh', '-c', 'kill -9 $$'], '');
+    const result = await runWrapRunner(['sh', '-c', SIGKILL_SELF_CMD], '');
 
     const log = result.wrapResult?.hookwatchLog;
     expect(log).toContain('likely SIGKILL');
@@ -143,7 +159,7 @@ describe('runWrapped — signal-killed child', () => {
   });
 
   test('SIGKILL child: signal death is logged to stderr by runWrapped', async () => {
-    const result = await runWrapRunner(['sh', '-c', 'kill -9 $$'], '');
+    const result = await runWrapRunner(['sh', '-c', SIGKILL_SELF_CMD], '');
 
     // runWrapped logs to console.error which appears in the runner's stderr
     expect(result.runnerStderr).toContain('[hookwatch]');
@@ -158,9 +174,9 @@ describe('runWrapped — signal-killed child', () => {
   });
 
   test('non-zero clean exit: hookwatchLog is absent (not a signal death)', async () => {
-    const result = await runWrapRunner(['sh', '-c', 'exit 42'], '');
+    const result = await runWrapRunner(['sh', '-c', `exit ${EXIT_CODE_CLEAN_NONZERO}`], '');
 
-    expect(result.wrapResult?.exitCode).toBe(42);
+    expect(result.wrapResult?.exitCode).toBe(EXIT_CODE_CLEAN_NONZERO);
     expect(result.wrapResult?.hookwatchLog).toBeUndefined();
   });
 });
