@@ -309,7 +309,7 @@ export type HookEvent =
  * Adding a new event type requires only a schema definition above and one
  * entry here; no switch case needed.
  */
-export const SCHEMA_MAP: Record<(typeof EVENT_NAMES)[number], ZodType> = {
+export const SCHEMA_MAP = {
   SessionStart: sessionStartSchema,
   SessionEnd: sessionEndSchema,
   UserPromptSubmit: userPromptSubmitSchema,
@@ -328,11 +328,21 @@ export const SCHEMA_MAP: Record<(typeof EVENT_NAMES)[number], ZodType> = {
   WorktreeCreate: worktreeCreateSchema,
   WorktreeRemove: worktreeRemoveSchema,
   InstructionsLoaded: instructionsLoadedSchema,
-};
+} satisfies Record<(typeof EVENT_NAMES)[number], ZodType>;
 
 // ---------------------------------------------------------------------------
 // Discriminated parse function
 // ---------------------------------------------------------------------------
+
+/** Type guard: narrows unknown to a string-keyed object. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/** Type predicate: narrows a string to a known event name key in SCHEMA_MAP. */
+function isKnownEventName(name: string): name is keyof typeof SCHEMA_MAP {
+  return name in SCHEMA_MAP;
+}
 
 /**
  * Routes a raw stdin payload to the correct event schema by hook_event_name.
@@ -342,9 +352,14 @@ export const SCHEMA_MAP: Record<(typeof EVENT_NAMES)[number], ZodType> = {
  * Throws a ZodError if the payload fails validation.
  */
 export function parseHookEvent(raw: unknown): HookEvent {
-  // Extract hook_event_name from the raw payload to discriminate.
-  const name = (raw as Record<string, unknown>)?.hook_event_name;
-  const schema = typeof name === 'string' ? SCHEMA_MAP[name as keyof typeof SCHEMA_MAP] : undefined;
+  // Extract hook_event_name via type guard (no `as` cast).
+  if (
+    isRecord(raw) &&
+    typeof raw.hook_event_name === 'string' &&
+    isKnownEventName(raw.hook_event_name)
+  ) {
+    return SCHEMA_MAP[raw.hook_event_name].parse(raw);
+  }
   // Unknown event type — validate common fields only, preserve everything else.
-  return (schema ?? unknownEventSchema).parse(raw) as HookEvent;
+  return unknownEventSchema.parse(raw);
 }

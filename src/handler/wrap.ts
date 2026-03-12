@@ -64,7 +64,9 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
     return { exitCode: 1, stdin: '', stdout: '', stderr: '' };
   }
 
-  let child: ReturnType<typeof Bun.spawn>;
+  // ReadableSubprocess = Subprocess<any, "pipe", "pipe"> — narrows stdout/stderr
+  // to ReadableStream<Uint8Array> at the type level (no runtime cast needed).
+  let child: Bun.ReadableSubprocess;
   try {
     child = Bun.spawn(cmd, {
       // Pipe the buffered stdin bytes to the child so it receives the event JSON
@@ -81,8 +83,8 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
   // Tee stdout and stderr concurrently while waiting for the child to exit.
   const [rawExitCode, capturedStdout, capturedStderr] = await Promise.all([
     child.exited,
-    teeStream(child.stdout as ReadableStream<Uint8Array>, process.stdout),
-    teeStream(child.stderr as ReadableStream<Uint8Array>, process.stderr),
+    teeStream(child.stdout, process.stdout),
+    teeStream(child.stderr, process.stderr),
   ]);
 
   // In Bun, proc.exited resolves to the 128+N value for signal-killed children
