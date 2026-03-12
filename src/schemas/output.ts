@@ -2,7 +2,8 @@
  * Zod schemas for validating hook stdout output before sending to Claude Code.
  *
  * Design decisions:
- * - .passthrough() on ALL schemas — forward-compatible with Claude Code SDK additions.
+ * - .loose() on ALL schemas — forward-compatible with Claude Code SDK additions.
+ *   (.passthrough() was deprecated in Zod v4; .loose() is the replacement.)
  * - systemMessage is optional on all schemas (base and event-specific).
  * - hookSpecificOutput applies only to PreToolUse — not a universal field.
  * - Stop has its own decision/reason fields; no hookSpecificOutput.
@@ -30,7 +31,7 @@ export const hookOutputSchema = z
     suppressOutput: z.boolean().optional(),
     systemMessage: z.string().optional(),
   })
-  .passthrough();
+  .loose();
 
 export type HookOutput = z.infer<typeof hookOutputSchema>;
 
@@ -55,7 +56,7 @@ export const preToolUseOutputSchema = z
       })
       .optional(),
   })
-  .passthrough();
+  .loose();
 
 export type PreToolUseOutput = z.infer<typeof preToolUseOutputSchema>;
 
@@ -75,6 +76,6 @@ export const stopOutputSchema = z
     decision: z.enum(['approve', 'block']),
     reason: z.string().optional(),
   })
-  .passthrough();
+  .loose();
 
 export type StopOutput = z.infer<typeof stopOutputSchema>;

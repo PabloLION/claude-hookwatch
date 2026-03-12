@@ -2,8 +2,9 @@
  * Zod schemas for all 18 Claude Code hook event types.
  *
  * Design decisions:
- * - .passthrough() on ALL schemas — unknown fields are preserved, not stripped.
+ * - .loose() on ALL schemas — unknown fields are preserved, not stripped.
  *   Forward-compatible with Claude Code SDK changes (NFR12).
+ *   (.passthrough() was deprecated in Zod v4; .loose() is the replacement.)
  * - z.enum() for fields with documented fixed values (source, reason, etc.).
  * - z.record(z.string(), z.unknown()) for arbitrary JSON objects (tool_input, tool_response).
  *   Note: Zod v4 requires two arguments for z.record(); the single-arg form z.record(z.unknown()) is broken (throws TypeError).
@@ -36,7 +37,7 @@ export const commonFieldsSchema = z
     permission_mode: z.string(),
     hook_event_name: z.string(),
   })
-  .passthrough();
+  .loose();
 
 export type CommonFields = z.infer<typeof commonFieldsSchema>;
 
@@ -51,7 +52,7 @@ export const sessionStartSchema = commonFieldsSchema
     model: z.string(),
     agent_type: z.string().optional(),
   })
-  .passthrough();
+  .loose();
 
 export type SessionStart = z.infer<typeof sessionStartSchema>;
 
@@ -66,7 +67,7 @@ export const sessionEndSchema = commonFieldsSchema
       'other',
     ]),
   })
-  .passthrough();
+  .loose();
 
 export type SessionEnd = z.infer<typeof sessionEndSchema>;
 
@@ -75,7 +76,7 @@ export const userPromptSubmitSchema = commonFieldsSchema
     hook_event_name: z.literal('UserPromptSubmit'),
     prompt: z.string(),
   })
-  .passthrough();
+  .loose();
 
 export type UserPromptSubmit = z.infer<typeof userPromptSubmitSchema>;
 
@@ -86,7 +87,7 @@ export const preToolUseSchema = commonFieldsSchema
     tool_use_id: z.string(),
     tool_input: z.record(z.string(), z.unknown()),
   })
-  .passthrough();
+  .loose();
 
 export type PreToolUse = z.infer<typeof preToolUseSchema>;
 
@@ -98,7 +99,7 @@ export const postToolUseSchema = commonFieldsSchema
     tool_input: z.record(z.string(), z.unknown()),
     tool_response: z.record(z.string(), z.unknown()),
   })
-  .passthrough();
+  .loose();
 
 export type PostToolUse = z.infer<typeof postToolUseSchema>;
 
@@ -111,7 +112,7 @@ export const postToolUseFailureSchema = commonFieldsSchema
     error: z.string(),
     is_interrupt: z.boolean().optional(),
   })
-  .passthrough();
+  .loose();
 
 export type PostToolUseFailure = z.infer<typeof postToolUseFailureSchema>;
 
@@ -126,7 +127,7 @@ export const permissionRequestSchema = commonFieldsSchema
     tool_input: z.record(z.string(), z.unknown()),
     permission_suggestions: z.array(z.record(z.string(), z.unknown())).optional(),
   })
-  .passthrough();
+  .loose();
 
 export type PermissionRequest = z.infer<typeof permissionRequestSchema>;
 
@@ -142,7 +143,7 @@ export const notificationSchema = commonFieldsSchema
       'elicitation_dialog',
     ]),
   })
-  .passthrough();
+  .loose();
 
 export type Notification = z.infer<typeof notificationSchema>;
 
@@ -152,7 +153,7 @@ export const subagentStartSchema = commonFieldsSchema
     agent_id: z.string(),
     agent_type: z.string(),
   })
-  .passthrough();
+  .loose();
 
 export type SubagentStart = z.infer<typeof subagentStartSchema>;
 
@@ -165,7 +166,7 @@ export const subagentStopSchema = commonFieldsSchema
     agent_transcript_path: z.string(),
     last_assistant_message: z.string(),
   })
-  .passthrough();
+  .loose();
 
 export type SubagentStop = z.infer<typeof subagentStopSchema>;
 
@@ -175,7 +176,7 @@ export const stopSchema = commonFieldsSchema
     stop_hook_active: z.boolean(),
     last_assistant_message: z.string(),
   })
-  .passthrough();
+  .loose();
 
 export type Stop = z.infer<typeof stopSchema>;
 
@@ -185,7 +186,7 @@ export const preCompactSchema = commonFieldsSchema
     trigger: z.enum(['manual', 'auto']),
     custom_instructions: z.string(),
   })
-  .passthrough();
+  .loose();
 
 export type PreCompact = z.infer<typeof preCompactSchema>;
 
@@ -195,7 +196,7 @@ export const teammateIdleSchema = commonFieldsSchema
     teammate_name: z.string(),
     team_name: z.string(),
   })
-  .passthrough();
+  .loose();
 
 export type TeammateIdle = z.infer<typeof teammateIdleSchema>;
 
@@ -208,7 +209,7 @@ export const taskCompletedSchema = commonFieldsSchema
     teammate_name: z.string().optional(),
     team_name: z.string().optional(),
   })
-  .passthrough();
+  .loose();
 
 export type TaskCompleted = z.infer<typeof taskCompletedSchema>;
 
@@ -224,7 +225,7 @@ export const configChangeSchema = commonFieldsSchema
     ]),
     file_path: z.string().optional(),
   })
-  .passthrough();
+  .loose();
 
 export type ConfigChange = z.infer<typeof configChangeSchema>;
 
@@ -233,7 +234,7 @@ export const worktreeCreateSchema = commonFieldsSchema
     hook_event_name: z.literal('WorktreeCreate'),
     name: z.string(),
   })
-  .passthrough();
+  .loose();
 
 export type WorktreeCreate = z.infer<typeof worktreeCreateSchema>;
 
@@ -242,7 +243,7 @@ export const worktreeRemoveSchema = commonFieldsSchema
     hook_event_name: z.literal('WorktreeRemove'),
     worktree_path: z.string(),
   })
-  .passthrough();
+  .loose();
 
 export type WorktreeRemove = z.infer<typeof worktreeRemoveSchema>;
 
@@ -256,7 +257,7 @@ export const instructionsLoadedSchema = commonFieldsSchema
     hook_event_name: z.literal('InstructionsLoaded'),
     trigger: z.enum(['init', 'maintenance']),
   })
-  .passthrough();
+  .loose();
 
 export type InstructionsLoaded = z.infer<typeof instructionsLoadedSchema>;
 
@@ -336,7 +337,7 @@ export const SCHEMA_MAP: Record<(typeof EVENT_NAMES)[number], ZodSchema> = {
 /**
  * Routes a raw stdin payload to the correct event schema by hook_event_name.
  * Unknown event types fall through to unknownEventSchema, which validates the
- * common fields and preserves all other fields via .passthrough().
+ * common fields and preserves all other fields via .loose().
  *
  * Throws a ZodError if the payload fails validation.
  */
