@@ -15,7 +15,7 @@
  */
 
 import { join } from 'node:path';
-import { DEFAULT_PORT } from '@/paths.ts';
+import { DEFAULT_PORT } from '@/config.ts';
 import type { WrapResult } from '@/types.ts';
 
 export type { WrapResult };
@@ -54,7 +54,6 @@ export interface RunnerOutput {
  * directories so the server is not still referencing files being deleted.
  *
  * Default port is DEFAULT_PORT (6004).
- * TODO: configurable via config.toml (ch-1ex5.1)
  */
 export async function killProcessOnPort(port: number = DEFAULT_PORT): Promise<void> {
   try {

@@ -11,6 +11,7 @@
  */
 
 import { describe, expect, it } from 'bun:test';
+import { EXPECTED_EVENT_TYPE_COUNT } from '@/test';
 import { EVENT_TYPES, type EventType } from './events.ts';
 
 // ---------------------------------------------------------------------------
@@ -19,7 +20,7 @@ import { EVENT_TYPES, type EventType } from './events.ts';
 
 describe('EVENT_TYPES', () => {
   it('contains exactly 18 event types', () => {
-    expect(EVENT_TYPES).toHaveLength(18);
+    expect(EVENT_TYPES).toHaveLength(EXPECTED_EVENT_TYPE_COUNT);
   });
 
   it('starts with ConfigChange (alphabetical order from EVENT_NAMES)', () => {
@@ -164,7 +165,7 @@ describe('generated hooks/hooks.json', () => {
     const file = Bun.file(`${import.meta.dir}/../../hooks/hooks.json`);
     const content = JSON.parse(await file.text()) as { hooks: Record<string, unknown> };
     expect(typeof content.hooks).toBe('object');
-    expect(Object.keys(content.hooks)).toHaveLength(18);
+    expect(Object.keys(content.hooks)).toHaveLength(EXPECTED_EVENT_TYPE_COUNT);
   });
 
   it('all 18 event types are present in hooks', async () => {

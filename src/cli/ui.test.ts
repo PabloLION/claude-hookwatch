@@ -18,9 +18,15 @@
 import { afterAll, beforeAll, describe, expect, it, spyOn } from 'bun:test';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { DEFAULT_PORT } from '@/paths.ts';
+import { DEFAULT_PORT } from '@/config.ts';
 import { startServer } from '@/server/index.ts';
-import { createTempXdgHome, type TempXdgHome } from '@/test';
+import {
+  createTempXdgHome,
+  type TempXdgHome,
+  UNUSED_PORT_A,
+  UNUSED_PORT_B,
+  UNUSED_PORT_C,
+} from '@/test';
 import { isPortOccupied, isServerRunning, openBrowser, readPortFile } from './ui.ts';
 
 // ---------------------------------------------------------------------------
@@ -121,7 +127,7 @@ describe('isServerRunning', () => {
 
   it('returns false for a port with nothing listening', async () => {
     // Use a port unlikely to be in use
-    const result = await isServerRunning(19999);
+    const result = await isServerRunning(UNUSED_PORT_A);
     expect(result).toBe(false);
   });
 
@@ -133,7 +139,7 @@ describe('isServerRunning', () => {
   it('returns false when the port serves a non-200 health response', async () => {
     // We can't easily test this with a real server, so test with a port that
     // has nothing listening (which also returns false)
-    const result = await isServerRunning(19998);
+    const result = await isServerRunning(UNUSED_PORT_B);
     expect(result).toBe(false);
   });
 });
@@ -162,7 +168,7 @@ describe('isPortOccupied', () => {
   });
 
   it('returns false for a port with nothing listening', async () => {
-    const result = await isPortOccupied(19997);
+    const result = await isPortOccupied(UNUSED_PORT_C);
     expect(result).toBe(false);
   });
 
