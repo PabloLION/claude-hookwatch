@@ -28,7 +28,7 @@ export async function fetchSessions(): Promise<string[]> {
 
     const data: unknown = await res.json();
     if (Array.isArray(data) && data.every((item) => typeof item === 'string')) {
-      return data as string[];
+      return data;
     }
 
     console.error('hookwatch: unexpected sessions response shape', data);

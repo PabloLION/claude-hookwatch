@@ -8,6 +8,12 @@ import { CURRENT_VERSION } from './schema.ts';
 const PRAGMA_USER_VERSION = 'PRAGMA user_version;';
 const PRAGMA_TABLE_INFO = 'PRAGMA table_info(events);';
 const TEST_CWD = '/tmp/project';
+const TEST_HOOK_DURATION_MS = 42;
+
+/** Test timestamps — deliberately out of order to verify sorting. */
+const TS_EARLY = 1000;
+const TS_MID = 2000;
+const TS_LATE = 3000;
 
 describe('database creation and WAL mode', () => {
   let handle: TestDbHandle;
@@ -150,7 +156,7 @@ describe('insert and retrieve round-trip', () => {
       cwd: TEST_CWD,
       tool_name: 'Bash',
       session_name: null,
-      hook_duration_ms: 42,
+      hook_duration_ms: TEST_HOOK_DURATION_MS,
       stdin: payload,
       wrapped_command: null,
       stdout: null,
@@ -167,7 +173,7 @@ describe('insert and retrieve round-trip', () => {
     expect(row?.session_id).toBe('sess-001');
     expect(row?.cwd).toBe(TEST_CWD);
     expect(row?.tool_name).toBe('Bash');
-    expect(row?.hook_duration_ms).toBe(42);
+    expect(row?.hook_duration_ms).toBe(TEST_HOOK_DURATION_MS);
     expect(row?.stdin).toBe(payload);
   });
 
@@ -236,8 +242,10 @@ describe('insert and retrieve round-trip', () => {
   test('getAllEvents returns all inserted events ordered by ts', () => {
     const db = handle.db;
 
+    const INSERTED_EVENT_COUNT = 3;
+
     insertEvent(db, {
-      timestamp: 3000,
+      timestamp: TS_LATE,
       event: 'PostToolUse',
       session_id: 's1',
       cwd: '/',
@@ -253,7 +261,7 @@ describe('insert and retrieve round-trip', () => {
     });
 
     insertEvent(db, {
-      timestamp: 1000,
+      timestamp: TS_EARLY,
       event: 'PreToolUse',
       session_id: 's1',
       cwd: '/',
@@ -269,7 +277,7 @@ describe('insert and retrieve round-trip', () => {
     });
 
     insertEvent(db, {
-      timestamp: 2000,
+      timestamp: TS_MID,
       event: 'SessionStart',
       session_id: 's1',
       cwd: '/',
@@ -285,10 +293,10 @@ describe('insert and retrieve round-trip', () => {
     });
 
     const events = getAllEvents(db);
-    expect(events.length).toBe(3);
-    expect(events[0]?.timestamp).toBe(1000);
-    expect(events[1]?.timestamp).toBe(2000);
-    expect(events[2]?.timestamp).toBe(3000);
+    expect(events.length).toBe(INSERTED_EVENT_COUNT);
+    expect(events[0]?.timestamp).toBe(TS_EARLY);
+    expect(events[1]?.timestamp).toBe(TS_MID);
+    expect(events[2]?.timestamp).toBe(TS_LATE);
   });
 });
 

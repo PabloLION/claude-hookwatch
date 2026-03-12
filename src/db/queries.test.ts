@@ -13,6 +13,11 @@ import { closeTestDb, makeEvent, setupTestDb, type TestDbHandle } from '@/test';
 import type { openDb } from './connection.ts';
 import { getDistinctSessions, insertEvent, queryEvents } from './queries.ts';
 
+/** Test timestamps — deliberately out of order to verify sorting. */
+const TS_EARLY = 1000;
+const TS_MID = 2000;
+const TS_LATE = 3000;
+
 // ---------------------------------------------------------------------------
 // getDistinctSessions tests
 // ---------------------------------------------------------------------------
@@ -52,11 +57,12 @@ describe('getDistinctSessions', () => {
     insertEvent(db, makeEvent({ session_id: 'sess-ccc', timestamp: 4000 }));
     insertEvent(db, makeEvent({ session_id: 'sess-bbb', timestamp: 5000 }));
 
+    const DISTINCT_SESSION_COUNT = 3; // sess-aaa, sess-bbb, sess-ccc
     const sessions = getDistinctSessions(db);
-    expect(sessions).toHaveLength(3);
+    expect(sessions).toHaveLength(DISTINCT_SESSION_COUNT);
     // Dedup — no duplicate values
     const unique = new Set(sessions);
-    expect(unique.size).toBe(3);
+    expect(unique.size).toBe(DISTINCT_SESSION_COUNT);
     expect(unique.has('sess-aaa')).toBe(true);
     expect(unique.has('sess-bbb')).toBe(true);
     expect(unique.has('sess-ccc')).toBe(true);
@@ -151,22 +157,28 @@ describe('timestamp index usage (EXPLAIN QUERY PLAN)', () => {
     const db = handle.db;
 
     // Insert events out of order
+    const INSERTED_EVENT_COUNT = 3;
     insertEvent(
       db,
-      makeEvent({ session_id: 's-idx', timestamp: 3000, event: 'PostToolUse', tool_name: 'Read' }),
+      makeEvent({
+        session_id: 's-idx',
+        timestamp: TS_LATE,
+        event: 'PostToolUse',
+        tool_name: 'Read',
+      }),
     );
-    insertEvent(db, makeEvent({ session_id: 's-idx', timestamp: 1000 }));
+    insertEvent(db, makeEvent({ session_id: 's-idx', timestamp: TS_EARLY }));
     insertEvent(
       db,
-      makeEvent({ session_id: 's-idx', timestamp: 2000, event: 'PreToolUse', tool_name: 'Bash' }),
+      makeEvent({ session_id: 's-idx', timestamp: TS_MID, event: 'PreToolUse', tool_name: 'Bash' }),
     );
 
     const rows = queryEvents(db, { queryType: 'events', limit: 100, offset: 0 });
-    expect(rows).toHaveLength(3);
-    // Newest first
-    expect(rows[0]?.timestamp).toBe(3000);
-    expect(rows[1]?.timestamp).toBe(2000);
-    expect(rows[2]?.timestamp).toBe(1000);
+    expect(rows).toHaveLength(INSERTED_EVENT_COUNT);
+    // Newest first (DESC order)
+    expect(rows[0]?.timestamp).toBe(TS_LATE);
+    expect(rows[1]?.timestamp).toBe(TS_MID);
+    expect(rows[2]?.timestamp).toBe(TS_EARLY);
   });
 
   test('getDistinctSessions scan uses idx_events_timestamp', () => {

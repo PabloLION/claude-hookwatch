@@ -23,6 +23,11 @@ import { join } from 'node:path';
 import { DEFAULT_PORT } from '@/config.ts';
 import { readPort } from './paths.ts';
 
+const TEST_VALID_PORT = 7890;
+const TEST_WHITESPACE_PORT = 8080;
+const MAX_VALID_PORT = 65535;
+const PORT_FILE_NAME = 'hookwatch.port';
+
 // ---------------------------------------------------------------------------
 // Test setup: isolated XDG_DATA_HOME per test
 // ---------------------------------------------------------------------------
@@ -54,7 +59,7 @@ afterEach(() => {
 function writePortFile(content: string): void {
   const dir = join(tmpDir, 'hookwatch');
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, 'hookwatch.port'), content);
+  writeFileSync(join(dir, PORT_FILE_NAME), content);
 }
 
 // ---------------------------------------------------------------------------
@@ -63,16 +68,16 @@ function writePortFile(content: string): void {
 
 describe('valid port file', () => {
   test('reads the exact port number from the file', () => {
-    writePortFile('7890');
+    writePortFile(String(TEST_VALID_PORT));
     const result = readPort();
-    expect(result.port).toBe(7890);
+    expect(result.port).toBe(TEST_VALID_PORT);
     expect(result.warning).toBeNull();
   });
 
   test('trims surrounding whitespace before parsing', () => {
-    writePortFile('  8080\n');
+    writePortFile(`  ${TEST_WHITESPACE_PORT}\n`);
     const result = readPort();
-    expect(result.port).toBe(8080);
+    expect(result.port).toBe(TEST_WHITESPACE_PORT);
     expect(result.warning).toBeNull();
   });
 
@@ -90,9 +95,9 @@ describe('valid port file', () => {
   });
 
   test('accepts port 65535 (maximum valid port)', () => {
-    writePortFile('65535');
+    writePortFile(String(MAX_VALID_PORT));
     const result = readPort();
-    expect(result.port).toBe(65535);
+    expect(result.port).toBe(MAX_VALID_PORT);
     expect(result.warning).toBeNull();
   });
 });
@@ -172,7 +177,7 @@ describe('OS error reading port file (non-ENOENT)', () => {
     // Create a directory where the port file should be — readFileSync throws EISDIR.
     // EISDIR is a reliable cross-platform non-ENOENT OS error for this scenario.
     const dir = join(tmpDir, 'hookwatch');
-    const portFilePath = join(dir, 'hookwatch.port');
+    const portFilePath = join(dir, PORT_FILE_NAME);
     mkdirSync(portFilePath, { recursive: true }); // create dir at file path
 
     const result = readPort();
@@ -183,7 +188,7 @@ describe('OS error reading port file (non-ENOENT)', () => {
 
   test('EISDIR: warning string mentions the error code or DEFAULT_PORT', () => {
     const dir = join(tmpDir, 'hookwatch');
-    const portFilePath = join(dir, 'hookwatch.port');
+    const portFilePath = join(dir, PORT_FILE_NAME);
     mkdirSync(portFilePath, { recursive: true });
 
     const result = readPort();

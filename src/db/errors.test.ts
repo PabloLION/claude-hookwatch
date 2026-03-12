@@ -21,13 +21,16 @@ import { isSqliteBusy } from './errors.ts';
 // Non-Error input
 // ---------------------------------------------------------------------------
 
+/** SQLite SQLITE_BUSY error code — tests that the raw code (not wrapped in Error) returns false. */
+const SQLITE_BUSY_CODE = 5;
+
 describe('non-Error input', () => {
   test('string input → false', () => {
     expect(isSqliteBusy('SQLITE_BUSY')).toBe(false);
   });
 
   test('number input → false', () => {
-    expect(isSqliteBusy(5)).toBe(false);
+    expect(isSqliteBusy(SQLITE_BUSY_CODE)).toBe(false);
   });
 
   test('null input → false', () => {

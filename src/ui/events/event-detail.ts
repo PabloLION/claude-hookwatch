@@ -64,25 +64,33 @@ function extractToolInput(parsed: unknown): unknown {
   return null;
 }
 
+/**
+ * Check if a nullable string field has non-empty content.
+ * Type guard: narrows null | undefined | string to string.
+ */
+function hasContent(value: string | null | undefined): value is string {
+  return value != null && value.length > 0;
+}
+
 interface EventDetailProps {
   event: EventRow;
 }
 
 export function EventDetail({ event }: EventDetailProps): ReturnType<typeof html> {
   // Wrapped events: delegate entirely to WrapViewer
-  if (event.wrapped_command !== null && event.wrapped_command !== undefined) {
+  if (event.wrapped_command != null) {
     return html`<${WrapViewer} event=${event} />`;
   }
 
   // Bare event: standard detail view
   const parsed = parseStdin(event.stdin);
-  const formattedStdin = parsed !== null ? JSON.stringify(parsed, null, 2) : event.stdin; // Fallback: display raw string if not valid JSON
+  const formattedStdin = parsed === null ? event.stdin : JSON.stringify(parsed, null, 2);
 
   const showToolInfo = isToolEvent(event.event);
-  const toolName = showToolInfo ? extractStringField(parsed, 'tool_name') : null;
-  const toolInput = showToolInfo ? extractToolInput(parsed) : null;
+  const toolName = extractStringField(parsed, 'tool_name');
+  const toolInput = extractToolInput(parsed);
   const formattedToolInput =
-    toolInput !== null && toolInput !== undefined ? JSON.stringify(toolInput, null, 2) : null;
+    toolInput === null || toolInput === undefined ? null : JSON.stringify(toolInput, null, 2);
 
   return html`
     <div class="event-detail">
@@ -93,7 +101,7 @@ export function EventDetail({ event }: EventDetailProps): ReturnType<typeof html
           <dt>Tool name</dt>
           <dd>${toolName ?? '\u2014'}</dd>
           ${
-            formattedToolInput !== null &&
+            formattedToolInput &&
             html`
             <dt>Tool input</dt>
             <dd>
@@ -109,9 +117,7 @@ export function EventDetail({ event }: EventDetailProps): ReturnType<typeof html
         <pre><code>${formattedStdin}</code></pre>
       </details>
       ${
-        event.stdout !== null &&
-        event.stdout !== undefined &&
-        event.stdout.length > 0 &&
+        hasContent(event.stdout) &&
         html`
         <details>
           <summary>stdout</summary>
@@ -120,31 +126,11 @@ export function EventDetail({ event }: EventDetailProps): ReturnType<typeof html
       `
       }
       ${
-        event.stderr !== null &&
-        event.stderr !== undefined &&
-        event.stderr.length > 0 &&
+        hasContent(event.stderr) &&
         html`
         <details>
           <summary>stderr</summary>
           <pre><code>${event.stderr}</code></pre>
-        </details>
-      `
-      }
-      ${
-        event.wrapped_command !== null &&
-        html`
-        <details>
-          <summary>Exit code</summary>
-          <p>
-            <strong
-              style=${{
-                color:
-                  event.exit_code === 0
-                    ? 'var(--pico-ins-color, #2d9a2d)'
-                    : 'var(--pico-del-color, #c0392b)',
-              }}
-            >${event.exit_code}</strong>
-          </p>
         </details>
       `
       }

@@ -74,14 +74,16 @@ export function startSseClient(
  * Optional fields (stdout, stderr, exit_code, wrapped_command) are allowed
  * to be absent or null.
  */
-function isEventRow(value: unknown): value is EventRow {
-  if (value === null || typeof value !== 'object') return false;
-  const obj = value as Record<string, unknown>;
+function hasRequiredFields(obj: Record<string, unknown>): boolean {
   return (
     typeof obj.id === 'number' &&
     typeof obj.timestamp === 'number' &&
-    typeof obj.session_id === 'string' &&
-    typeof obj.event === 'string' &&
-    typeof obj.stdin === 'string'
+    typeof obj.session_id === 'string'
   );
+}
+
+function isEventRow(value: unknown): value is EventRow {
+  if (value === null || typeof value !== 'object') return false;
+  const obj = value as Record<string, unknown>;
+  return hasRequiredFields(obj) && typeof obj.event === 'string' && typeof obj.stdin === 'string';
 }

@@ -33,9 +33,15 @@ import { isPortOccupied, isServerRunning, openBrowser, readPortFile } from './ui
 // DEFAULT_PORT constant
 // ---------------------------------------------------------------------------
 
+/** Snapshot value — test fails if DEFAULT_PORT changes without updating this. */
+const SNAPSHOT_DEFAULT_PORT = 6004;
+
+/** Port with surrounding whitespace — tests readPortFile whitespace trimming. */
+const TEST_WHITESPACE_PORT = 6010;
+
 describe('DEFAULT_PORT', () => {
   it('is 6004', () => {
-    expect(DEFAULT_PORT).toBe(6004);
+    expect(DEFAULT_PORT).toBe(SNAPSHOT_DEFAULT_PORT);
   });
 });
 
@@ -72,13 +78,13 @@ describe('readPortFile', () => {
   });
 
   it('returns the port number from a valid port file', () => {
-    writeFileSync(portFile, '6004', 'utf8');
-    expect(readPortFile()).toBe(6004);
+    writeFileSync(portFile, String(DEFAULT_PORT), 'utf8');
+    expect(readPortFile()).toBe(DEFAULT_PORT);
   });
 
   it('returns the port number with surrounding whitespace stripped', () => {
-    writeFileSync(portFile, '  6010\n', 'utf8');
-    expect(readPortFile()).toBe(6010);
+    writeFileSync(portFile, `  ${TEST_WHITESPACE_PORT}\n`, 'utf8');
+    expect(readPortFile()).toBe(TEST_WHITESPACE_PORT);
   });
 
   it('returns null for NaN content', () => {
@@ -196,7 +202,10 @@ describe('openBrowser', () => {
   it("calls 'open' on darwin", async () => {
     const originalPlatform = process.platform;
     // Override process.platform
-    Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+    Object.defineProperty(process, 'platform', {
+      value: 'darwin',
+      configurable: true,
+    });
 
     const spawnedCommands: string[][] = [];
     const spawnSpy = spyOn(Bun, 'spawn').mockImplementation(makeSpawnMock(spawnedCommands));
@@ -208,12 +217,18 @@ describe('openBrowser', () => {
     expect(spawnedCommands[0]?.[1]).toBe(TEST_UI_URL);
 
     spawnSpy.mockRestore();
-    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+    Object.defineProperty(process, 'platform', {
+      value: originalPlatform,
+      configurable: true,
+    });
   });
 
   it("calls 'xdg-open' on linux", async () => {
     const originalPlatform = process.platform;
-    Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+    Object.defineProperty(process, 'platform', {
+      value: 'linux',
+      configurable: true,
+    });
 
     const spawnedCommands: string[][] = [];
     const spawnSpy = spyOn(Bun, 'spawn').mockImplementation(makeSpawnMock(spawnedCommands));
@@ -224,12 +239,18 @@ describe('openBrowser', () => {
     expect(spawnedCommands[0]?.[0]).toBe('xdg-open');
 
     spawnSpy.mockRestore();
-    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+    Object.defineProperty(process, 'platform', {
+      value: originalPlatform,
+      configurable: true,
+    });
   });
 
   it('logs a warning on unknown platform without spawning', async () => {
     const originalPlatform = process.platform;
-    Object.defineProperty(process, 'platform', { value: 'freebsd', configurable: true });
+    Object.defineProperty(process, 'platform', {
+      value: 'freebsd',
+      configurable: true,
+    });
 
     const spawnedCommands: string[][] = [];
     const spawnSpy = spyOn(Bun, 'spawn').mockImplementation(makeSpawnMock(spawnedCommands));
@@ -239,6 +260,9 @@ describe('openBrowser', () => {
     expect(spawnedCommands).toHaveLength(0);
 
     spawnSpy.mockRestore();
-    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });
+    Object.defineProperty(process, 'platform', {
+      value: originalPlatform,
+      configurable: true,
+    });
   });
 });
