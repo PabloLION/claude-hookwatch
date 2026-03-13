@@ -16,7 +16,7 @@
  * (3) is lower than (2)-(1) due to GC pressure and cache effects in the
  * combined loop.
  *
- * Usage: bun scripts/benchmark/zod-validation-overhead.ts
+ * Usage: bun scripts/benchmark/zod-eventrow-overhead.ts
  */
 
 import { eventRowSchema } from '../../src/schemas/rows.ts';

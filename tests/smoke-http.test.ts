@@ -7,7 +7,7 @@
  *   - Valid PreToolUse event → 201, verify tool_name stored
  *   - Invalid JSON body → 400 INVALID_QUERY
  *   - Valid JSON but missing hook_event_name → 400
- *   - Extra unknown fields pass through (schemas use .passthrough())
+ *   - Extra unknown fields pass through (schemas use .loose())
  *   - Very long stdin payload (10KB+) succeeds
  *   - Wrapped event with stdout/stderr/exit_code → 201, verify all wrap fields stored
  *   - Event with hook_duration_ms → 201, verify stored
@@ -274,7 +274,7 @@ describe('valid JSON but missing hook_event_name', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Test 5: Extra unknown fields pass through (.passthrough())
+// Test 5: Extra unknown fields pass through (.loose())
 // ---------------------------------------------------------------------------
 
 describe('extra unknown fields', () => {

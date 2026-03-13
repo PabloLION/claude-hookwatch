@@ -2,13 +2,13 @@
  * probe-output-strictness.ts — Hook stdout extra-field strictness probe
  *
  * Tests whether Claude Code rejects hook stdout that contains extra JSON fields
- * beyond the documented schema. This confirms whether our .passthrough() approach
+ * beyond the documented schema. This confirms whether our .loose() approach
  * in src/schemas/output.ts is safe.
  *
  * Theory:
- *   If Claude Code validates output strictly (like Zod without .passthrough()), it
+ *   If Claude Code validates output strictly (like Zod without .loose()), it
  *   would reject or error when hooks return extra fields. If it ignores extras, our
- *   .passthrough() usage is empirically confirmed safe.
+ *   .loose() usage is empirically confirmed safe.
  *
  * Probe design:
  *   Register a SessionStart hook that unconditionally writes a JSON blob to stdout
@@ -162,12 +162,12 @@ function interpret(result: ProbeResult): void {
   if (result.claudeExitCode === 0 && result.resultContent?.includes('success=true')) {
     log('\nFINDING: Extra fields ACCEPTED by Claude Code.');
     log('  The session completed successfully with extra fields in hook stdout.');
-    log('  .passthrough() in our output schemas is empirically confirmed safe.');
+    log('  .loose() in our output schemas is empirically confirmed safe.');
     log('  Claude Code ignores unknown fields in hook stdout.');
   } else if (result.claudeExitCode !== 0) {
     log('\nFINDING: Claude exited non-zero — extra fields may be REJECTED.');
     log('  Review stderr or Claude output for error details.');
-    log('  Consider switching output schemas from .passthrough() to default');
+    log('  Consider switching output schemas from .loose() to default');
     log('  z.object() (which strips extra fields before output).');
   } else {
     log('\nFINDING: Ambiguous — hook ran but Claude exit code is unexpected.');

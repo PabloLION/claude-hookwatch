@@ -75,7 +75,7 @@ export async function handleIngest(req: Request): Promise<Response> {
   }
 
   // Extract optional wrap fields from the top-level body object before
-  // handing raw to parseHookEvent (which uses .passthrough() so it won't strip
+  // handing raw to parseHookEvent (which uses .loose() so it won't strip
   // them, but we extract them explicitly here for DB storage).
   // Cast to Record<string, unknown>: req.json() returns any, and if raw is not
   // an object the typeof guards inside extractWrapFields produce safe defaults.
