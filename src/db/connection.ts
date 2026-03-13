@@ -65,7 +65,10 @@ function openAndInit(path: string): Database {
   }
 
   // status === "mismatch": backup old DB, open fresh one
-  const versionRow = conn.query('PRAGMA user_version;').get() as { user_version: number };
+  const versionRow = conn.query<{ user_version: number }, []>('PRAGMA user_version;').get();
+  if (versionRow === null) {
+    throw new Error('PRAGMA user_version returned no rows — database may be corrupted');
+  }
   const oldVersion = versionRow.user_version;
   const backupPath = `${path}.v${oldVersion}`;
   process.stderr.write(

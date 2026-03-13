@@ -69,7 +69,10 @@ export type VersionStatus = 'ok' | 'fresh' | 'mismatch';
  * Does NOT modify the database.
  */
 export function checkVersion(db: Database): VersionStatus {
-  const row = db.query('PRAGMA user_version;').get() as { user_version: number };
+  const row = db.query<{ user_version: number }, []>('PRAGMA user_version;').get();
+  if (row === null) {
+    throw new Error('PRAGMA user_version returned no rows — database may be corrupted');
+  }
   const version = row.user_version;
   if (version === CURRENT_VERSION) return 'ok';
   if (version === 0) return 'fresh';
