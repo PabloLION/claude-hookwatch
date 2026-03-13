@@ -13,7 +13,8 @@
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
-import { isRecord } from '@/guards.ts';
+import type { HookEvent } from '@/schemas/events.ts';
+import { parseHookEvent } from '@/schemas/events.ts';
 import type { EventRow } from '@/types.ts';
 import { html } from '../shared/html.ts';
 import { WrapViewer } from '../wrap/wrap-viewer.ts';
@@ -32,37 +33,34 @@ function isToolEvent(eventType: string): boolean {
 }
 
 /**
- * Parse a JSON stdin string. Returns the parsed value or null on failure.
+ * Parse and validate a JSON stdin string as a HookEvent.
+ * Returns the validated HookEvent or null on failure.
  */
-function parseStdin(stdinJson: string): unknown {
+function parseStdin(stdinJson: string): HookEvent | null {
   try {
-    return JSON.parse(stdinJson);
+    return parseHookEvent(JSON.parse(stdinJson));
   } catch {
     return null;
   }
 }
 
 /**
- * Extract a string field from a parsed stdin object.
+ * Extract a string field from a parsed HookEvent.
  * Returns null when the field is absent or not a string.
  */
-function extractStringField(parsed: unknown, field: string): string | null {
-  if (isRecord(parsed) && field in parsed) {
-    const value = parsed[field];
-    if (typeof value === 'string') return value;
-  }
-  return null;
+function extractStringField(parsed: HookEvent | null, field: string): string | null {
+  if (parsed === null) return null;
+  const value = (parsed as Record<string, unknown>)[field];
+  return typeof value === 'string' ? value : null;
 }
 
 /**
- * Extract the tool_input field from a parsed stdin object.
+ * Extract the tool_input field from a parsed HookEvent.
  * Returns null when absent.
  */
-function extractToolInput(parsed: unknown): unknown {
-  if (isRecord(parsed) && 'tool_input' in parsed) {
-    return parsed.tool_input;
-  }
-  return null;
+function extractToolInput(parsed: HookEvent | null): unknown {
+  if (parsed === null) return null;
+  return (parsed as Record<string, unknown>).tool_input ?? null;
 }
 
 /**

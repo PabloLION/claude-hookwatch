@@ -19,7 +19,7 @@
 import type { Signal } from '@preact/signals';
 import { useEffect, useState } from 'preact/hooks';
 import { DEFAULT_QUERY_LIMIT } from '@/config.ts';
-import { isRecord } from '@/guards.ts';
+import { parseHookEvent } from '@/schemas/events.ts';
 import type { EventRow } from '@/types.ts';
 import { html } from '../shared/html.ts';
 import { EventDetail } from './event-detail.ts';
@@ -35,14 +35,11 @@ interface EventListProps {
  */
 function extractToolName(stdinJson: string): string {
   try {
-    const parsed: unknown = JSON.parse(stdinJson);
-    if (isRecord(parsed) && 'tool_name' in parsed && typeof parsed.tool_name === 'string') {
-      return parsed.tool_name;
-    }
+    const event = parseHookEvent(JSON.parse(stdinJson)) as Record<string, unknown>;
+    return typeof event.tool_name === 'string' ? event.tool_name : '\u2014';
   } catch {
-    // stdin is not valid JSON — return placeholder
+    return '\u2014';
   }
-  return '\u2014';
 }
 
 /**

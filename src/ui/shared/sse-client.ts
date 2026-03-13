@@ -16,7 +16,7 @@
  */
 
 import type { Signal } from '@preact/signals';
-import { isRecord } from '@/guards.ts';
+import { parseSseEvent } from '@/schemas/rows.ts';
 import type { EventRow } from '@/types.ts';
 
 const SSE_ENDPOINT = '/api/events/stream';
@@ -38,16 +38,11 @@ export function startSseClient(
   const source = new EventSource(SSE_ENDPOINT);
 
   source.onmessage = (ev: MessageEvent<string>) => {
-    let parsed: unknown;
+    let parsed: EventRow;
     try {
-      parsed = JSON.parse(ev.data);
+      parsed = parseSseEvent(ev.data);
     } catch {
-      console.error('hookwatch: SSE received non-JSON data', ev.data);
-      return;
-    }
-
-    if (!isEventRow(parsed)) {
-      console.error('hookwatch: SSE event has unexpected shape', parsed);
+      console.error('hookwatch: SSE event failed validation', ev.data);
       return;
     }
 
@@ -67,25 +62,4 @@ export function startSseClient(
   };
 
   return source;
-}
-
-/**
- * Type guard for EventRow. Validates the minimal fields needed to display the
- * event in the list. Does not validate stdin contents.
- * Optional fields (stdout, stderr, exit_code, wrapped_command) are allowed
- * to be absent or null.
- */
-function hasRequiredFields(obj: Record<string, unknown>): boolean {
-  return (
-    typeof obj.id === 'number' &&
-    typeof obj.timestamp === 'number' &&
-    typeof obj.session_id === 'string'
-  );
-}
-
-function isEventRow(value: unknown): value is EventRow {
-  if (!isRecord(value)) return false;
-  return (
-    hasRequiredFields(value) && typeof value.event === 'string' && typeof value.stdin === 'string'
-  );
 }
