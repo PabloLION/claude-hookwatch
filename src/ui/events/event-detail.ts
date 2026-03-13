@@ -39,7 +39,8 @@ function isToolEvent(eventType: string): boolean {
 function parseStdin(stdinJson: string): HookEvent | null {
   try {
     return parseHookEvent(JSON.parse(stdinJson));
-  } catch {
+  } catch (err) {
+    console.warn('hookwatch: failed to parse event stdin', err);
     return null;
   }
 }
