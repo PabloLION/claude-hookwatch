@@ -4,6 +4,9 @@
  * Coverage:
  * - eventRowSchema parses a valid full EventRow payload
  * - eventRowSchema preserves nullable fields as null
+ * - parseEventRow parses a valid object into an EventRow with KnownEventName
+ * - parseEventRow throws ZodError on missing required fields
+ * - parseEventRow normalizes unknown event names to 'unknown'
  * - parseSseEvent parses valid JSON into an EventRow
  * - parseSseEvent throws SyntaxError on non-JSON input
  * - parseSseEvent throws ZodError on missing required fields
@@ -13,7 +16,7 @@
 import { describe, expect, test } from 'bun:test';
 import { ZodError } from 'zod';
 import type { ParsedEventFields } from '@/test/types.ts';
-import { eventRowSchema, parseSseEvent } from './rows.ts';
+import { eventRowSchema, parseEventRow, parseSseEvent } from './rows.ts';
 
 // ---------------------------------------------------------------------------
 // Test constants
@@ -161,6 +164,73 @@ describe('eventRowSchema — type validation', () => {
 });
 
 // ---------------------------------------------------------------------------
+// parseEventRow — Boundary #4 (fetch response object)
+// ---------------------------------------------------------------------------
+
+describe('parseEventRow — valid object', () => {
+  test('parses a minimal event row object', () => {
+    const result = parseEventRow(minimalRow);
+    expect(result.id).toBe(TEST_EVENT_ID);
+    expect(result.event).toBe('SessionStart');
+    expect(result.session_id).toBe(TEST_SESSION_ID);
+    expect(result.exit_code).toBe(0);
+  });
+
+  test('nullable fields accept null', () => {
+    const result = parseEventRow(minimalRow);
+    expect(result.tool_name).toBeNull();
+    expect(result.session_name).toBeNull();
+    expect(result.hook_duration_ms).toBeNull();
+    expect(result.wrapped_command).toBeNull();
+    expect(result.stdout).toBeNull();
+    expect(result.stderr).toBeNull();
+    expect(result.hookwatch_log).toBeNull();
+  });
+});
+
+describe('parseEventRow — unknown event name normalization', () => {
+  test('known event name is returned unchanged', () => {
+    const result = parseEventRow({ ...minimalRow, event: 'SessionStart' });
+    expect(result.event).toBe('SessionStart');
+  });
+
+  test('unknown event name is normalized to "unknown"', () => {
+    const result = parseEventRow({ ...minimalRow, event: 'FutureEvent' });
+    expect(result.event).toBe('unknown');
+  });
+
+  test('empty string event name is normalized to "unknown"', () => {
+    const result = parseEventRow({ ...minimalRow, event: '' });
+    expect(result.event).toBe('unknown');
+  });
+});
+
+describe('parseEventRow — invalid object', () => {
+  test('missing id field throws ZodError', () => {
+    const { id: _id, ...withoutId } = minimalRow;
+    expect(() => parseEventRow(withoutId)).toThrow(ZodError);
+  });
+
+  test('missing session_id field throws ZodError', () => {
+    const { session_id: _sid, ...withoutSid } = minimalRow;
+    expect(() => parseEventRow(withoutSid)).toThrow(ZodError);
+  });
+
+  test('missing exit_code field throws ZodError', () => {
+    const { exit_code: _ec, ...withoutEc } = minimalRow;
+    expect(() => parseEventRow(withoutEc)).toThrow(ZodError);
+  });
+
+  test('undefined input throws ZodError', () => {
+    expect(() => parseEventRow(undefined)).toThrow(ZodError);
+  });
+
+  test('null input throws ZodError', () => {
+    expect(() => parseEventRow(null)).toThrow(ZodError);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // parseSseEvent — Boundary #4 (SSE / fetch event data)
 // ---------------------------------------------------------------------------
 
@@ -185,6 +255,11 @@ describe('parseSseEvent — valid input', () => {
     const result = parseSseEvent(JSON.stringify(fullRow));
     expect(result.tool_name).toBe('Read');
     expect(result.wrapped_command).toBe('cat /etc/hosts');
+  });
+
+  test('unknown event name in JSON is normalized to "unknown"', () => {
+    const result = parseSseEvent(JSON.stringify({ ...minimalRow, event: 'FutureEvent' }));
+    expect(result.event).toBe('unknown');
   });
 });
 
