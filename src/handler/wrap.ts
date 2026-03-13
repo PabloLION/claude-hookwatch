@@ -147,12 +147,5 @@ async function teeStream(
   }
 
   // Decode all chunks into a single string
-  const total = chunks.reduce((sum, c) => sum + c.byteLength, 0);
-  const merged = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    merged.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return new TextDecoder().decode(merged);
+  return Buffer.concat(chunks).toString('utf-8');
 }

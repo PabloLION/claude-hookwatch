@@ -22,6 +22,16 @@ import { html } from '../shared/html.ts';
 import { WrapViewer } from '../wrap/wrap-viewer.ts';
 import type { RowEntry } from './event-list.ts';
 
+// ---------------------------------------------------------------------------
+// Module-level style constants — defined once, not recreated on every render
+// ---------------------------------------------------------------------------
+
+const ERROR_HEADING_STYLE = {
+  color: 'var(--pico-del-color, #c0392b)',
+  fontWeight: '600',
+  margin: '0 0 0.5rem',
+};
+
 /**
  * Event types that carry tool information and warrant the tool info header.
  * PermissionRequest is NOT included — it is not a tool-use event.
@@ -85,7 +95,7 @@ export function EventDetail({ entry }: EventDetailProps): ReturnType<typeof html
     const rawFormatted = JSON.stringify(entry.raw, null, 2);
     return html`
       <div class="event-detail event-detail--invalid">
-        <p style=${{ color: 'var(--pico-del-color, #c0392b)', fontWeight: '600', margin: '0 0 0.5rem' }}>
+        <p style=${ERROR_HEADING_STYLE}>
           Validation error
         </p>
         <details open>
