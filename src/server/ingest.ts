@@ -48,7 +48,8 @@ interface WrapFields {
 /**
  * Extracts optional wrap fields from the parsed request body object.
  * These fields are present when the handler runs in wrapped mode (Story 3.1).
- * Caller must pass a Record — `req.json()` guarantees this after successful parse.
+ * Caller passes the validated request body (must be a plain object).
+ * The handleIngest guard rejects non-object bodies before this function is called.
  */
 function extractWrapFields(body: Record<string, unknown>): WrapFields {
   return {
@@ -74,11 +75,19 @@ export async function handleIngest(req: Request): Promise<Response> {
     return errorResponse('INVALID_QUERY', 'Request body is not valid JSON', HTTP_BAD_REQUEST);
   }
 
+  // Guard: req.json() can return any JSON value (string, number, array, null).
+  // Reject anything that is not a plain object before proceeding.
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    return new Response(JSON.stringify({ error: 'Request body must be a JSON object' }), {
+      status: HTTP_BAD_REQUEST,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   // Extract optional wrap fields from the top-level body object before
   // handing raw to parseHookEvent (which uses .passthrough() so it won't strip
   // them, but we extract them explicitly here for DB storage).
-  // Cast to Record<string, unknown>: req.json() returns any, and if raw is not
-  // an object the typeof guards inside extractWrapFields produce safe defaults.
+  // Cast is safe: handleIngest rejects non-object bodies above.
   const {
     wrappedCommand,
     wrappedStdout,
