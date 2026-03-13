@@ -3,7 +3,7 @@
  *
  * Coverage:
  * - Each of the 18 event types parses a valid payload
- * - Unknown fields are preserved (passthrough)
+ * - Unknown fields are preserved (.loose())
  * - Unknown event types fall through to fallback schema
  * - Missing required fields produce a ZodError
  * - PermissionRequest has no tool_use_id
@@ -49,7 +49,7 @@ const VALID_PAYLOAD_TEST_NAME = 'valid payload parses successfully';
 const TEST_MODEL = 'claude-sonnet-4-6';
 /** Transcript path used in the base fixture and standalone validation tests. */
 const TEST_TRANSCRIPT_PATH = '/home/user/.claude/transcript.jsonl';
-/** Arbitrary numeric value used in passthrough tests — must not conflict with real field values. */
+/** Arbitrary numeric value used in .loose() tests — must not conflict with real field values. */
 const PASSTHROUGH_EXTRA_NUMBER = 42;
 
 // ---------------------------------------------------------------------------
@@ -394,10 +394,10 @@ describe('parseHookEvent — InstructionsLoaded', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Acceptance criterion 1: unknown fields are preserved (passthrough)
+// Acceptance criterion 1: unknown fields are preserved (.loose())
 // ---------------------------------------------------------------------------
 
-describe('passthrough — unknown fields are preserved', () => {
+describe('.loose() — unknown fields are preserved', () => {
   test('PreToolUse preserves unknown fields', () => {
     const result = parseHookEvent({
       ...base,

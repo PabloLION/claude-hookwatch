@@ -30,7 +30,7 @@ const MSG_SESSION_START = 'hookwatch captured SessionStart (startup)';
 const MSG_STOP = 'hookwatch captured Stop';
 /** systemMessage injected by hookwatch for a PreToolUse (Bash) event. */
 const MSG_PRE_TOOL_USE_BASH = 'hookwatch captured PreToolUse (Bash)';
-/** Standard test description for passthrough tests that verify an unknown SDK field survives. */
+/** Standard test description for .loose() tests that verify an unknown SDK field survives. */
 const FUTURE_SDK_TEST_NAME = 'future SDK field is preserved';
 
 // ---------------------------------------------------------------------------
@@ -77,7 +77,7 @@ describe('hookOutputSchema — valid output', () => {
   });
 });
 
-describe('hookOutputSchema — passthrough allows unknown fields', () => {
+describe('hookOutputSchema — .loose() allows unknown fields', () => {
   test(FUTURE_SDK_TEST_NAME, () => {
     const result = hookOutputSchema.parse({
       continue: true,
@@ -179,7 +179,7 @@ describe('preToolUseOutputSchema — valid output', () => {
   });
 });
 
-describe('preToolUseOutputSchema — passthrough allows unknown fields', () => {
+describe('preToolUseOutputSchema — .loose() allows unknown fields', () => {
   test(FUTURE_SDK_TEST_NAME, () => {
     const result = preToolUseOutputSchema.parse({
       hookSpecificOutput: { permissionDecision: 'allow' },
@@ -208,7 +208,7 @@ describe('preToolUseOutputSchema — validation failures', () => {
   });
 
   test('hookSpecificOutput is NOT present on base schema (it is PreToolUse-only)', () => {
-    // The base schema should accept hookSpecificOutput as an unknown passthrough field,
+    // The base schema should accept hookSpecificOutput as an unknown .loose() field,
     // but does not validate its structure — no type-safe access via schema type.
     const result = hookOutputSchema.parse({
       hookSpecificOutput: { permissionDecision: 'allow' },
@@ -274,7 +274,7 @@ describe('stopOutputSchema — valid output', () => {
   });
 });
 
-describe('stopOutputSchema — passthrough allows unknown fields', () => {
+describe('stopOutputSchema — .loose() allows unknown fields', () => {
   test(FUTURE_SDK_TEST_NAME, () => {
     const result = stopOutputSchema.parse({
       decision: 'approve',
@@ -386,7 +386,7 @@ describe('parseHookOutput — error handling', () => {
   });
 });
 
-describe('parseHookOutput — passthrough preserves unknown fields', () => {
+describe('parseHookOutput — .loose() preserves unknown fields', () => {
   test('future SDK field is preserved', () => {
     const result = parseHookOutput(JSON.stringify({ continue: true, futureSdkField: 'preserved' }));
     const fields = result as ParsedEventFields;

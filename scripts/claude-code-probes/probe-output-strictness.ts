@@ -6,7 +6,7 @@
  * in src/schemas/output.ts is safe.
  *
  * Theory:
- *   If Claude Code validates output strictly (like Zod without .loose()), it
+ *   If Claude Code validates output strictly (like Zod with .strict()), it
  *   would reject or error when hooks return extra fields. If it ignores extras, our
  *   .loose() usage is empirically confirmed safe.
  *

@@ -14,7 +14,7 @@
  *   - Wrapped events (wrapped_command is non-null): solid/filled badge style
  *
  * Invalid row rendering (ch-lx8i):
- *   - Rows that fail parseEventRow validation are stored as { valid: false } entries
+ *   - Rows that fail parseEventRow validation are kept as { valid: false } entries
  *   - Rendered with a red/error background and expandable raw data + error detail
  *
  * ch-u88: all rendering via htm template literals — no innerHTML.
@@ -40,7 +40,7 @@ import { EventDetail } from './event-detail.ts';
  * Invalid entries carry the raw server response and the validation error
  * message so the UI can show what went wrong without discarding any data.
  *
- * Exported so app.ts and event-detail.ts can import the type.
+ * Exported for cross-component use (app.ts, event-detail.ts, sse-client.ts).
  */
 export type RowEntry =
   | { valid: true; row: EventRow }
@@ -80,7 +80,8 @@ function extractToolName(stdinJson: string): string {
 function formatTimestamp(ts: number): string {
   try {
     return new Date(ts).toLocaleString();
-  } catch {
+  } catch (err) {
+    console.warn('hookwatch: failed to format timestamp', ts, err);
     return String(ts);
   }
 }
@@ -170,7 +171,7 @@ export function EventList({ eventList, activeSession }: EventListProps) {
                     style=${{
                       cursor: 'pointer',
                       userSelect: 'none',
-                      background: 'var(--pico-del-color, #fdecea)',
+                      background: 'var(--pico-mark-background-color, #fdecea)',
                       color: 'var(--pico-color, inherit)',
                     }}
                     aria-expanded=${expanded}

@@ -278,7 +278,7 @@ describe('valid JSON but missing hook_event_name', () => {
 // ---------------------------------------------------------------------------
 
 describe('extra unknown fields', () => {
-  test('returns 201 when extra fields are present (passthrough schema)', async () => {
+  test('returns 201 when extra fields are present (.loose() schema)', async () => {
     const res = await postEvent(server.baseUrl, {
       ...SESSION_START,
       session_id: 'smoke-session-passthrough',

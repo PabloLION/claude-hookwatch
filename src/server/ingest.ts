@@ -67,7 +67,6 @@ function extractWrapFields(body: Record<string, unknown>): WrapFields {
 // ---------------------------------------------------------------------------
 
 export async function handleIngest(req: Request): Promise<Response> {
-  // Parse JSON body
   let raw: unknown;
   try {
     raw = await req.json();
@@ -78,16 +77,13 @@ export async function handleIngest(req: Request): Promise<Response> {
   // Guard: req.json() can return any JSON value (string, number, array, null).
   // Reject anything that is not a plain object before proceeding.
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
-    return new Response(JSON.stringify({ error: 'Request body must be a JSON object' }), {
-      status: HTTP_BAD_REQUEST,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return errorResponse('INVALID_QUERY', 'Request body must be a JSON object', HTTP_BAD_REQUEST);
   }
 
-  // Extract optional wrap fields from the top-level body object before
-  // handing raw to parseHookEvent (which uses .loose() so it won't strip
-  // them, but we extract them explicitly here for DB storage).
-  // Cast is safe: handleIngest rejects non-object bodies above.
+  // Extract optional wrap fields explicitly for typed DB storage.
+  // parseHookEvent(.loose()) would preserve them as untyped index entries,
+  // but we need them as named, typed WrapFields for insertEvent().
+  // Cast to Record<string, unknown> is safe: the guard above rejects non-object bodies.
   const {
     wrappedCommand,
     wrappedStdout,
@@ -97,7 +93,6 @@ export async function handleIngest(req: Request): Promise<Response> {
     hookwatchLog,
   } = extractWrapFields(raw as Record<string, unknown>);
 
-  // Validate with Zod
   let event: ReturnType<typeof parseHookEvent>;
   try {
     event = parseHookEvent(raw);

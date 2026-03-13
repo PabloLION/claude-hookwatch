@@ -28,7 +28,7 @@ const TEST_LIMIT_PARTIAL = 25;
 const TEST_OFFSET_LARGE = 200;
 /** A very large valid offset used to verify no upper-bound restriction on offset. */
 const TEST_OFFSET_VERY_LARGE = 99999;
-/** Arbitrary unknown field value for passthrough tests. */
+/** Arbitrary unknown field value for .loose() tests. */
 const TEST_UNKNOWN_VALUE = 42;
 
 // ---------------------------------------------------------------------------
@@ -169,7 +169,7 @@ describe('queryFilterSchema — offset validation failures', () => {
 // Passthrough — extra fields preserved
 // ---------------------------------------------------------------------------
 
-describe('queryFilterSchema — passthrough preserves unknown fields', () => {
+describe('queryFilterSchema — .loose() preserves unknown fields', () => {
   test('extra field is preserved alongside known fields', () => {
     const result = queryFilterSchema.parse({
       session_id: 'abc-123',

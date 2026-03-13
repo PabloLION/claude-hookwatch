@@ -235,7 +235,8 @@ describe('POST /api/events', () => {
     });
     expect(res.status).toBe(HTTP_BAD_REQUEST);
     const body = await res.json();
-    expect(body.error).toBe('Request body must be a JSON object');
+    expect(body.error.code).toBe('INVALID_QUERY');
+    expect(body.error.message).toBe('Request body must be a JSON object');
   });
 
   test('returns 400 when body is a JSON null', async () => {
@@ -246,7 +247,8 @@ describe('POST /api/events', () => {
     });
     expect(res.status).toBe(HTTP_BAD_REQUEST);
     const body = await res.json();
-    expect(body.error).toBe('Request body must be a JSON object');
+    expect(body.error.code).toBe('INVALID_QUERY');
+    expect(body.error.message).toBe('Request body must be a JSON object');
   });
 
   test('returns 400 when body is a JSON string', async () => {
@@ -257,7 +259,8 @@ describe('POST /api/events', () => {
     });
     expect(res.status).toBe(HTTP_BAD_REQUEST);
     const body = await res.json();
-    expect(body.error).toBe('Request body must be a JSON object');
+    expect(body.error.code).toBe('INVALID_QUERY');
+    expect(body.error.message).toBe('Request body must be a JSON object');
   });
 
   test('accepts wrapped_command field and returns 201 (Story 3.1)', async () => {

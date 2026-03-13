@@ -4,14 +4,14 @@
  *
  * Design decisions:
  * - .loose() — forward-compatible with future columns added to the DB schema.
- *   Unknown columns received from the server are preserved, not stripped.
+ *   Unknown columns received over the wire are preserved, not stripped.
  * - Nullable fields use z.string().nullable() / z.number().nullable() to
  *   match the SQLite column definitions exactly.
  * - exit_code is z.number() (NOT NULL DEFAULT 0 in the DB schema).
  * - parseEventRow() is the validated factory for object input (fetch path).
  * - parseSseEvent() is the validated factory for string input (SSE path).
  *
- * Source: src/types.ts (EventRow interface — authoritative DB row definition).
+ * Source: @/types.ts (EventRow interface — authoritative DB row definition).
  * Naming: camelCase + Schema suffix (e.g. eventRowSchema), PascalCase inferred types.
  */
 
@@ -30,6 +30,8 @@ import { toKnownEventName } from '@/types.ts';
  * The `event` column holds either a known event name or "unknown" — modelled
  * as z.string() rather than a z.enum() of the 18 known names so that future
  * event types don't cause validation failures before the schema is updated.
+ * See parseEventRow()/parseSseEvent() which normalize unrecognized names to
+ * 'unknown' after validation.
  */
 export const eventRowSchema = z
   .object({
@@ -55,10 +57,11 @@ export const eventRowSchema = z
  *
  * Intentionally structurally compatible with (but not identical to) the
  * EventRow interface: eventRowSchema uses z.string() for the `event` column
- * rather than KnownEventName, and the inferred type reflects that. Callers
- * that need the KnownEventName union should use EventRow from src/types.ts
- * directly; callers that receive data from the wire and validate it here
- * should use ParsedEventRow.
+ * rather than KnownEventName, and the inferred type reflects that.
+ *
+ * Used internally by parseEventRow()/parseSseEvent() for Zod inference.
+ * External callers should use EventRow (via the parse factories) rather than
+ * this type directly.
  */
 export type ParsedEventRow = z.infer<typeof eventRowSchema>;
 

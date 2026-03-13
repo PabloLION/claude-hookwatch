@@ -113,7 +113,7 @@ describe('eventRowSchema — full row with all optional fields', () => {
   });
 });
 
-describe('eventRowSchema — passthrough preserves unknown fields', () => {
+describe('eventRowSchema — .loose() preserves unknown fields', () => {
   test('future DB column is preserved', () => {
     const result = eventRowSchema.parse({ ...minimalRow, future_column: 'new-value' });
     const fields = result as ParsedEventFields;
@@ -284,7 +284,7 @@ describe('parseSseEvent — error handling', () => {
   });
 });
 
-describe('parseSseEvent — passthrough preserves unknown fields', () => {
+describe('parseSseEvent — .loose() preserves unknown fields', () => {
   test('future DB column is preserved', () => {
     const result = parseSseEvent(JSON.stringify({ ...minimalRow, future_column: 'v2-data' }));
     const fields = result as ParsedEventFields;

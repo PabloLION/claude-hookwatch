@@ -15,7 +15,7 @@ import type { HookEvent } from '@/schemas/events.ts';
 
 /**
  * Dynamic field access for test assertions on parsed events.
- * Zod parse returns a typed union, but passthrough tests need to access
+ * Zod parse returns a typed union, but .loose() tests need to access
  * fields that are not in the static type.
  */
 export type ParsedEventFields = Record<string, unknown>;

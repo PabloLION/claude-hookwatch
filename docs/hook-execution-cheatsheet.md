@@ -114,8 +114,8 @@ A SessionStart hook returned this JSON with two extra fields:
 Claude Code exited 0 and ran the session normally. The extra fields
 (`hookwatch_version`, `debug`) were silently ignored — no error, no warning.
 
-**Implication for hookwatch:** `.loose()` on all output Zod schemas is
-empirically confirmed safe. If Claude Code adds new output fields in future
+**Implication for hookwatch:** `.loose()` on all Zod schemas (output, input,
+and row) is empirically confirmed safe. If Claude Code adds new output fields in future
 versions, hooks returning those fields will not break existing hookwatch
 versions. The leniency is symmetric: Claude Code is lenient both on what it
 reads from hook stdin and what it accepts from hook stdout.
