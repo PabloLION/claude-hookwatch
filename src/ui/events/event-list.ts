@@ -169,6 +169,7 @@ export function EventList({ eventList, activeSession }: EventListProps) {
                     onClick=${() => toggleRow(key)}
                     style=${{
                       cursor: 'pointer',
+                      userSelect: 'none',
                       background: 'var(--pico-del-color, #fdecea)',
                       color: 'var(--pico-color, inherit)',
                     }}
@@ -202,7 +203,7 @@ export function EventList({ eventList, activeSession }: EventListProps) {
                 <tr
                   key=${event.id}
                   onClick=${() => toggleRow(event.id)}
-                  style=${{ cursor: 'pointer' }}
+                  style=${{ cursor: 'pointer', userSelect: 'none' }}
                   aria-expanded=${expanded}
                   data-event-id=${event.id}
                   data-wrapped=${isWrapped ? 'true' : 'false'}
