@@ -21,7 +21,6 @@ import { ZodError } from 'zod';
 import { openDb } from '@/db/connection.ts';
 import { isSqliteBusy } from '@/db/errors.ts';
 import { getEventById, insertEvent } from '@/db/queries.ts';
-import { isRecord } from '@/guards.ts';
 import { parseHookEvent } from '@/schemas/events.ts';
 import { errorResponse } from '@/server/errors.ts';
 import {
@@ -47,18 +46,18 @@ interface WrapFields {
 }
 
 /**
- * Extracts optional wrap fields from the raw request body object.
+ * Extracts optional wrap fields from the parsed request body object.
  * These fields are present when the handler runs in wrapped mode (Story 3.1).
+ * Caller must pass a Record — `req.json()` guarantees this after successful parse.
  */
-function extractWrapFields(raw: unknown): WrapFields {
-  const bodyObj = isRecord(raw) ? raw : {};
+function extractWrapFields(body: Record<string, unknown>): WrapFields {
   return {
-    wrappedCommand: typeof bodyObj.wrapped_command === 'string' ? bodyObj.wrapped_command : null,
-    wrappedStdout: typeof bodyObj.stdout === 'string' ? bodyObj.stdout : null,
-    wrappedStderr: typeof bodyObj.stderr === 'string' ? bodyObj.stderr : null,
-    wrappedExitCode: typeof bodyObj.exit_code === 'number' ? bodyObj.exit_code : 0,
-    hookDurationMs: typeof bodyObj.hook_duration_ms === 'number' ? bodyObj.hook_duration_ms : null,
-    hookwatchLog: typeof bodyObj.hookwatch_log === 'string' ? bodyObj.hookwatch_log : null,
+    wrappedCommand: typeof body.wrapped_command === 'string' ? body.wrapped_command : null,
+    wrappedStdout: typeof body.stdout === 'string' ? body.stdout : null,
+    wrappedStderr: typeof body.stderr === 'string' ? body.stderr : null,
+    wrappedExitCode: typeof body.exit_code === 'number' ? body.exit_code : 0,
+    hookDurationMs: typeof body.hook_duration_ms === 'number' ? body.hook_duration_ms : null,
+    hookwatchLog: typeof body.hookwatch_log === 'string' ? body.hookwatch_log : null,
   };
 }
 
@@ -78,6 +77,8 @@ export async function handleIngest(req: Request): Promise<Response> {
   // Extract optional wrap fields from the top-level body object before
   // handing raw to parseHookEvent (which uses .passthrough() so it won't strip
   // them, but we extract them explicitly here for DB storage).
+  // Cast to Record<string, unknown>: req.json() returns any, and if raw is not
+  // an object the typeof guards inside extractWrapFields produce safe defaults.
   const {
     wrappedCommand,
     wrappedStdout,
@@ -85,7 +86,7 @@ export async function handleIngest(req: Request): Promise<Response> {
     wrappedExitCode,
     hookDurationMs,
     hookwatchLog,
-  } = extractWrapFields(raw);
+  } = extractWrapFields(raw as Record<string, unknown>);
 
   // Validate with Zod
   let event: ReturnType<typeof parseHookEvent>;
