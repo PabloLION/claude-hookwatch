@@ -8,7 +8,8 @@
  * - Nullable fields use z.string().nullable() / z.number().nullable() to
  *   match the SQLite column definitions exactly.
  * - exit_code is z.number() (NOT NULL DEFAULT 0 in the DB schema).
- * - parseSseEvent() is the validated factory for Boundary #4 (SSE/fetch event data).
+ * - parseEventRow() is the validated factory for object input (fetch path).
+ * - parseSseEvent() is the validated factory for string input (SSE path).
  *
  * Source: src/types.ts (EventRow interface — authoritative DB row definition).
  * Naming: camelCase + Schema suffix (e.g. eventRowSchema), PascalCase inferred types.
@@ -16,6 +17,7 @@
 
 import { z } from 'zod';
 import type { EventRow } from '@/types.ts';
+import { toKnownEventName } from '@/types.ts';
 
 // ---------------------------------------------------------------------------
 // EventRow schema
@@ -65,17 +67,34 @@ export type ParsedEventRow = z.infer<typeof eventRowSchema>;
 // ---------------------------------------------------------------------------
 
 /**
+ * Validates a parsed object as an EventRow.
+ *
+ * Boundary #4: fetch response object → typed EventRow.
+ * Unlike parseSseEvent (which takes a JSON string), this takes an already-parsed
+ * object — for use after res.json() in the fetch path.
+ *
+ * Unknown event names are normalized to 'unknown' via toKnownEventName() to
+ * ensure the return type accurately reflects EventRow.
+ *
+ * Throws:
+ *   ZodError — if the object does not satisfy eventRowSchema
+ */
+export function parseEventRow(obj: unknown): EventRow {
+  const validated = eventRowSchema.parse(obj);
+  return { ...validated, event: toKnownEventName(validated.event) };
+}
+
+/**
  * Parses and validates a raw SSE message string as an EventRow.
  *
  * Boundary #4: SSE/fetch event data (string) → typed EventRow.
  *
+ * Unknown event names are normalized to 'unknown' via toKnownEventName() to
+ * ensure the return type accurately reflects EventRow.
+ *
  * Throws:
  *   SyntaxError  — if data is not valid JSON
  *   ZodError     — if the parsed JSON does not satisfy eventRowSchema
- *
- * Note: returns EventRow via cast from ParsedEventRow — the `event` field is
- * z.string() in the schema (not KnownEventName) for forward compatibility.
- * The cast is safe because the DB ingest path normalizes via toKnownEventName().
  */
 export function parseSseEvent(data: string): EventRow {
   let parsed: unknown;
@@ -85,5 +104,5 @@ export function parseSseEvent(data: string): EventRow {
     const preview = data.length > 200 ? `${data.slice(0, 200)}\u2026` : data;
     throw new SyntaxError(`SSE data is not valid JSON: ${preview}`, { cause: err });
   }
-  return eventRowSchema.parse(parsed) as EventRow;
+  return parseEventRow(parsed);
 }
