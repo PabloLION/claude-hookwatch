@@ -10,6 +10,9 @@
  * - All other event types use the base schema (3 standard fields only).
  * - z.record(z.string(), z.unknown()) for arbitrary JSON objects (Zod v4 requires
  *   two arguments; single-arg z.record(z.unknown()) throws TypeError).
+ * - parseHookOutput() is the validated factory for Boundary #2 (handler subprocess
+ *   stdout). Replaces the unsafe `JSON.parse(stdout) as Record<string, unknown>`
+ *   pattern in test helpers.
  *
  * Source: docs/hook-stdout-schema.md (authoritative field definitions).
  * Naming: camelCase + Schema suffix (e.g. hookOutputSchema), PascalCase inferred types.
@@ -79,3 +82,34 @@ export const stopOutputSchema = z
   .loose();
 
 export type StopOutput = z.infer<typeof stopOutputSchema>;
+
+// ---------------------------------------------------------------------------
+// Parse factory — Boundary #2 (handler subprocess stdout)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parses and validates handler subprocess stdout as a HookOutput object.
+ *
+ * Boundary #2: handler subprocess stdout → typed HookOutput.
+ * Replaces the unsafe `JSON.parse(stdout) as Record<string, unknown>` pattern.
+ *
+ * The handler writes two payload shapes (both accepted by hookOutputSchema):
+ *   Normal:  { continue: boolean, systemMessage?: string }
+ *   Fatal:   { hookwatch_fatal: string, continue: true, systemMessage: string }
+ * The `hookwatch_fatal` field passes through via .loose() — it is not validated
+ * as a required field but is preserved in the returned object.
+ *
+ * Throws:
+ *   SyntaxError  — if stdout is not valid JSON
+ *   ZodError     — if the parsed JSON does not satisfy hookOutputSchema
+ */
+export function parseHookOutput(stdout: string): HookOutput {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stdout);
+  } catch (err) {
+    const preview = stdout.length > 200 ? `${stdout.slice(0, 200)}\u2026` : stdout;
+    throw new SyntaxError(`handler stdout is not valid JSON: ${preview}`, { cause: err });
+  }
+  return hookOutputSchema.parse(parsed);
+}

@@ -13,7 +13,12 @@
 import { describe, expect, test } from 'bun:test';
 import { ZodError } from 'zod';
 import type { ParsedEventFields } from '@/test/types.ts';
-import { hookOutputSchema, preToolUseOutputSchema, stopOutputSchema } from './output.ts';
+import {
+  hookOutputSchema,
+  parseHookOutput,
+  preToolUseOutputSchema,
+  stopOutputSchema,
+} from './output.ts';
 
 // ---------------------------------------------------------------------------
 // Test constants
@@ -322,5 +327,69 @@ describe('systemMessage format — hookwatch convention', () => {
     const msg = MSG_SESSION_START;
     const result = hookOutputSchema.parse({ systemMessage: msg });
     expect(result.systemMessage).toMatch(/^hookwatch captured \w+( \(.+\))?$/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseHookOutput — Boundary #2 (handler subprocess stdout)
+// ---------------------------------------------------------------------------
+
+describe('parseHookOutput — normal hook output', () => {
+  test('normal output with continue and systemMessage', () => {
+    const result = parseHookOutput(
+      JSON.stringify({ continue: true, systemMessage: MSG_SESSION_START }),
+    );
+    expect(result.continue).toBe(true);
+    expect(result.systemMessage).toBe(MSG_SESSION_START);
+  });
+
+  test('continue: false is valid', () => {
+    const result = parseHookOutput(JSON.stringify({ continue: false }));
+    expect(result.continue).toBe(false);
+  });
+
+  test('empty object is valid (all fields optional)', () => {
+    const result = parseHookOutput('{}');
+    expect(result).toEqual({});
+  });
+});
+
+describe('parseHookOutput — fatal hook output', () => {
+  test('hookwatch_fatal field is preserved via .loose()', () => {
+    const payload = {
+      hookwatch_fatal: 'Failed to parse stdin as JSON: unexpected token',
+      continue: true,
+      systemMessage: '[hookwatch fatal] Failed to parse stdin as JSON: unexpected token',
+    };
+    const result = parseHookOutput(JSON.stringify(payload));
+    expect(result.continue).toBe(true);
+    const fields = result as ParsedEventFields;
+    expect(fields.hookwatch_fatal).toBe(payload.hookwatch_fatal);
+  });
+});
+
+describe('parseHookOutput — error handling', () => {
+  test('non-JSON stdout throws SyntaxError', () => {
+    expect(() => parseHookOutput('not-json')).toThrow(SyntaxError);
+  });
+
+  test('empty string throws SyntaxError', () => {
+    expect(() => parseHookOutput('')).toThrow(SyntaxError);
+  });
+
+  test('continue must be boolean — rejects string', () => {
+    expect(() => parseHookOutput(JSON.stringify({ continue: 'yes' }))).toThrow(ZodError);
+  });
+
+  test('systemMessage must be string — rejects number', () => {
+    expect(() => parseHookOutput(JSON.stringify({ systemMessage: 42 }))).toThrow(ZodError);
+  });
+});
+
+describe('parseHookOutput — passthrough preserves unknown fields', () => {
+  test('future SDK field is preserved', () => {
+    const result = parseHookOutput(JSON.stringify({ continue: true, futureSdkField: 'preserved' }));
+    const fields = result as ParsedEventFields;
+    expect(fields.futureSdkField).toBe('preserved');
   });
 });
