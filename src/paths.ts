@@ -13,11 +13,23 @@ import { isErrnoException } from '@/guards.ts';
 const MAX_PORT = 65535;
 
 function xdgDataHome(): string {
-  return process.env.XDG_DATA_HOME ?? `${process.env.HOME}/.local/share`;
+  if (process.env.XDG_DATA_HOME !== undefined) return process.env.XDG_DATA_HOME;
+  if (process.env.HOME === undefined) {
+    throw new Error(
+      'Neither XDG_DATA_HOME nor HOME environment variable is set — cannot resolve data directory',
+    );
+  }
+  return `${process.env.HOME}/.local/share`;
 }
 
 function xdgConfigHome(): string {
-  return process.env.XDG_CONFIG_HOME ?? `${process.env.HOME}/.config`;
+  if (process.env.XDG_CONFIG_HOME !== undefined) return process.env.XDG_CONFIG_HOME;
+  if (process.env.HOME === undefined) {
+    throw new Error(
+      'Neither XDG_CONFIG_HOME nor HOME environment variable is set — cannot resolve config directory',
+    );
+  }
+  return `${process.env.HOME}/.config`;
 }
 
 /** SQLite database: ~/.local/share/hookwatch/hookwatch.db */
