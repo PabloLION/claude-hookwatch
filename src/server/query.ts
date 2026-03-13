@@ -31,7 +31,10 @@ export async function handleQuery(req: Request): Promise<Response> {
   let raw: unknown;
   try {
     raw = await req.json();
-  } catch {
+  } catch (err) {
+    process.stderr.write(
+      `[hookwatch] POST /api/query JSON parse error: ${err instanceof Error ? err.message : String(err)}\n`,
+    );
     return errorResponse('INVALID_QUERY', 'Request body is not valid JSON', HTTP_BAD_REQUEST);
   }
 
