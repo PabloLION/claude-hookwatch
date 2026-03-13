@@ -16,6 +16,8 @@
 
 import { join } from 'node:path';
 import { DEFAULT_PORT } from '@/config.ts';
+import type { HookOutput } from '@/schemas/output.ts';
+import { parseHookOutput } from '@/schemas/output.ts';
 
 import type { WrapResult } from '@/types.ts';
 
@@ -87,14 +89,16 @@ export async function killProcessOnPort(port: number = DEFAULT_PORT): Promise<vo
 // Output parsing
 // ---------------------------------------------------------------------------
 
-/** Parse handler subprocess stdout as a JSON record. */
-export function parseStdout(stdout: string): Record<string, unknown> {
-  try {
-    return JSON.parse(stdout) as Record<string, unknown>;
-  } catch (err) {
-    const preview = stdout.length > 200 ? `${stdout.slice(0, 200)}…` : stdout;
-    throw new Error(`Failed to parse handler stdout as JSON: ${preview}`, { cause: err });
-  }
+/**
+ * Parses handler subprocess stdout as a validated HookOutput object.
+ *
+ * Delegates to parseHookOutput() (Boundary #2 factory) — replaces the
+ * unsafe JSON.parse + Record<string, unknown> cast pattern.
+ * HookOutput has [key: string]: unknown via .loose(), so all existing
+ * field accesses (parsed.continue, parsed.systemMessage, etc.) still work.
+ */
+export function parseStdout(stdout: string): HookOutput {
+  return parseHookOutput(stdout);
 }
 
 // ---------------------------------------------------------------------------
