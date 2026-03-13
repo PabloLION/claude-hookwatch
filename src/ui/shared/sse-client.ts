@@ -41,8 +41,8 @@ export function startSseClient(
     let parsed: EventRow;
     try {
       parsed = parseSseEvent(ev.data);
-    } catch {
-      console.error('hookwatch: SSE event failed validation', ev.data);
+    } catch (err) {
+      console.error('hookwatch: SSE event failed validation', err, ev.data);
       return;
     }
 
