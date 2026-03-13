@@ -91,11 +91,7 @@ export async function killProcessOnPort(port: number = DEFAULT_PORT): Promise<vo
 
 /**
  * Parses handler subprocess stdout as a validated HookOutput object.
- *
- * Delegates to parseHookOutput() (Boundary #2 factory) — replaces the
- * unsafe JSON.parse + Record<string, unknown> cast pattern.
- * HookOutput has [key: string]: unknown via .loose(), so all existing
- * field accesses (parsed.continue, parsed.systemMessage, etc.) still work.
+ * Delegates to parseHookOutput() (Boundary #2 factory).
  */
 export function parseStdout(stdout: string): HookOutput {
   return parseHookOutput(stdout);

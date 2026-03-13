@@ -50,7 +50,7 @@ function parseStdin(stdinJson: string): HookEvent | null {
  */
 function extractStringField(parsed: HookEvent | null, field: string): string | null {
   if (parsed === null) return null;
-  const value = (parsed as Record<string, unknown>)[field];
+  const value = parsed[field];
   return typeof value === 'string' ? value : null;
 }
 
@@ -60,7 +60,7 @@ function extractStringField(parsed: HookEvent | null, field: string): string | n
  */
 function extractToolInput(parsed: HookEvent | null): unknown {
   if (parsed === null) return null;
-  return (parsed as Record<string, unknown>).tool_input ?? null;
+  return parsed.tool_input ?? null;
 }
 
 /**

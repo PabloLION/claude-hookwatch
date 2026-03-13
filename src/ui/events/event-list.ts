@@ -35,7 +35,7 @@ interface EventListProps {
  */
 function extractToolName(stdinJson: string): string {
   try {
-    const event = parseHookEvent(JSON.parse(stdinJson)) as Record<string, unknown>;
+    const event = parseHookEvent(JSON.parse(stdinJson));
     return typeof event.tool_name === 'string' ? event.tool_name : '\u2014';
   } catch {
     return '\u2014';

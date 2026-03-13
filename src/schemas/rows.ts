@@ -8,10 +8,7 @@
  * - Nullable fields use z.string().nullable() / z.number().nullable() to
  *   match the SQLite column definitions exactly.
  * - exit_code is z.number() (NOT NULL DEFAULT 0 in the DB schema).
- * - parseSseEvent() is the validated factory for Boundary #4 (SSE/fetch event
- *   data). Replaces the ad-hoc isRecord() + manual field checks used in:
- *     src/ui/shared/sse-client.ts, src/ui/events/event-list.ts,
- *     src/ui/events/event-detail.ts, src/server/ingest.ts.
+ * - parseSseEvent() is the validated factory for Boundary #4 (SSE/fetch event data).
  *
  * Source: src/types.ts (EventRow interface — authoritative DB row definition).
  * Naming: camelCase + Schema suffix (e.g. eventRowSchema), PascalCase inferred types.
@@ -71,16 +68,14 @@ export type ParsedEventRow = z.infer<typeof eventRowSchema>;
  * Parses and validates a raw SSE message string as an EventRow.
  *
  * Boundary #4: SSE/fetch event data (string) → typed EventRow.
- * Replaces the ad-hoc isRecord() + hasRequiredFields() pattern used in
- * sse-client.ts and other UI files.
  *
  * Throws:
  *   SyntaxError  — if data is not valid JSON
  *   ZodError     — if the parsed JSON does not satisfy eventRowSchema
  *
- * Note: returns ParsedEventRow rather than EventRow because the `event`
- * field is typed as string here (not KnownEventName). Use toKnownEventName()
- * from src/types.ts to narrow when needed.
+ * Note: returns EventRow via cast from ParsedEventRow — the `event` field is
+ * z.string() in the schema (not KnownEventName) for forward compatibility.
+ * The cast is safe because the DB ingest path normalizes via toKnownEventName().
  */
 export function parseSseEvent(data: string): EventRow {
   let parsed: unknown;

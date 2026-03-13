@@ -10,9 +10,7 @@
  * - All other event types use the base schema (3 standard fields only).
  * - z.record(z.string(), z.unknown()) for arbitrary JSON objects (Zod v4 requires
  *   two arguments; single-arg z.record(z.unknown()) throws TypeError).
- * - parseHookOutput() is the validated factory for Boundary #2 (handler subprocess
- *   stdout). Replaces the unsafe `JSON.parse(stdout) as Record<string, unknown>`
- *   pattern in test helpers.
+ * - parseHookOutput() is the validated factory for Boundary #2 (handler subprocess stdout).
  *
  * Source: docs/hook-stdout-schema.md (authoritative field definitions).
  * Naming: camelCase + Schema suffix (e.g. hookOutputSchema), PascalCase inferred types.
@@ -91,13 +89,12 @@ export type StopOutput = z.infer<typeof stopOutputSchema>;
  * Parses and validates handler subprocess stdout as a HookOutput object.
  *
  * Boundary #2: handler subprocess stdout → typed HookOutput.
- * Replaces the unsafe `JSON.parse(stdout) as Record<string, unknown>` pattern.
  *
- * The handler writes two payload shapes (both accepted by hookOutputSchema):
+ * Accepts two payload shapes (both valid under hookOutputSchema):
  *   Normal:  { continue: boolean, systemMessage?: string }
  *   Fatal:   { hookwatch_fatal: string, continue: true, systemMessage: string }
- * The `hookwatch_fatal` field passes through via .loose() — it is not validated
- * as a required field but is preserved in the returned object.
+ * The `hookwatch_fatal` field passes through via .loose() — not validated
+ * as a required field but preserved in the returned object.
  *
  * Throws:
  *   SyntaxError  — if stdout is not valid JSON
