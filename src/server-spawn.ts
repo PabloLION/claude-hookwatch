@@ -12,12 +12,12 @@
 
 import { mkdirSync, openSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { SPAWN_HEALTH_TIMEOUT_MS } from '@/config.ts';
 import { errorMsg } from '@/handler/errors.ts';
 import { readPort, serverLogPath } from '@/paths.ts';
 
 const HEALTH_POLL_INTERVAL_MS = 100;
 const HEALTH_MAX_ATTEMPTS = 20; // 20 * 100ms = 2s max
-const HEALTH_FETCH_TIMEOUT_MS = 500;
 
 /** Absolute path to the server entry point.
  * import.meta.url is file:///…/src/server-spawn.ts
@@ -42,7 +42,7 @@ async function waitForHealth(): Promise<number | null> {
 
     try {
       const res = await fetch(`http://127.0.0.1:${port}/health`, {
-        signal: AbortSignal.timeout(HEALTH_FETCH_TIMEOUT_MS),
+        signal: AbortSignal.timeout(SPAWN_HEALTH_TIMEOUT_MS),
       });
       if (res.ok) {
         return port;

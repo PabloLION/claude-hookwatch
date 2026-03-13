@@ -117,6 +117,7 @@ export async function handleIngest(req: Request): Promise<Response> {
       cwd: event.cwd,
       tool_name:
         'tool_name' in event && typeof event.tool_name === 'string' ? event.tool_name : null,
+      // session_name is reserved for future use — no event type currently provides this field.
       session_name: null,
       hook_duration_ms: hookDurationMs,
       stdin: JSON.stringify(event),

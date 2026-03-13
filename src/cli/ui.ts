@@ -18,12 +18,11 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { defineCommand } from 'citty';
-import { DEFAULT_PORT } from '@/config.ts';
+import { CLI_HEALTH_TIMEOUT_MS, DEFAULT_PORT } from '@/config.ts';
 import { isErrnoException } from '@/guards.ts';
 import { portFilePath } from '@/paths.ts';
 import { spawnServer } from '@/server-spawn.ts';
 
-const HEALTH_FETCH_TIMEOUT_MS = 1000;
 const PORT_PROBE_TIMEOUT_MS = 500;
 /** Maximum valid TCP port number. */
 const MAX_PORT = 65535;
@@ -52,7 +51,7 @@ export function readPortFile(): number | null {
 export async function isServerRunning(port: number): Promise<boolean> {
   try {
     const res = await fetch(`http://127.0.0.1:${port}/health`, {
-      signal: AbortSignal.timeout(HEALTH_FETCH_TIMEOUT_MS),
+      signal: AbortSignal.timeout(CLI_HEALTH_TIMEOUT_MS),
     });
     return res.ok;
   } catch {

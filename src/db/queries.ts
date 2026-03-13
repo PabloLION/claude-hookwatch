@@ -75,11 +75,12 @@ export function getEventsByType(db: Database, eventType: string): EventRow[] {
 /**
  * Retrieve distinct session IDs ordered by most recent activity first.
  * Used to populate the session filter dropdown in the web UI.
+ * LIMIT 200 is sufficient for the dropdown — keeps query fast on large DBs.
  * ch-lar: no user input — static query, no parameterization needed.
  */
 export function getDistinctSessions(db: Database): string[] {
   const stmt = db.prepare<{ session_id: string }, []>(
-    `SELECT DISTINCT session_id FROM events ORDER BY timestamp DESC`,
+    `SELECT session_id FROM events GROUP BY session_id ORDER BY MAX(timestamp) DESC LIMIT 200`,
   );
   return stmt.all().map((r) => r.session_id);
 }

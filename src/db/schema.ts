@@ -79,11 +79,16 @@ export function checkVersion(db: Database): VersionStatus {
 /**
  * Apply a fresh schema to an empty database and stamp with CURRENT_VERSION.
  * Called for brand-new databases (user_version=0) and after backup-recreate.
+ *
+ * Wrapped in a transaction so a process kill mid-schema leaves the DB in a
+ * clean state (either fully created or empty) — never partially initialized.
  */
 export function applyFreshSchema(db: Database): void {
-  db.run(CREATE_EVENTS_TABLE);
-  for (const stmt of CREATE_INDEXES) {
-    db.run(stmt);
-  }
-  db.run(`PRAGMA user_version = ${CURRENT_VERSION};`);
+  db.transaction(() => {
+    db.run(CREATE_EVENTS_TABLE);
+    for (const stmt of CREATE_INDEXES) {
+      db.run(stmt);
+    }
+    db.run(`PRAGMA user_version = ${CURRENT_VERSION};`);
+  })();
 }
