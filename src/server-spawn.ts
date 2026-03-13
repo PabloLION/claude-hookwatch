@@ -10,7 +10,7 @@
  *   spawnServer() — also reused by cli/ui.ts (Story 2.5)
  */
 
-import { mkdirSync, openSync } from 'node:fs';
+import { closeSync, mkdirSync, openSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { errorMsg } from '@/handler/errors.ts';
 import { readPort, serverLogPath } from '@/paths.ts';
@@ -111,9 +111,13 @@ export async function spawnServer(): Promise<SpawnResult> {
       stderr: stdioTarget,
       detached: true,
     });
+    // Close the log fd in the parent — the child inherits its own copy.
+    // Leaving it open in the parent leaks a file descriptor.
+    if (logFd >= 0) closeSync(logFd);
   } catch (err) {
     const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to spawn server: ${msg}`);
+    if (logFd >= 0) closeSync(logFd);
     return { ok: false, failureKind: 'spawn' };
   }
 

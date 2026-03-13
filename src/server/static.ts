@@ -16,7 +16,7 @@
 import { statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { errorResponse } from '@/server/errors.ts';
-import { HTTP_NOT_FOUND, HTTP_OK } from '@/server/http-status.ts';
+import { HTTP_INTERNAL_ERROR, HTTP_NOT_FOUND, HTTP_OK } from '@/server/http-status.ts';
 
 // Resolve src/ui/ relative to this file's directory (src/server/ → ../ui/)
 const UI_DIR = resolve(import.meta.dir, '../ui');
@@ -104,7 +104,18 @@ export async function handleStatic(pathname: string): Promise<Response> {
     } else {
       const tsFile = Bun.file(filePath);
       const source = await tsFile.text();
-      content = transpiler.transformSync(source);
+      let transformed: string;
+      try {
+        transformed = transpiler.transformSync(source);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return errorResponse(
+          'INTERNAL',
+          `Failed to transpile ${normalised}: ${message}`,
+          HTTP_INTERNAL_ERROR,
+        );
+      }
+      content = transformed;
       transpileCache.set(filePath, { mtime, content });
     }
 

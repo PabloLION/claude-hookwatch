@@ -107,10 +107,12 @@ export async function handleIngest(req: Request): Promise<Response> {
     return errorResponse('INVALID_QUERY', 'Payload validation failed', HTTP_BAD_REQUEST);
   }
 
-  // Insert into DB and broadcast to SSE clients
+  // Insert into DB
+  let id: number;
+  let db: ReturnType<typeof openDb>;
   try {
-    const db = openDb();
-    const id = insertEvent(db, {
+    db = openDb();
+    id = insertEvent(db, {
       timestamp: Date.now(),
       event: toKnownEventName(event.hook_event_name),
       session_id: event.session_id,
@@ -126,16 +128,6 @@ export async function handleIngest(req: Request): Promise<Response> {
       exit_code: wrappedExitCode,
       hookwatch_log: hookwatchLog,
     });
-
-    // Broadcast the saved row to all connected SSE clients.
-    // Fetch the row so broadcast carries the canonical DB representation
-    // (with id, timestamp, and all columns) — never broadcast raw input.
-    const row = getEventById(db, id);
-    if (row !== null) {
-      broadcast(row);
-    }
-
-    return Response.json({ id }, { status: HTTP_CREATED });
   } catch (err) {
     // Detect SQLite BUSY / LOCKED errors
     if (isSqliteBusy(err)) {
@@ -148,4 +140,21 @@ export async function handleIngest(req: Request): Promise<Response> {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return errorResponse('INTERNAL', message, HTTP_INTERNAL_ERROR);
   }
+
+  // Broadcast the saved row to all connected SSE clients.
+  // Fetch the row so broadcast carries the canonical DB representation
+  // (with id, timestamp, and all columns) — never broadcast raw input.
+  // A broadcast failure does not affect the 201 response — the insert already
+  // succeeded and the client should not receive a 500 for an SSE delivery issue.
+  try {
+    const row = getEventById(db, id);
+    if (row !== null) {
+      broadcast(row);
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    process.stderr.write(`[hookwatch] broadcast failed for event ${id}: ${message}\n`);
+  }
+
+  return Response.json({ id }, { status: HTTP_CREATED });
 }
