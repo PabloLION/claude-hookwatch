@@ -82,7 +82,13 @@ interface EventDetailProps {
 export function EventDetail({ entry }: EventDetailProps): ReturnType<typeof html> {
   // Invalid entry: show validation error and raw payload
   if (!entry.valid) {
-    const rawFormatted = JSON.stringify(entry.raw, null, 2);
+    let rawFormatted: string;
+    try {
+      rawFormatted = JSON.stringify(entry.raw, null, 2);
+    } catch (e) {
+      console.warn('hookwatch: JSON.stringify failed on raw entry, falling back to String()', e);
+      rawFormatted = String(entry.raw);
+    }
     return html`
       <div class="event-detail event-detail--invalid">
         <p style=${{ color: 'var(--pico-del-color, #c0392b)', fontWeight: '600', margin: '0 0 0.5rem' }}>
