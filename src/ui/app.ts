@@ -7,14 +7,15 @@
 
 import { signal } from '@preact/signals';
 import { render } from 'preact';
-import type { EventRow } from '@/types.ts';
+import type { RowEntry } from './events/event-list.ts';
 import { EventList } from './events/event-list.ts';
 import { SessionFilter } from './sessions/session-filter.ts';
 import { html } from './shared/html.ts';
 import { startSseClient } from './shared/sse-client.ts';
 
-// Cross-component signal — owns the current event list
-export const eventList = signal<EventRow[]>([]);
+// Cross-component signal — owns the current event list.
+// Entries may be valid (parsed EventRow) or invalid (validation failure with raw data).
+export const eventList = signal<RowEntry[]>([]);
 
 // Cross-component signal — null means "all sessions", a string means filter
 // to that specific session ID.

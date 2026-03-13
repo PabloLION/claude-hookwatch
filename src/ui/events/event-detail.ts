@@ -7,6 +7,8 @@
  *   - Bare events (wrapped_command is null): renders the standard detail with
  *     tool info header (for PreToolUse/PostToolUse/PostToolUseFailure) and the
  *     full stdin as formatted JSON.
+ *   - Invalid entries (ch-lx8i): renders the validation error and raw data
+ *     so operators can diagnose schema mismatches without losing the payload.
  *
  * Full stdin as JSON.stringify(parsed, null, 2) inside <pre><code>.
  *
@@ -18,6 +20,7 @@ import { parseHookEvent } from '@/schemas/events.ts';
 import type { EventRow } from '@/types.ts';
 import { html } from '../shared/html.ts';
 import { WrapViewer } from '../wrap/wrap-viewer.ts';
+import type { RowEntry } from './event-list.ts';
 
 /**
  * Event types that carry tool information and warrant the tool info header.
@@ -73,10 +76,32 @@ function hasContent(value: string | null | undefined): value is string {
 }
 
 interface EventDetailProps {
-  event: EventRow;
+  entry: RowEntry;
 }
 
-export function EventDetail({ event }: EventDetailProps): ReturnType<typeof html> {
+export function EventDetail({ entry }: EventDetailProps): ReturnType<typeof html> {
+  // Invalid entry: show validation error and raw payload
+  if (!entry.valid) {
+    const rawFormatted = JSON.stringify(entry.raw, null, 2);
+    return html`
+      <div class="event-detail event-detail--invalid">
+        <p style=${{ color: 'var(--pico-del-color, #c0392b)', fontWeight: '600', margin: '0 0 0.5rem' }}>
+          Validation error
+        </p>
+        <details open>
+          <summary>Error details</summary>
+          <pre><code>${entry.error}</code></pre>
+        </details>
+        <details open>
+          <summary>Raw server payload</summary>
+          <pre><code>${rawFormatted}</code></pre>
+        </details>
+      </div>
+    `;
+  }
+
+  const event: EventRow = entry.row;
+
   // Wrapped events: delegate entirely to WrapViewer
   if (event.wrapped_command != null) {
     return html`<${WrapViewer} event=${event} />`;
