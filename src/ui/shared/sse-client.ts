@@ -18,6 +18,7 @@
 import type { Signal } from '@preact/signals';
 import { parseSseEvent } from '@/schemas/rows.ts';
 import type { EventRow } from '@/types.ts';
+import type { RowEntry } from '../events/event-list.ts';
 
 const SSE_ENDPOINT = '/api/events/stream';
 
@@ -32,7 +33,7 @@ const SSE_ENDPOINT = '/api/events/stream';
  * but in normal usage it runs for the lifetime of the page.
  */
 export function startSseClient(
-  eventList: Signal<EventRow[]>,
+  eventList: Signal<RowEntry[]>,
   activeSession: Signal<string | null>,
 ): EventSource {
   const source = new EventSource(SSE_ENDPOINT);
@@ -52,8 +53,9 @@ export function startSseClient(
       return;
     }
 
-    // Prepend so the list stays reverse-chronological
-    eventList.value = [parsed, ...eventList.value];
+    // Wrap in RowEntry and prepend so the list stays reverse-chronological
+    const entry: RowEntry = { valid: true, row: parsed };
+    eventList.value = [entry, ...eventList.value];
   };
 
   source.onerror = () => {

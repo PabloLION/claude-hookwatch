@@ -13,6 +13,10 @@
  *   - Bare handler events (wrapped_command is null): outline/hollow badge style
  *   - Wrapped events (wrapped_command is non-null): solid/filled badge style
  *
+ * Invalid row rendering (ch-lx8i):
+ *   - Rows that fail parseEventRow validation are stored as { valid: false } entries
+ *   - Rendered with a red/error background and expandable raw data + error detail
+ *
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
@@ -20,12 +24,39 @@ import type { Signal } from '@preact/signals';
 import { useEffect, useState } from 'preact/hooks';
 import { DEFAULT_QUERY_LIMIT } from '@/config.ts';
 import { parseHookEvent } from '@/schemas/events.ts';
+import { parseEventRow } from '@/schemas/rows.ts';
 import type { EventRow } from '@/types.ts';
 import { html } from '../shared/html.ts';
 import { EventDetail } from './event-detail.ts';
 
+// ---------------------------------------------------------------------------
+// RowEntry union type
+// ---------------------------------------------------------------------------
+
+/**
+ * A discriminated union representing one entry in the event list.
+ *
+ * Valid entries wrap a fully-parsed EventRow.
+ * Invalid entries carry the raw server response and the validation error
+ * message so the UI can show what went wrong without discarding any data.
+ *
+ * Exported so app.ts and event-detail.ts can import the type.
+ */
+export type RowEntry =
+  | { valid: true; row: EventRow }
+  | { valid: false; raw: unknown; error: string };
+
+/**
+ * Stable numeric key for an invalid row — derived from its position in the
+ * array. Uses a negative index convention so it never collides with real DB
+ * ids (which are always positive).
+ */
+function invalidRowKey(index: number): number {
+  return -(index + 1);
+}
+
 interface EventListProps {
-  eventList: Signal<EventRow[]>;
+  eventList: Signal<RowEntry[]>;
   activeSession: Signal<string | null>;
 }
 
@@ -83,29 +114,30 @@ function eventTypeBadgeStyle(isWrapped: boolean): Record<string, string> {
 }
 
 export function EventList({ eventList, activeSession }: EventListProps) {
-  // Track which row IDs are currently expanded. A Set allows multiple open rows.
-  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  // Track which row keys are currently expanded. A Set allows multiple open rows.
+  // Valid rows use their DB id; invalid rows use a negative index key.
+  const [expandedKeys, setExpandedKeys] = useState<Set<number>>(new Set());
 
   // Re-fetch whenever activeSession changes
   useEffect(() => {
     void fetchEvents(eventList, activeSession.value);
   }, [activeSession.value]);
 
-  function toggleRow(id: number): void {
-    setExpandedIds((prev) => {
+  function toggleRow(key: number): void {
+    setExpandedKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
+      if (next.has(key)) {
+        next.delete(key);
       } else {
-        next.add(id);
+        next.add(key);
       }
       return next;
     });
   }
 
-  const events = eventList.value;
+  const entries = eventList.value;
 
-  if (events.length === 0) {
+  if (entries.length === 0) {
     return html`
       <section>
         <p>No events captured yet. Interact with Claude Code to generate events.</p>
@@ -126,8 +158,44 @@ export function EventList({ eventList, activeSession }: EventListProps) {
             </tr>
           </thead>
           <tbody>
-            ${events.map((event) => {
-              const expanded = expandedIds.has(event.id);
+            ${entries.map((entry, index) => {
+              if (!entry.valid) {
+                // Invalid row — render with error styling
+                const key = invalidRowKey(index);
+                const expanded = expandedKeys.has(key);
+                return html`
+                  <tr
+                    key=${key}
+                    onClick=${() => toggleRow(key)}
+                    style=${{
+                      cursor: 'pointer',
+                      background: 'var(--pico-del-color, #fdecea)',
+                      color: 'var(--pico-color, inherit)',
+                    }}
+                    aria-expanded=${expanded}
+                    data-invalid-row=${index}
+                  >
+                    <td colspan="4">
+                      <span style=${{ color: 'var(--pico-del-color, #c0392b)', fontWeight: '600' }}>
+                        [invalid row] Validation error — click to expand
+                      </span>
+                    </td>
+                  </tr>
+                  ${
+                    expanded &&
+                    html`
+                    <tr key=${`invalid-detail-${index}`} data-detail-for=${key}>
+                      <td colspan="4">
+                        <${EventDetail} entry=${entry} />
+                      </td>
+                    </tr>
+                  `
+                  }
+                `;
+              }
+
+              const event = entry.row;
+              const expanded = expandedKeys.has(event.id);
               const isWrapped =
                 event.wrapped_command !== null && event.wrapped_command !== undefined;
               return html`
@@ -155,7 +223,7 @@ export function EventList({ eventList, activeSession }: EventListProps) {
                   html`
                   <tr key=${`detail-${event.id}`} data-detail-for=${event.id}>
                     <td colspan="4">
-                      <${EventDetail} event=${event} />
+                      <${EventDetail} entry=${entry} />
                     </td>
                   </tr>
                 `
@@ -169,7 +237,7 @@ export function EventList({ eventList, activeSession }: EventListProps) {
   `;
 }
 
-async function fetchEvents(eventList: Signal<EventRow[]>, sessionId: string | null): Promise<void> {
+async function fetchEvents(eventList: Signal<RowEntry[]>, sessionId: string | null): Promise<void> {
   try {
     const body: Record<string, unknown> = { limit: DEFAULT_QUERY_LIMIT };
     if (sessionId !== null) {
@@ -183,14 +251,28 @@ async function fetchEvents(eventList: Signal<EventRow[]>, sessionId: string | nu
     });
 
     if (!res.ok) {
-      console.error('hookwatch: /api/query returned', res.status);
+      const bodyText = await res.text().catch(() => '(unreadable)');
+      console.error('hookwatch: /api/query returned', res.status, bodyText);
       return;
     }
 
     const rows: unknown = await res.json();
-    if (Array.isArray(rows)) {
-      eventList.value = rows as EventRow[];
+    if (!Array.isArray(rows)) {
+      console.error('hookwatch: /api/query response is not an array', rows);
+      return;
     }
+
+    const entries: RowEntry[] = rows.map((item: unknown): RowEntry => {
+      try {
+        return { valid: true, row: parseEventRow(item) };
+      } catch (err) {
+        const error = err instanceof Error ? err.message : String(err);
+        console.warn('hookwatch: event row failed validation', error, item);
+        return { valid: false, raw: item, error };
+      }
+    });
+
+    eventList.value = entries;
   } catch (err) {
     console.error('hookwatch: failed to fetch events', err);
   }
