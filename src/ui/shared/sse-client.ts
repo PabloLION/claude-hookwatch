@@ -7,7 +7,8 @@
  *
  * Session filtering: when activeSession is set, events whose session_id does
  * not match are silently dropped. When activeSession is null (all sessions),
- * every event is accepted.
+ * every event is accepted. Invalid events (parse failures) always bypass the
+ * session filter — they indicate a system issue and must always be visible.
  *
  * EventSource reconnects automatically on network interruptions — no custom
  * reconnect logic is needed.
@@ -19,6 +20,7 @@ import type { Signal } from '@preact/signals';
 import { parseSseEvent } from '@/schemas/rows.ts';
 import type { EventRow } from '@/types.ts';
 import type { RowEntry } from '../events/event-list.ts';
+import { nextInvalidRowKey } from '../events/event-list.ts';
 
 const SSE_ENDPOINT = '/api/events/stream';
 
@@ -43,7 +45,20 @@ export function startSseClient(
     try {
       parsed = parseSseEvent(ev.data);
     } catch (err) {
+      // Invalid SSE event — wrap as an invalid RowEntry and always show it.
+      // Session filter is skipped: invalid rows indicate a system issue that
+      // the operator needs to see regardless of the active session filter.
+      const error = err instanceof Error ? err.message : String(err);
       console.error('hookwatch: SSE event failed validation', err, ev.data);
+      // Store raw string when JSON.parse itself failed (data is not an object).
+      let raw: unknown;
+      try {
+        raw = JSON.parse(ev.data);
+      } catch {
+        raw = ev.data;
+      }
+      const entry: RowEntry = { valid: false, raw, error, key: nextInvalidRowKey() };
+      eventList.value = [entry, ...eventList.value];
       return;
     }
 
