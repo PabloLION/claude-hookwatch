@@ -227,6 +227,39 @@ describe('POST /api/events', () => {
     expect(res.status).toBe(HTTP_CREATED);
   });
 
+  test('returns 400 when body is a JSON array (not an object)', async () => {
+    const res = await fetch(url(PATH_API_EVENTS), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify([1, 2, 3]),
+    });
+    expect(res.status).toBe(HTTP_BAD_REQUEST);
+    const body = await res.json();
+    expect(body.error).toBe('Request body must be a JSON object');
+  });
+
+  test('returns 400 when body is a JSON null', async () => {
+    const res = await fetch(url(PATH_API_EVENTS), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: 'null',
+    });
+    expect(res.status).toBe(HTTP_BAD_REQUEST);
+    const body = await res.json();
+    expect(body.error).toBe('Request body must be a JSON object');
+  });
+
+  test('returns 400 when body is a JSON string', async () => {
+    const res = await fetch(url(PATH_API_EVENTS), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '"just a string"',
+    });
+    expect(res.status).toBe(HTTP_BAD_REQUEST);
+    const body = await res.json();
+    expect(body.error).toBe('Request body must be a JSON object');
+  });
+
   test('accepts wrapped_command field and returns 201 (Story 3.1)', async () => {
     // When the handler runs in wrapped mode, it POSTs the event with an
     // additional wrapped_command field. The server should accept it.
