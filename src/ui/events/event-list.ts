@@ -37,22 +37,34 @@ import { EventDetail } from './event-detail.ts';
  * A discriminated union representing one entry in the event list.
  *
  * Valid entries wrap a fully-parsed EventRow.
- * Invalid entries carry the raw server response and the validation error
- * message so the UI can show what went wrong without discarding any data.
+ * Invalid entries carry the raw server response, the validation error message,
+ * and a stable negative key assigned at construction time. The key must be
+ * assigned once and never change, so expanded invalid rows do not collapse when
+ * SSE prepends new events to the list (array-index-based keys would shift).
  *
  * Exported for cross-component use (app.ts, event-detail.ts, sse-client.ts).
  */
 export type RowEntry =
   | { valid: true; row: EventRow }
-  | { valid: false; raw: unknown; error: string };
+  | { valid: false; raw: unknown; error: string; key: number };
 
 /**
- * Stable numeric key for an invalid row — derived from its position in the
- * array. Uses a negative index convention so it never collides with real DB
- * ids (which are always positive).
+ * Monotonically decreasing counter for invalid row keys.
+ *
+ * Starts at -1 and decrements with each call. Negative values never collide
+ * with real DB ids (which are always positive auto-increment integers).
+ *
+ * Exported for testing only — do not call directly in application code.
+ * Use nextInvalidRowKey() instead.
  */
-function invalidRowKey(index: number): number {
-  return -(index + 1);
+export let _nextInvalidKey = -1;
+
+/**
+ * Return the next unique negative key for an invalid row.
+ * Mutates the module-level counter — call once per invalid RowEntry construction.
+ */
+export function nextInvalidRowKey(): number {
+  return _nextInvalidKey--;
 }
 
 interface EventListProps {
@@ -159,10 +171,11 @@ export function EventList({ eventList, activeSession }: EventListProps) {
             </tr>
           </thead>
           <tbody>
-            ${entries.map((entry, index) => {
+            ${entries.map((entry) => {
               if (!entry.valid) {
-                // Invalid row — render with error styling
-                const key = invalidRowKey(index);
+                // Invalid row — render with error styling using the stable key
+                // assigned at construction time (not derived from array index).
+                const key = entry.key;
                 const expanded = expandedKeys.has(key);
                 return html`
                   <tr
@@ -175,7 +188,7 @@ export function EventList({ eventList, activeSession }: EventListProps) {
                       color: 'var(--pico-color, inherit)',
                     }}
                     aria-expanded=${expanded}
-                    data-invalid-row=${index}
+                    data-invalid-row=${key}
                   >
                     <td colspan="4">
                       <span style=${{ color: 'var(--pico-del-color, #c0392b)', fontWeight: '600' }}>
@@ -186,7 +199,7 @@ export function EventList({ eventList, activeSession }: EventListProps) {
                   ${
                     expanded &&
                     html`
-                    <tr key=${`invalid-detail-${index}`} data-detail-for=${key}>
+                    <tr key=${`invalid-detail-${key}`} data-detail-for=${key}>
                       <td colspan="4">
                         <${EventDetail} entry=${entry} />
                       </td>
@@ -270,7 +283,7 @@ async function fetchEvents(eventList: Signal<RowEntry[]>, sessionId: string | nu
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);
         console.warn('hookwatch: event row failed validation', error, item);
-        return { valid: false, raw: item, error };
+        return { valid: false, raw: item, error, key: nextInvalidRowKey() };
       }
     });
 
