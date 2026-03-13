@@ -52,7 +52,11 @@ function formatStdin(stdinJson: string): string {
   try {
     const parsed: unknown = JSON.parse(stdinJson);
     return JSON.stringify(parsed, null, 2);
-  } catch {
+  } catch (err) {
+    console.warn(
+      '[hookwatch] formatStdin: could not parse stdin JSON:',
+      err instanceof Error ? err.message : String(err),
+    );
     return stdinJson;
   }
 }

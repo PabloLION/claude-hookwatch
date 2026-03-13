@@ -12,6 +12,7 @@
 
 import { mkdirSync, openSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { isErrnoException } from '@/guards.ts';
 import { errorMsg } from '@/handler/errors.ts';
 import { readPort, serverLogPath } from '@/paths.ts';
 
@@ -47,8 +48,16 @@ async function waitForHealth(): Promise<number | null> {
       if (res.ok) {
         return port;
       }
-    } catch {
-      // Server not up yet — continue polling
+    } catch (err) {
+      // Connection refused and abort (timeout) are expected during startup.
+      // Any other error type is unexpected — log it.
+      const isExpected =
+        (isErrnoException(err) &&
+          (err.code === 'ConnectionRefused' || err.code === 'ECONNREFUSED')) ||
+        err instanceof DOMException; // AbortSignal timeout fires as DOMException
+      if (!isExpected) {
+        console.error(`[hookwatch] Unexpected health probe error: ${errorMsg(err)}`);
+      }
     }
   }
 

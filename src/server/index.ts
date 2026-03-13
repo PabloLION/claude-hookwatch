@@ -94,8 +94,14 @@ function removePortFile(): void {
   const portFile = portFilePath();
   try {
     rmSync(portFile);
-  } catch {
-    // Ignore — file may already be gone
+  } catch (err) {
+    // ENOENT is expected — file may already be gone or was never created.
+    // All other errors (EACCES, EBUSY, etc.) indicate a real problem.
+    if (!isErrnoException(err) || err.code !== 'ENOENT') {
+      process.stderr.write(
+        `[hookwatch] Warning: could not remove port file ${portFile}: ${err instanceof Error ? err.message : String(err)}\n`,
+      );
+    }
   }
 }
 

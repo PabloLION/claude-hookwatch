@@ -15,8 +15,9 @@
 
 import { statSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { isErrnoException } from '@/guards.ts';
 import { errorResponse } from '@/server/errors.ts';
-import { HTTP_NOT_FOUND, HTTP_OK } from '@/server/http-status.ts';
+import { HTTP_INTERNAL_ERROR, HTTP_NOT_FOUND, HTTP_OK } from '@/server/http-status.ts';
 
 // Resolve src/ui/ relative to this file's directory (src/server/ → ../ui/)
 const UI_DIR = resolve(import.meta.dir, '../ui');
@@ -87,8 +88,16 @@ export async function handleStatic(pathname: string): Promise<Response> {
   let stat: ReturnType<typeof statSync>;
   try {
     stat = statSync(filePath);
-  } catch {
-    return errorResponse('NOT_FOUND', `File not found: ${normalised}`, HTTP_NOT_FOUND);
+  } catch (err) {
+    // ENOENT is the normal "file not found" case — return 404.
+    // All other errors (EACCES, EIO, etc.) indicate a real problem — log and return 500.
+    if (isErrnoException(err) && err.code === 'ENOENT') {
+      return errorResponse('NOT_FOUND', `File not found: ${normalised}`, HTTP_NOT_FOUND);
+    }
+    process.stderr.write(
+      `[hookwatch] Static file error for ${normalised}: ${err instanceof Error ? err.message : String(err)}\n`,
+    );
+    return errorResponse('INTERNAL', `Could not read file: ${normalised}`, HTTP_INTERNAL_ERROR);
   }
 
   const mtime = stat.mtimeMs;

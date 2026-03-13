@@ -73,8 +73,16 @@ export function broadcast(event: EventRow): void {
   for (const controller of clients) {
     try {
       controller.enqueue(message);
-    } catch {
-      // Controller is closed — clean it up
+    } catch (err) {
+      // TypeError with "closed" in the message is the normal case when the
+      // client has disconnected. Any other error is unexpected — log it.
+      const isClosedStream =
+        err instanceof TypeError && err.message.toLowerCase().includes('close');
+      if (!isClosedStream) {
+        process.stderr.write(
+          `[hookwatch] Unexpected SSE enqueue error: ${err instanceof Error ? err.message : String(err)}\n`,
+        );
+      }
       clients.delete(controller);
     }
   }
@@ -93,8 +101,16 @@ export function closeAll(): void {
   for (const controller of clients) {
     try {
       controller.close();
-    } catch {
-      // Already closed — ignore
+    } catch (err) {
+      // TypeError with "closed" in the message means the stream is already
+      // gone — expected during shutdown. Log anything else.
+      const isAlreadyClosed =
+        err instanceof TypeError && err.message.toLowerCase().includes('close');
+      if (!isAlreadyClosed) {
+        process.stderr.write(
+          `[hookwatch] Unexpected SSE close error: ${err instanceof Error ? err.message : String(err)}\n`,
+        );
+      }
     }
   }
   clients.clear();
