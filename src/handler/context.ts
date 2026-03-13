@@ -9,18 +9,6 @@ import { SYSTEM_MESSAGE_PREFIX } from '@/config.ts';
 import type { HookEvent } from '@/schemas/events.ts';
 
 /**
- * Reads a string field from a HookEvent. Returns null if the field is absent
- * or not a string, preventing "undefined" from leaking into the output.
- *
- * HookEvent types use .loose() schemas, so they have an index signature
- * ([key: string]: unknown) that allows accessing fields not in the static type.
- */
-function stringField(event: HookEvent, field: string): string | null {
-  const value = event[field];
-  return typeof value === 'string' ? value : null;
-}
-
-/**
  * Maps hook_event_name → the field name that contains the subtype string.
  * Event types absent from this map have no meaningful subtype (return null).
  */
@@ -43,11 +31,15 @@ const SUBTYPE_FIELD: Record<string, string> = {
  * Extracts a subtype string from the event based on the event type.
  * Returns null for event types that have no meaningful subtype, or when the
  * expected field is absent or not a string.
+ *
+ * HookEvent types use .loose() schemas, so they have an index signature
+ * ([key: string]: unknown) that allows accessing fields not in the static type.
  */
 export function getEventSubtype(event: HookEvent): string | null {
   const field = SUBTYPE_FIELD[event.hook_event_name];
   if (field === undefined) return null;
-  return stringField(event, field);
+  const value = event[field];
+  return typeof value === 'string' ? value : null;
 }
 
 /**
