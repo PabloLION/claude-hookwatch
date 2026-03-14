@@ -19,6 +19,7 @@ import type { HookEvent } from '@/schemas/events.ts';
 import { parseHookEvent } from '@/schemas/events.ts';
 import type { EventRow } from '@/types.ts';
 import { html } from '../shared/html.ts';
+import { hasContent } from '../shared/utils.ts';
 import { WrapViewer } from '../wrap/wrap-viewer.ts';
 import type { RowEntry } from './event-list.ts';
 
@@ -72,14 +73,6 @@ function extractStringField(parsed: HookEvent | null, field: string): string | n
 function extractToolInput(parsed: HookEvent | null): unknown {
   if (parsed === null) return null;
   return parsed.tool_input ?? null;
-}
-
-/**
- * Check if a nullable string field has non-empty content.
- * Type guard: narrows null | undefined | string to string.
- */
-function hasContent(value: string | null | undefined): value is string {
-  return value != null && value.length > 0;
 }
 
 interface EventDetailProps {
