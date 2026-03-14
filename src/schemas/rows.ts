@@ -52,19 +52,6 @@ export const eventRowSchema = z
   })
   .loose();
 
-/**
- * Inferred TypeScript type from eventRowSchema.
- *
- * Intentionally structurally compatible with (but not identical to) the
- * EventRow interface: eventRowSchema uses z.string() for the `event` column
- * rather than KnownEventName, and the inferred type reflects that.
- *
- * Used internally by parseEventRow()/parseSseEvent() for Zod inference.
- * External callers should use EventRow (via the parse factories) rather than
- * this type directly.
- */
-export type ParsedEventRow = z.infer<typeof eventRowSchema>;
-
 // ---------------------------------------------------------------------------
 // Parse factory — Boundary #4 (SSE / fetch event data)
 // ---------------------------------------------------------------------------

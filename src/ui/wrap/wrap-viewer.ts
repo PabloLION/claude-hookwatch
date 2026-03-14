@@ -37,9 +37,6 @@ function exitCodeStyle(exitCode: number | null): Record<string, string> {
   return { color: 'var(--pico-del-color, #c0392b)', fontWeight: '600' };
 }
 
-/**
- * Format the exit code for display.
- */
 function formatExitCode(exitCode: number | null): string {
   if (exitCode === null) return 'N/A';
   return String(exitCode);

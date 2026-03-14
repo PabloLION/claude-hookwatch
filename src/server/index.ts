@@ -4,10 +4,10 @@
  * Responsibilities:
  *   - Bind to 127.0.0.1 (never 0.0.0.0) — AC #1
  *   - Route dispatch: GET /health, POST /api/events, 404 fallback
- *   - Fixed port DEFAULT_PORT — error and exit if occupied — Story 2.5 decision
- *   - Write port to XDG port file after successful bind — Story 1.3 decision
+ *   - Fixed port DEFAULT_PORT — error and exit if occupied (no auto-increment)
+ *   - Write port to XDG port file after successful bind
  *   - Graceful shutdown: remove port file, close DB
- *   - Idle timeout: self-terminate after 1 hour of no HTTP requests — Story 2.6
+ *   - Idle timeout: self-terminate after 1 hour of no HTTP requests
  *
  * Error codes used in responses: DB_LOCKED, NOT_FOUND, INVALID_QUERY, INTERNAL
  */

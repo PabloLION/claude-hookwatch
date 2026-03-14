@@ -72,7 +72,7 @@ export interface EventRow {
   session_name: string | null;
   hook_duration_ms: number | null;
   stdin: string;
-  /** NULL = bare handler event; non-NULL = wrapped command string (Story 3.1) */
+  /** NULL = bare handler event; non-NULL = wrapped command string */
   wrapped_command: string | null;
   /** Captured child stdout (wrapped mode); hookwatch JSON output (bare mode) */
   stdout: string | null;
@@ -111,6 +111,9 @@ export interface WrapResult {
    * when the child exited normally. Format: "[warn] exit 137 (likely SIGKILL
    * — forced termination)". Caller pushes this into logEntries so it appears
    * in hookwatch_log and systemMessage.
+   *
+   * Optional here (not nullable) because signal-kill is the only source.
+   * Converted to `string | null` for DB storage via `?? null` in the caller.
    */
   hookwatchLog?: string;
 }
