@@ -142,17 +142,17 @@ function parseEventSafely(
  * variant, so the compiler enforces correctness instead of a throw.
  */
 type StdinAndWrapOutput =
-  | { mode: 'bare'; stdinJson: string }
+  | { readonly mode: 'bare'; readonly stdinJson: string }
   | {
-      mode: 'wrapped';
-      stdinJson: string;
+      readonly mode: 'wrapped';
+      readonly stdinJson: string;
       /** The original wrapArgs array — stored here to avoid a separate wrapArgs parameter. */
-      wrapArgs: string[];
-      childStdout: string;
-      childStderr: string;
-      childExitCode: number;
+      readonly wrapArgs: string[];
+      readonly childStdout: string;
+      readonly childStderr: string;
+      readonly childExitCode: number;
       /** Signal-death warning from wrapped mode, if any. */
-      hookwatchLogFromWrap: string | null;
+      readonly hookwatchLogFromWrap: string | null;
     };
 
 /**

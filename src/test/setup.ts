@@ -21,9 +21,9 @@ import { startTestServer } from './test-server.ts';
 
 export interface TempXdgHome {
   /** Absolute path of the temp directory (use as XDG_DATA_HOME). */
-  tmpDir: string;
+  readonly tmpDir: string;
   /** Remove the temp directory and all its contents. */
-  cleanup: () => void;
+  readonly cleanup: () => void;
 }
 
 /**
@@ -55,11 +55,11 @@ export function createTempXdgHome(prefix = 'hookwatch-test-'): TempXdgHome {
 
 export interface TestDbHandle {
   /** The open database instance. */
-  db: Database;
+  readonly db: Database;
   /** Absolute path to the DB file (inside a temp dir). */
-  dbPath: string;
+  readonly dbPath: string;
   /** Temp directory containing the DB — remove on teardown. */
-  tmpDir: string;
+  readonly tmpDir: string;
 }
 
 /**
@@ -95,13 +95,13 @@ export function closeTestDb(handle: TestDbHandle): void {
 
 export interface HandlerTestContext {
   /** Absolute path of the shared temp directory for per-test XDG subdirectories. */
-  tmpDir: string;
+  readonly tmpDir: string;
   /** In-process HTTP test server that records received events. */
-  server: TestServer;
+  readonly server: TestServer;
   /** Remove tmpDir and stop the test server. Call in afterAll. */
-  cleanup: () => void;
+  readonly cleanup: () => void;
   /** Clear recorded events and reset nextStatus to 201. Call in afterEach. */
-  reset: () => void;
+  readonly reset: () => void;
 }
 
 /**

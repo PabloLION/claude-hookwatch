@@ -31,20 +31,20 @@ const KILL_WAIT_MS = 200;
 // ---------------------------------------------------------------------------
 
 export interface RunResult {
-  exitCode: number | null;
-  stdout: string;
-  stderr: string;
+  readonly exitCode: number | null;
+  readonly stdout: string;
+  readonly stderr: string;
 }
 
 export interface RunnerOutput {
   /** Exit code of the fixture runner process (mirrors child exit code). */
-  runnerExitCode: number | null;
+  readonly runnerExitCode: number | null;
   /** Child's tee'd stdout (pass-through from child via teeStream). */
-  runnerStdout: string;
+  readonly runnerStdout: string;
   /** Parsed WrapResult from the WRAP_RESULT: stderr line. */
-  wrapResult: WrapResult | null;
+  readonly wrapResult: WrapResult | null;
   /** Non-result stderr lines (child's tee'd stderr + any errors). */
-  runnerStderr: string;
+  readonly runnerStderr: string;
 }
 
 // ---------------------------------------------------------------------------

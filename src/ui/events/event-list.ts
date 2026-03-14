@@ -51,8 +51,8 @@ import { EventDetail } from './event-detail.ts';
  * Exported for cross-component use (app.ts, event-detail.ts, sse-client.ts).
  */
 export type RowEntry =
-  | { valid: true; row: EventRow }
-  | { valid: false; raw: unknown; error: string; key: number };
+  | { readonly valid: true; readonly row: EventRow }
+  | { readonly valid: false; readonly raw: unknown; readonly error: string; readonly key: number };
 
 /**
  * Monotonically decreasing counter for invalid row keys.
@@ -74,8 +74,8 @@ export function nextInvalidRowKey(): number {
 }
 
 interface EventListProps {
-  eventList: Signal<RowEntry[]>;
-  activeSession: Signal<string | null>;
+  readonly eventList: Signal<RowEntry[]>;
+  readonly activeSession: Signal<string | null>;
 }
 
 /**

@@ -45,9 +45,9 @@ export function expectEventType<T extends HookEvent>(
  * Defaults to ChildProcess for Playwright tests.
  */
 export interface ServerHandle<P = ChildProcess> {
-  port: number;
-  xdgDataHome: string;
-  proc: P;
-  baseUrl: string;
-  stop: () => void;
+  readonly port: number;
+  readonly xdgDataHome: string;
+  readonly proc: P;
+  readonly baseUrl: string;
+  readonly stop: () => void;
 }

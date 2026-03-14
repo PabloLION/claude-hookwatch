@@ -16,8 +16,8 @@ import { join } from 'node:path';
 // ---------------------------------------------------------------------------
 
 export interface ReceivedEvent {
-  body: unknown;
-  status: number;
+  readonly body: unknown;
+  readonly status: number;
 }
 
 export interface TestServer {

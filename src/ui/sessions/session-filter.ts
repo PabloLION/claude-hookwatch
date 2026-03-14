@@ -21,7 +21,7 @@ import { html } from '../shared/html.ts';
 import { fetchSessions, formatSessionId } from './session-list.ts';
 
 interface SessionFilterProps {
-  activeSession: Signal<string | null>;
+  readonly activeSession: Signal<string | null>;
 }
 
 export function SessionFilter({ activeSession }: SessionFilterProps) {
