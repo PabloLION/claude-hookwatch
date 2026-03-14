@@ -517,9 +517,12 @@ describe('failureKind — postEvent() unit tests', () => {
 
     const result: PostEventResult = await postEvent(unitServer.port, makeBarePayload());
 
-    expect(result.ok).toBe(false);
-    expect(result.failureKind).toBe('http');
-    expect(result.failureReason).toContain('500');
+    if (!result.ok) {
+      expect(result.failureKind).toBe('http');
+      expect(result.failureReason).toContain('500');
+    } else {
+      expect(result.ok).toBe(false); // force fail — should not reach ok:true
+    }
   });
 
   test("'http' failureKind: 503 response also sets failureKind:'http'", async () => {
@@ -527,8 +530,11 @@ describe('failureKind — postEvent() unit tests', () => {
 
     const result: PostEventResult = await postEvent(unitServer.port, makeBarePayload());
 
-    expect(result.ok).toBe(false);
-    expect(result.failureKind).toBe('http');
+    if (!result.ok) {
+      expect(result.failureKind).toBe('http');
+    } else {
+      expect(result.ok).toBe(false); // force fail — should not reach ok:true
+    }
   });
 
   test('ok:true response: no failureKind set', async () => {
@@ -536,8 +542,12 @@ describe('failureKind — postEvent() unit tests', () => {
 
     const result: PostEventResult = await postEvent(unitServer.port, makeBarePayload());
 
-    expect(result.ok).toBe(true);
-    expect(result.failureKind).toBeUndefined();
+    if (result.ok) {
+      // PostEventResult ok:true has no failureKind field — verify via type narrowing
+      expect(result.versionMismatchLog).toBeUndefined();
+    } else {
+      expect(result.ok).toBe(true); // force fail — should not reach ok:false
+    }
   });
 
   test("'exception' failureKind: non-connection fetch error returns failureKind:'exception'", async () => {
@@ -556,9 +566,12 @@ describe('failureKind — postEvent() unit tests', () => {
 
     try {
       const result: PostEventResult = await postEvent(unitServer.port, makeBarePayload());
-      expect(result.ok).toBe(false);
-      expect(result.failureKind).toBe('exception');
-      expect(result.failureReason).toContain('Failed to POST event to server');
+      if (!result.ok) {
+        expect(result.failureKind).toBe('exception');
+        expect(result.failureReason).toContain('Failed to POST event to server');
+      } else {
+        expect(result.ok).toBe(false); // force fail — should not reach ok:true
+      }
     } finally {
       globalThis.fetch = originalFetch;
     }

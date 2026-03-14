@@ -14,8 +14,11 @@ import type { KnownEventName } from '@/types.ts';
  * Event types absent from this map have no meaningful subtype (return null).
  * Typed as Partial<Record<KnownEventName, string>> so typos in event names
  * become compile-time errors.
+ *
+ * Exported for use in tests that verify each field name exists on the
+ * corresponding Zod schema in SCHEMA_MAP (catches typos at test time).
  */
-const SUBTYPE_FIELD: Partial<Record<KnownEventName, string>> = {
+export const SUBTYPE_FIELD: Partial<Record<KnownEventName, string>> = {
   SessionStart: 'source',
   SessionEnd: 'reason',
   PreToolUse: 'tool_name',
@@ -39,7 +42,7 @@ const SUBTYPE_FIELD: Partial<Record<KnownEventName, string>> = {
  * ([key: string]: unknown) that allows accessing fields not in the static type.
  */
 export function getEventSubtype(event: HookEvent): string | null {
-  const field = SUBTYPE_FIELD[event.hook_event_name];
+  const field = SUBTYPE_FIELD[event.hook_event_name as KnownEventName];
   if (field === undefined) return null;
   const value = event[field];
   return typeof value === 'string' ? value : null;
