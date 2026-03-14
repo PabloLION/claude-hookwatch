@@ -15,7 +15,9 @@ export const CURRENT_VERSION = 3;
  * wrapped_command (nullable): NULL = bare handler event; non-NULL = the
  * wrapped command string (Story 3.1).
  *
- * stdout, stderr (nullable): only populated for wrapped events.
+ * stdout (nullable): hook output JSON for bare events; captured child stdout
+ * for wrapped events. NULL only if no output was generated.
+ * stderr (nullable): captured child stderr for wrapped events; NULL for bare.
  * exit_code: NOT NULL DEFAULT 0 — Unix processes always exit 0-255.
  *
  * hookwatch_log (nullable): single column with severity prefix for
