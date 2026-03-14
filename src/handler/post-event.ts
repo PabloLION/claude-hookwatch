@@ -179,7 +179,7 @@ async function postWithVersionCheck(
  */
 const WRAPPED_FIELD_MAP: Record<
   Exclude<keyof WrappedEventPayload, keyof BaseEventPayload | 'mode'>,
-  string
+  'wrapped_command' | 'stdout' | 'stderr' | 'exit_code'
 > = {
   wrappedCommand: 'wrapped_command',
   stdout: 'stdout',

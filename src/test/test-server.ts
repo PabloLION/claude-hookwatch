@@ -104,9 +104,16 @@ export function startTestServer(): TestServer {
  * Returns the parsed body of the first recorded event as a plain object.
  * Convenience helper to avoid repeating `server.events[0]?.body as Record<string, unknown>`
  * in every test that needs to inspect the POST body.
+ *
+ * Throws if no events have been recorded — a missing event is always a test
+ * bug, not an expected empty case.
  */
 export function firstEventBody(server: TestServer): Record<string, unknown> {
-  return server.events[0]?.body as Record<string, unknown>;
+  const event = server.events[0];
+  if (event === undefined) {
+    throw new Error('firstEventBody: server has no recorded events');
+  }
+  return event.body as Record<string, unknown>;
 }
 
 /**

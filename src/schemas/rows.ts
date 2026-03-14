@@ -28,17 +28,18 @@ import { parseJsonWithPreview } from './parse-json.ts';
  * Zod schema mirroring the EventRow interface from src/types.ts.
  * Used to validate data received over SSE and from the /api/query endpoint.
  *
- * The `event` column holds either a known event name or "unknown" — modelled
- * as z.string() rather than a z.enum() of the 18 known names so that future
- * event types don't cause validation failures before the schema is updated.
- * See parseEventRow()/parseSseEvent() which normalize unrecognized names to
- * 'unknown' after validation.
+ * The `event` field is modelled as z.string() so that future event names don't
+ * cause validation failures. A .transform() normalises unrecognised names to
+ * 'unknown' via toKnownEventName(), making z.infer<typeof eventRowSchema>
+ * return KnownEventName for the event field — matching EventRow exactly.
+ * parseEventRow()/parseSseEvent() no longer need to call toKnownEventName()
+ * manually after parse.
  */
 export const eventRowSchema = z
   .object({
     id: z.number(),
     timestamp: z.number(),
-    event: z.string(),
+    event: z.string().transform(toKnownEventName),
     session_id: z.string(),
     cwd: z.string(),
     tool_name: z.string().nullable(),
@@ -64,15 +65,14 @@ export const eventRowSchema = z
  * Unlike parseSseEvent (which takes a JSON string), this takes an already-parsed
  * object — for use after res.json() in the fetch path.
  *
- * Unknown event names are normalized to 'unknown' via toKnownEventName() to
- * ensure the return type accurately reflects EventRow.
+ * Unknown event names are normalised to 'unknown' by the eventRowSchema
+ * .transform() on the event field — no manual call needed here.
  *
  * Throws:
  *   ZodError — if the object does not satisfy eventRowSchema
  */
 export function parseEventRow(obj: unknown): EventRow {
-  const validated = eventRowSchema.parse(obj);
-  return { ...validated, event: toKnownEventName(validated.event) };
+  return eventRowSchema.parse(obj);
 }
 
 /**
@@ -80,8 +80,8 @@ export function parseEventRow(obj: unknown): EventRow {
  *
  * Boundary #4: SSE/fetch event data (string) → typed EventRow.
  *
- * Unknown event names are normalized to 'unknown' via toKnownEventName() to
- * ensure the return type accurately reflects EventRow.
+ * Unknown event names are normalised to 'unknown' by the eventRowSchema
+ * .transform() on the event field — no manual call needed here.
  *
  * Throws:
  *   SyntaxError  — if data is not valid JSON
@@ -89,5 +89,5 @@ export function parseEventRow(obj: unknown): EventRow {
  */
 export function parseSseEvent(data: string): EventRow {
   const parsed = parseJsonWithPreview(data, 'SSE data');
-  return parseEventRow(parsed);
+  return eventRowSchema.parse(parsed);
 }

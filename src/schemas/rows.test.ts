@@ -107,9 +107,11 @@ describe('eventRowSchema — full row with all optional fields', () => {
     expect(result.hookwatch_log).toBe('[warn] exit 137 (likely SIGKILL)');
   });
 
-  test('unknown event name is accepted (forward compatibility)', () => {
+  test('unknown event name is normalised to "unknown" by schema transform', () => {
+    // eventRowSchema.event has a .transform(toKnownEventName) — unrecognised
+    // names are normalised to 'unknown' so the return type matches EventRow.
     const result = eventRowSchema.parse({ ...minimalRow, event: 'FutureEvent' });
-    expect(result.event).toBe('FutureEvent');
+    expect(result.event).toBe('unknown');
   });
 });
 
