@@ -399,6 +399,10 @@ describe('version mismatch — backup-and-recreate', () => {
     // So just test the normal case with a brand-new path
     close();
     rmSync(handle.dbPath);
+    // Remove stale WAL/SHM files left by the previous connection — they
+    // reference the old DB and cause "disk I/O error" on a fresh open.
+    rmSync(`${handle.dbPath}-wal`, { force: true });
+    rmSync(`${handle.dbPath}-shm`, { force: true });
     const db = openDb(handle.dbPath);
     const row = db.query<PragmaUserVersionRow, []>(PRAGMA_USER_VERSION).get();
     expect(row).not.toBeNull();
