@@ -14,6 +14,7 @@
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { defineCommand } from 'citty';
+import { errorMsg } from '@/errors.ts';
 import { description, name, version } from '../../package.json';
 import { EVENT_TYPES } from './events.ts';
 import { PACKAGE_ROOT } from './paths.ts';
@@ -69,7 +70,8 @@ async function isAlreadyInstalled(): Promise<boolean> {
     });
     const exitCode = await proc.exited;
     return exitCode === 0;
-  } catch {
+  } catch (err) {
+    console.warn(`[hookwatch] Could not check existing install: ${errorMsg(err)}`);
     return false;
   }
 }

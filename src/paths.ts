@@ -75,10 +75,10 @@ export function readPort(): ReadPortResult {
     const content = readFileSync(portFilePath(), 'utf8').trim();
     const port = Number.parseInt(content, 10);
     if (Number.isNaN(port) || port <= 0 || port > MAX_PORT) {
-      console.error(
-        `[hookwatch] Port file contained invalid value "${content}", using fallback ${DEFAULT_PORT}`,
-      );
-      return { port: DEFAULT_PORT, warning: null };
+      return {
+        port: DEFAULT_PORT,
+        warning: `Port file contained invalid value "${content}", using DEFAULT_PORT`,
+      };
     }
     return { port, warning: null };
   } catch (err) {

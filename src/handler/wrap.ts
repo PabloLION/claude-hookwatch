@@ -29,8 +29,8 @@
  * (console.error / process.stderr.write) — NEVER console.log().
  */
 
+import { errorMsg } from '@/errors.ts';
 import type { WrapResult } from '@/types.ts';
-import { errorMsg } from './errors.ts';
 import { describeExitCode, signalExitCode } from './signals.ts';
 
 export type { WrapResult } from '@/types.ts';
@@ -127,6 +127,9 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
  * WritableStream (tee), and accumulates the chunks into a string buffer.
  *
  * Returns the full accumulated string when the source stream ends.
+ * dest.write() errors are caught and logged once (per-chunk logging would flood
+ * stderr). Capture continues even if the tee destination fails — the accumulated
+ * buffer is more important than the pass-through.
  */
 async function teeStream(
   source: ReadableStream<Uint8Array>,
@@ -134,14 +137,22 @@ async function teeStream(
 ): Promise<string> {
   const chunks: Uint8Array[] = [];
   const reader = source.getReader();
+  let destErrorLogged = false;
 
   try {
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       // Write to terminal immediately (pass-through)
-      dest.write(value);
-      // Accumulate for capture
+      try {
+        dest.write(value);
+      } catch (err) {
+        if (!destErrorLogged) {
+          process.stderr.write(`[hookwatch] teeStream dest.write error: ${errorMsg(err)}\n`);
+          destErrorLogged = true;
+        }
+      }
+      // Accumulate for capture regardless of tee outcome
       chunks.push(value);
     }
   } finally {

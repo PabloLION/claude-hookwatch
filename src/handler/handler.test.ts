@@ -100,7 +100,7 @@ describe('port file', () => {
     expect(result.stderr).toContain(HOOKWATCH_LOG_PREFIX);
   }, 10000);
 
-  test('ignores invalid port file content and uses fallback, then auto-starts server', async () => {
+  test('ignores invalid port file content and uses fallback, does not crash', async () => {
     const xdgHome = join(ctx.tmpDir, 'port-invalid');
     writePortFile(xdgHome, 'not-a-number');
 
@@ -109,11 +109,10 @@ describe('port file', () => {
       XDG_CONFIG_HOME: join(xdgHome, 'config'),
     });
 
+    // Invalid port content is now returned as a warning (not logged to stderr).
+    // The handler falls back to DEFAULT_PORT silently and either connects to an
+    // existing server or auto-starts one. Either way it must not crash.
     assertBareExitLegality(result, 'port-invalid');
-    // Auto-start fires because fallback port 6004 has no server → connection error
-    // stderr should mention the invalid value/fallback and the spawn attempt
-    expect(result.stderr).toContain(HOOKWATCH_LOG_PREFIX);
-    // Exit code depends on whether auto-start succeeds — primary assertion is no crash
     expect(result.exitCode).not.toBeNull();
   }, 10000);
 });

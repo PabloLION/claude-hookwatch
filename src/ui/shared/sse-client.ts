@@ -54,7 +54,7 @@ export function startSseClient(
       let raw: unknown;
       try {
         raw = JSON.parse(ev.data);
-      } catch {
+      } catch (_parseErr) {
         raw = ev.data;
       }
       const entry: RowEntry = { valid: false, raw, error, key: nextInvalidRowKey() };
