@@ -5,7 +5,7 @@
  * - nextInvalidRowKey() produces unique negative keys
  * - Keys assigned at construction time never shift (stable across prepends)
  * - Invalid RowEntry variant carries key, raw, and error fields
- * - fetchEvents invalid entries receive a key (structural test via the exported counter)
+ * - _resetInvalidKeyCounter() resets module state for test isolation
  *
  * Note: The EventList component and fetchEvents function require browser APIs
  * (EventSource, fetch) and a running server — those are covered by Playwright
@@ -13,7 +13,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { _nextInvalidKey, nextInvalidRowKey } from './event-list.ts';
+import { _resetInvalidKeyCounter, nextInvalidRowKey } from './event-list.ts';
 
 // ---------------------------------------------------------------------------
 // nextInvalidRowKey — counter behaviour
@@ -96,17 +96,27 @@ describe('invalid RowEntry construction', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Module-level counter is accessible for test inspection
+// _resetInvalidKeyCounter — test utility for resetting module-level state
 // ---------------------------------------------------------------------------
 
-describe('_nextInvalidKey export', () => {
-  test('_nextInvalidKey decreases after each nextInvalidRowKey call', () => {
-    const before = _nextInvalidKey;
+describe('_resetInvalidKeyCounter', () => {
+  test('resets counter so the next key is -1', () => {
+    // Consume some keys to move the counter past -1
     nextInvalidRowKey();
-    // _nextInvalidKey is read-only from outside but we can read its value
-    // to verify the counter moved. We use the fact that the next call
-    // will return a value one less than before.
-    const next = nextInvalidRowKey();
-    expect(next).toBeLessThan(before);
+    nextInvalidRowKey();
+    nextInvalidRowKey();
+
+    _resetInvalidKeyCounter();
+
+    // After reset, the next call must return -1 (the initial value)
+    const key = nextInvalidRowKey();
+    expect(key).toBe(-1);
+  });
+
+  test('counter decreases monotonically after reset', () => {
+    _resetInvalidKeyCounter();
+    const a = nextInvalidRowKey(); // -1
+    const b = nextInvalidRowKey(); // -2
+    expect(b).toBeLessThan(a);
   });
 });

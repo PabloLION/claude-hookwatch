@@ -59,11 +59,8 @@ export type RowEntry =
  *
  * Starts at -1 and decrements with each call. Negative values never collide
  * with real DB ids (which are always positive auto-increment integers).
- *
- * @internal Exported for testing only — do not call directly in application code.
- * Use nextInvalidRowKey() instead.
  */
-export let _nextInvalidKey = -1;
+let _nextInvalidKey = -1;
 
 /**
  * Return the next unique negative key for an invalid row.
@@ -71,6 +68,16 @@ export let _nextInvalidKey = -1;
  */
 export function nextInvalidRowKey(): number {
   return _nextInvalidKey--;
+}
+
+/**
+ * Reset the invalid row key counter to its initial value.
+ *
+ * @internal For testing only — resets module-level state between test runs.
+ * Do not call in application code.
+ */
+export function _resetInvalidKeyCounter(): void {
+  _nextInvalidKey = -1;
 }
 
 interface EventListProps {
@@ -90,6 +97,14 @@ function formatTimestamp(ts: number): string {
   }
 }
 
+const BASE_BADGE_STYLE = {
+  display: 'inline-block',
+  padding: '0.1em 0.5em',
+  borderRadius: '0.25em',
+  fontWeight: '600',
+  fontSize: '0.85em',
+};
+
 /**
  * Return inline style object for the event type cell.
  * Wrapped events use solid/filled appearance; bare events use outline style.
@@ -97,24 +112,16 @@ function formatTimestamp(ts: number): string {
 function eventTypeBadgeStyle(isWrapped: boolean): Record<string, string> {
   if (isWrapped) {
     return {
-      display: 'inline-block',
-      padding: '0.1em 0.5em',
-      borderRadius: '0.25em',
+      ...BASE_BADGE_STYLE,
       background: 'var(--pico-primary)',
       color: 'var(--pico-primary-inverse, #fff)',
-      fontWeight: '600',
-      fontSize: '0.85em',
     };
   }
   return {
-    display: 'inline-block',
-    padding: '0.1em 0.5em',
-    borderRadius: '0.25em',
+    ...BASE_BADGE_STYLE,
     background: 'transparent',
     color: 'var(--pico-primary)',
     border: '1px solid var(--pico-primary)',
-    fontWeight: '600',
-    fontSize: '0.85em',
   };
 }
 

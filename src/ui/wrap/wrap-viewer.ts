@@ -18,6 +18,7 @@
 
 import type { EventRow } from '@/types.ts';
 import { html } from '../shared/html.ts';
+import { hasContent } from '../shared/utils.ts';
 
 interface WrapViewerProps {
   readonly event: EventRow;
@@ -34,10 +35,6 @@ function exitCodeStyle(exitCode: number): Record<string, string> {
     return { color: 'var(--pico-ins-color, #2d9a2d)', fontWeight: '600' };
   }
   return { color: 'var(--pico-del-color, #c0392b)', fontWeight: '600' };
-}
-
-function formatExitCode(exitCode: number): string {
-  return String(exitCode);
 }
 
 /**
@@ -58,7 +55,7 @@ function formatStdin(stdinJson: string): string {
 
 export function WrapViewer({ event }: WrapViewerProps): ReturnType<typeof html> {
   const exitStyle = exitCodeStyle(event.exit_code);
-  const exitLabel = formatExitCode(event.exit_code);
+  const exitLabel = String(event.exit_code);
   const formattedStdin = formatStdin(event.stdin);
 
   return html`
@@ -78,7 +75,7 @@ export function WrapViewer({ event }: WrapViewerProps): ReturnType<typeof html> 
       <details open data-testid="stdout-panel">
         <summary>stdout</summary>
         ${
-          event.stdout !== null && event.stdout !== undefined && event.stdout.length > 0
+          hasContent(event.stdout)
             ? html`<pre><code data-testid="stdout-content">${event.stdout}</code></pre>`
             : html`<p><em data-testid="stdout-empty">No stdout captured.</em></p>`
         }
@@ -87,7 +84,7 @@ export function WrapViewer({ event }: WrapViewerProps): ReturnType<typeof html> 
       <details open data-testid="stderr-panel">
         <summary>stderr</summary>
         ${
-          event.stderr !== null && event.stderr !== undefined && event.stderr.length > 0
+          hasContent(event.stderr)
             ? html`<pre><code data-testid="stderr-content">${event.stderr}</code></pre>`
             : html`<p><em data-testid="stderr-empty">No stderr captured.</em></p>`
         }
