@@ -127,6 +127,43 @@ function checkVersionHeader(res: Response): string | undefined {
 }
 
 /**
+ * Performs a single POST to the given URL with the serialised payload and
+ * handles the response uniformly.
+ *
+ * On a non-2xx response the caller supplies the `failurePrefix` that is
+ * prepended to the HTTP status in the failureReason (e.g. "Server returned"
+ * vs "Retry: server returned") so the two call sites can be distinguished in
+ * logs and systemMessage without duplicating the fetch/check/return logic.
+ *
+ * May throw — fetch errors propagate to the caller's try/catch block.
+ */
+async function postWithVersionCheck(
+  url: string,
+  payload: string,
+  failurePrefix: string,
+): Promise<PostEventResult> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: payload,
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch((e) => `(unreadable: ${errorMsg(e)})`);
+    const failureReason = `${failurePrefix} HTTP ${res.status}`;
+    console.error(`[hookwatch] ${failureReason}: ${text}`);
+    return { ok: false, failureKind: 'http', detail: text, failureReason };
+  }
+
+  const versionMismatchLog = checkVersionHeader(res);
+  if (versionMismatchLog !== undefined) {
+    console.error(`[hookwatch] ${versionMismatchLog}`);
+  }
+  return { ok: true, ...(versionMismatchLog !== undefined && { versionMismatchLog }) };
+}
+
+/**
  * Typed mapping from WrappedEventPayload-specific camelCase fields to their
  * snake_case wire names.
  *
@@ -198,25 +235,11 @@ export async function postEvent(port: number, opts: EventPostPayload): Promise<P
 
   // First attempt
   try {
-    const res = await fetch(`http://127.0.0.1:${port}/api/events`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: payload,
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '(unreadable)');
-      const failureReason = `Server returned HTTP ${res.status}`;
-      console.error(`[hookwatch] ${failureReason}: ${text}`);
-      return { ok: false, failureKind: 'http', detail: text, failureReason };
-    }
-
-    const versionMismatchLog = checkVersionHeader(res);
-    if (versionMismatchLog !== undefined) {
-      console.error(`[hookwatch] ${versionMismatchLog}`);
-    }
-    return { ok: true, ...(versionMismatchLog !== undefined && { versionMismatchLog }) };
+    return await postWithVersionCheck(
+      `http://127.0.0.1:${port}/api/events`,
+      payload,
+      'Server returned',
+    );
   } catch (err) {
     if (!isConnectionError(err)) {
       // Non-connection error (e.g. timeout, abort) — don't attempt spawn
@@ -244,25 +267,11 @@ export async function postEvent(port: number, opts: EventPostPayload): Promise<P
   // Retry POST with the port returned by the health check
   const { port: spawnedPort } = spawnResult;
   try {
-    const res = await fetch(`http://127.0.0.1:${spawnedPort}/api/events`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: payload,
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '(unreadable)');
-      const failureReason = `Retry exhausted — server returned HTTP ${res.status}`;
-      console.error(`[hookwatch] ${failureReason}: ${text}`);
-      return { ok: false, failureKind: 'http', detail: text, failureReason };
-    }
-
-    const versionMismatchLog = checkVersionHeader(res);
-    if (versionMismatchLog !== undefined) {
-      console.error(`[hookwatch] ${versionMismatchLog}`);
-    }
-    return { ok: true, ...(versionMismatchLog !== undefined && { versionMismatchLog }) };
+    return await postWithVersionCheck(
+      `http://127.0.0.1:${spawnedPort}/api/events`,
+      payload,
+      'Retry: server returned',
+    );
   } catch (err) {
     const detail = errorMsg(err);
     const failureReason = 'Retry exhausted — failed to POST event to server after spawn';
