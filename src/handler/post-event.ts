@@ -6,7 +6,7 @@
  */
 
 import { isErrnoException } from '@/guards.ts';
-import type { parseHookEvent } from '@/schemas/events.ts';
+import type { HookEvent } from '@/schemas/events.ts';
 import type { SpawnResult } from '@/server-spawn.ts';
 import { spawnServer } from '@/server-spawn.ts';
 import { VERSION } from '@/version.ts';
@@ -16,7 +16,7 @@ const FETCH_TIMEOUT_MS = 5000;
 
 /** Common fields shared by both bare and wrapped event payloads. */
 interface BaseEventPayload {
-  event: ReturnType<typeof parseHookEvent>;
+  event: HookEvent;
   /** Hookwatch processing overhead in ms (excludes child process wall time). */
   hookDurationMs: number | null;
   /** Accumulated non-fatal hookwatch log entries; null = no entries. */
@@ -86,31 +86,34 @@ export function isConnectionError(err: unknown): boolean {
   return matchesConnectionMessage(err.message.toLowerCase());
 }
 
-/** Result returned by postEvent(). */
-export interface PostEventResult {
-  ok: boolean;
-  /**
-   * Distinguishes failure paths for programmatic dispatch in the caller.
-   * Only present when ok: false.
-   *
-   * 'spawn'     — Bun.spawn() failed to start the server process.
-   * 'retry'     — Server was spawned but health probe timed out.
-   * 'http'      — Server returned a non-2xx HTTP response.
-   * 'exception' — Non-connection exception (e.g. fetch timeout, abort).
-   *
-   * 'spawn' and 'retry' indicate infrastructure broken → fatal.
-   * 'http' and 'exception' are transient → non-fatal.
-   */
-  failureKind?: 'spawn' | 'retry' | 'http' | 'exception';
-  failureReason?: string;
-  detail?: string;
-  /**
-   * Version mismatch log entry if the server's X-Hookwatch-Version header
-   * differs from this handler's VERSION. Present even when ok: true.
-   * Caller should push this into logEntries so it appears in systemMessage.
-   */
-  versionMismatchLog?: string;
-}
+/**
+ * Result returned by postEvent() — discriminated on the `ok` field.
+ *
+ * ok: true  — POST succeeded. versionMismatchLog may be set if the server's
+ *             X-Hookwatch-Version header differs from the handler's VERSION;
+ *             caller should push it into logEntries.
+ *
+ * ok: false — POST failed. failureKind distinguishes fatal vs non-fatal paths:
+ *   'spawn' | 'retry' → infrastructure broken → caller should exitFatal().
+ *   'http'  | 'exception' → transient → caller appends failureReason to logEntries.
+ *
+ *   'spawn'     — Bun.spawn() failed to start the server process.
+ *   'retry'     — Server was spawned but health probe timed out.
+ *   'http'      — Server returned a non-2xx HTTP response.
+ *   'exception' — Non-connection exception (e.g. fetch timeout, abort).
+ */
+export type PostEventResult =
+  | {
+      ok: true;
+      /** Present when server version differs from handler version. */
+      versionMismatchLog?: string;
+    }
+  | {
+      ok: false;
+      failureKind: 'spawn' | 'retry' | 'http' | 'exception';
+      failureReason: string;
+      detail?: string;
+    };
 
 /**
  * Checks the X-Hookwatch-Version response header against the handler's own

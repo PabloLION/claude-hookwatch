@@ -5,7 +5,7 @@
  *   - The wrapped command string at the top
  *   - Collapsible stdout panel (<details> with <pre><code>)
  *   - Collapsible stderr panel (<details> with <pre><code>)
- *   - Exit code with color coding: green for 0, red for non-zero, grey for null
+ *   - Exit code with color coding: green for 0, red for non-zero
  *
  * stdin (the raw JSON payload) is also shown in a collapsible panel so the
  * full event data remains accessible.
@@ -25,20 +25,18 @@ interface WrapViewerProps {
 
 /**
  * Return inline style for the exit code badge.
- * Green for 0, red for non-zero, grey when unavailable.
+ * Green for 0, red for non-zero.
+ * exit_code is NOT NULL in the DB (INTEGER NOT NULL DEFAULT 0) and validated
+ * as z.number() by eventRowSchema — null branches are not needed.
  */
-function exitCodeStyle(exitCode: number | null): Record<string, string> {
-  if (exitCode === null) {
-    return { color: 'var(--pico-muted-color, #888)', fontWeight: '600' };
-  }
+function exitCodeStyle(exitCode: number): Record<string, string> {
   if (exitCode === 0) {
     return { color: 'var(--pico-ins-color, #2d9a2d)', fontWeight: '600' };
   }
   return { color: 'var(--pico-del-color, #c0392b)', fontWeight: '600' };
 }
 
-function formatExitCode(exitCode: number | null): string {
-  if (exitCode === null) return 'N/A';
+function formatExitCode(exitCode: number): string {
   return String(exitCode);
 }
 
