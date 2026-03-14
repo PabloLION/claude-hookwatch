@@ -1,6 +1,7 @@
 import { Database } from 'bun:sqlite';
 import { chmodSync, existsSync, mkdirSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { errorMsg } from '@/errors.ts';
 import { dbPath as resolveDbPath } from '@/paths.ts';
 import { applyFreshSchema, CURRENT_VERSION, checkVersion } from './schema.ts';
 
@@ -86,10 +87,9 @@ function openAndInit(path: string): Database {
     conn.run('PRAGMA journal_mode=wal;');
     applyFreshSchema(conn);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
     process.stderr.write(
       `[hookwatch] ERROR: Failed to create new database after version mismatch backup. ` +
-        `Old data preserved at ${backupPath}. Error: ${message}\n`,
+        `Old data preserved at ${backupPath}. Error: ${errorMsg(err)}\n`,
     );
     throw err;
   }

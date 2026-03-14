@@ -1,14 +1,7 @@
 /**
  * Error utility helpers for the hookwatch handler.
- */
-
-/**
- * Extracts a human-readable message from an unknown thrown value.
  *
- * TypeScript catch clauses type the caught value as `unknown`. This helper
- * centralises the `err instanceof Error ? err.message : String(err)` pattern
- * used throughout the handler.
+ * Re-exports errorMsg() from the shared @/errors module so handler code can
+ * import from a local path without changing all handler import sites.
  */
-export function errorMsg(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
+export { errorMsg } from '@/errors.ts';

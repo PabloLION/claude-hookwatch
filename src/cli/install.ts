@@ -12,13 +12,11 @@
  */
 
 import { existsSync, mkdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { defineCommand } from 'citty';
 import { description, name, version } from '../../package.json';
 import { EVENT_TYPES } from './events.ts';
-
-/** Absolute path to the package root (where package.json lives). */
-const PACKAGE_ROOT = resolve(import.meta.dir, '../..');
+import { PACKAGE_ROOT } from './paths.ts';
 
 /**
  * Generates the content for .claude-plugin/plugin.json.

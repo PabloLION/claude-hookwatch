@@ -10,7 +10,7 @@ import { DEFAULT_PORT } from '@/config.ts';
 import { isErrnoException } from '@/guards.ts';
 
 /** Maximum valid TCP port number. */
-const MAX_PORT = 65535;
+export const MAX_PORT = 65535;
 
 function xdgDataHome(): string {
   return process.env.XDG_DATA_HOME ?? `${process.env.HOME}/.local/share`;
