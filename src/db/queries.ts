@@ -2,8 +2,6 @@ import type { Database } from 'bun:sqlite';
 import type { QueryFilter } from '@/schemas/query.ts';
 import type { EventRow, InsertEventParams } from '@/types.ts';
 
-export type { EventRow, InsertEventParams } from '@/types.ts';
-
 /**
  * Insert a new event row using a parameterized query.
  * ch-lar: NO string concatenation — all values passed as parameters.
@@ -50,20 +48,6 @@ export function getEventById(db: Database, id: number): EventRow | null {
 export function getAllEvents(db: Database): EventRow[] {
   const stmt = db.prepare<EventRow, []>(`SELECT * FROM events ORDER BY timestamp ASC`);
   return stmt.all();
-}
-
-export function getEventsBySession(db: Database, sessionId: string): EventRow[] {
-  const stmt = db.prepare<EventRow, [string]>(
-    `SELECT * FROM events WHERE session_id = ? ORDER BY timestamp ASC`,
-  );
-  return stmt.all(sessionId);
-}
-
-export function getEventsByType(db: Database, eventType: string): EventRow[] {
-  const stmt = db.prepare<EventRow, [string]>(
-    `SELECT * FROM events WHERE event = ? ORDER BY timestamp ASC`,
-  );
-  return stmt.all(eventType);
 }
 
 /**

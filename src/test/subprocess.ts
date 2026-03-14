@@ -21,8 +21,6 @@ import { parseHookOutput } from '@/schemas/output.ts';
 
 import type { WrapResult } from '@/types.ts';
 
-export type { WrapResult } from '@/types.ts';
-
 /** Milliseconds to wait after SIGTERM before assuming the process has exited. */
 const KILL_WAIT_MS = 200;
 

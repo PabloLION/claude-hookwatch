@@ -139,10 +139,3 @@ export async function handleStatic(pathname: string): Promise<Response> {
     headers: { 'Content-Type': contentType },
   });
 }
-
-/**
- * Clear the transpile cache. Exposed for testing.
- */
-export function clearTranspileCache(): void {
-  transpileCache.clear();
-}
