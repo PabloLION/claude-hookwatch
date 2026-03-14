@@ -23,7 +23,6 @@
 import type { Signal } from '@preact/signals';
 import { useEffect, useState } from 'preact/hooks';
 import { DEFAULT_QUERY_LIMIT } from '@/config.ts';
-import { parseHookEvent } from '@/schemas/events.ts';
 import { parseEventRow } from '@/schemas/rows.ts';
 import type { EventRow } from '@/types.ts';
 import { html } from '../shared/html.ts';
@@ -73,20 +72,6 @@ interface EventListProps {
 }
 
 /**
- * Extract tool name from a JSON stdin string.
- * Returns "—" when the field is absent or parsing fails.
- */
-function extractToolName(stdinJson: string): string {
-  try {
-    const event = parseHookEvent(JSON.parse(stdinJson));
-    return typeof event.tool_name === 'string' ? event.tool_name : '\u2014';
-  } catch (err) {
-    console.warn('hookwatch: failed to extract tool name', err);
-    return '\u2014';
-  }
-}
-
-/**
  * Format a numeric epoch-millisecond timestamp for display.
  */
 function formatTimestamp(ts: number): string {
@@ -125,6 +110,24 @@ function eventTypeBadgeStyle(isWrapped: boolean): Record<string, string> {
     fontSize: '0.85em',
   };
 }
+
+// ---------------------------------------------------------------------------
+// Module-level style constants — defined once, not recreated on every render
+// ---------------------------------------------------------------------------
+
+const INVALID_ROW_STYLE = {
+  cursor: 'pointer',
+  userSelect: 'none',
+  background: 'var(--pico-mark-background-color, #fdecea)',
+  color: 'var(--pico-color, inherit)',
+};
+
+const INVALID_ROW_LABEL_STYLE = {
+  color: 'var(--pico-del-color, #c0392b)',
+  fontWeight: '600',
+};
+
+const CLICKABLE_ROW_STYLE = { cursor: 'pointer', userSelect: 'none' };
 
 export function EventList({ eventList, activeSession }: EventListProps) {
   // Track which row keys are currently expanded. A Set allows multiple open rows.
@@ -181,17 +184,12 @@ export function EventList({ eventList, activeSession }: EventListProps) {
                   <tr
                     key=${key}
                     onClick=${() => toggleRow(key)}
-                    style=${{
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                      background: 'var(--pico-mark-background-color, #fdecea)',
-                      color: 'var(--pico-color, inherit)',
-                    }}
+                    style=${INVALID_ROW_STYLE}
                     aria-expanded=${expanded}
                     data-invalid-row=${key}
                   >
                     <td colspan="4">
-                      <span style=${{ color: 'var(--pico-del-color, #c0392b)', fontWeight: '600' }}>
+                      <span style=${INVALID_ROW_LABEL_STYLE}>
                         [invalid row] Validation error — click to expand
                       </span>
                     </td>
@@ -211,13 +209,12 @@ export function EventList({ eventList, activeSession }: EventListProps) {
 
               const event = entry.row;
               const expanded = expandedKeys.has(event.id);
-              const isWrapped =
-                event.wrapped_command !== null && event.wrapped_command !== undefined;
+              const isWrapped = event.wrapped_command !== null;
               return html`
                 <tr
                   key=${event.id}
                   onClick=${() => toggleRow(event.id)}
-                  style=${{ cursor: 'pointer', userSelect: 'none' }}
+                  style=${CLICKABLE_ROW_STYLE}
                   aria-expanded=${expanded}
                   data-event-id=${event.id}
                   data-wrapped=${isWrapped ? 'true' : 'false'}
@@ -231,7 +228,7 @@ export function EventList({ eventList, activeSession }: EventListProps) {
                     >${event.event}</span>
                   </td>
                   <td>${event.session_id}</td>
-                  <td>${extractToolName(event.stdin)}</td>
+                  <td>${event.tool_name ?? '\u2014'}</td>
                 </tr>
                 ${
                   expanded &&
