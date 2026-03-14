@@ -62,9 +62,6 @@ function resolveUiPath(pathname: string): string | null {
   return resolved;
 }
 
-/**
- * Derive the file extension from a path.
- */
 function extname(filePath: string): string {
   const dot = filePath.lastIndexOf('.');
   if (dot === -1) return '';

@@ -9,7 +9,7 @@
  * Each row is clickable — clicking toggles an expanded EventDetail view below
  * the row. Multiple rows can be expanded simultaneously.
  *
- * Visual distinction (Story 3.2):
+ * Visual distinction (bare vs wrapped):
  *   - Bare handler events (wrapped_command is null): outline/hollow badge style
  *   - Wrapped events (wrapped_command is non-null): solid/filled badge style
  *
@@ -19,6 +19,13 @@
  *
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
+
+// NOTE: Cross-directory imports in src/ui/ intentionally use relative paths
+// (e.g. '../shared/html.ts') rather than the '@/' alias. These files are
+// transpiled on-the-fly by Bun.Transpiler and delivered as browser ES modules.
+// The '@/' alias is a TypeScript-only path mapping — the browser has no bundler
+// to resolve it. The importmap in index.html only covers vendor packages.
+// Using '@/' here would produce unresolvable bare specifiers in the browser.
 
 import type { Signal } from '@preact/signals';
 import { useEffect, useState } from 'preact/hooks';
@@ -53,7 +60,7 @@ export type RowEntry =
  * Starts at -1 and decrements with each call. Negative values never collide
  * with real DB ids (which are always positive auto-increment integers).
  *
- * Exported for testing only — do not call directly in application code.
+ * @internal Exported for testing only — do not call directly in application code.
  * Use nextInvalidRowKey() instead.
  */
 export let _nextInvalidKey = -1;

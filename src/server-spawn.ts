@@ -7,7 +7,7 @@
  * STDOUT SUPPRESSION: All logging goes to stderr — NEVER console.log().
  *
  * Exported:
- *   spawnServer() — also reused by cli/ui.ts (Story 2.5)
+ *   spawnServer() — also reused by cli/ui.ts (the hookwatch ui command)
  */
 
 import { closeSync, mkdirSync, openSync } from 'node:fs';
@@ -88,7 +88,7 @@ export type SpawnResult =
  * Returns a SpawnResult discriminated on ok. Callers use failureKind to
  * distinguish a spawn failure ('spawn') from a health-probe timeout ('retry').
  *
- * Exported for reuse by cli/ui.ts (Story 2.5).
+ * Exported for reuse by cli/ui.ts (the hookwatch ui command).
  */
 export async function spawnServer(): Promise<SpawnResult> {
   const logPath = serverLogPath();

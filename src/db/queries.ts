@@ -52,9 +52,6 @@ export function getAllEvents(db: Database): EventRow[] {
   return stmt.all();
 }
 
-/**
- * Retrieve events filtered by session_id.
- */
 export function getEventsBySession(db: Database, sessionId: string): EventRow[] {
   const stmt = db.prepare<EventRow, [string]>(
     `SELECT * FROM events WHERE session_id = ? ORDER BY timestamp ASC`,
@@ -62,9 +59,6 @@ export function getEventsBySession(db: Database, sessionId: string): EventRow[] 
   return stmt.all(sessionId);
 }
 
-/**
- * Retrieve events filtered by event type.
- */
 export function getEventsByType(db: Database, eventType: string): EventRow[] {
   const stmt = db.prepare<EventRow, [string]>(
     `SELECT * FROM events WHERE event = ? ORDER BY timestamp ASC`,

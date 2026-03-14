@@ -1,7 +1,7 @@
 /**
  * EventDetail component — renders the expanded detail view for a single event.
  *
- * Routing logic (Story 3.2):
+ * Routing logic (bare vs wrapped):
  *   - Wrapped events (wrapped_command is non-null): delegates to WrapViewer
  *     which displays stdout, stderr, exit_code, and the wrapped_command.
  *   - Bare events (wrapped_command is null): renders the standard detail with
@@ -38,9 +38,6 @@ const ERROR_HEADING_STYLE = {
  */
 const TOOL_EVENT_TYPES = new Set(['PreToolUse', 'PostToolUse', 'PostToolUseFailure']);
 
-/**
- * Check whether an event type is a tool-related event.
- */
 function isToolEvent(eventType: string): boolean {
   return TOOL_EVENT_TYPES.has(eventType);
 }
