@@ -132,39 +132,46 @@ function parseEventSafely(
 // ---------------------------------------------------------------------------
 
 /**
- * Shape returned by readStdinAndWrapOutput() covering both bare and wrapped
- * modes.
+ * Shape returned by readStdinAndWrapOutput() — discriminated on mode.
+ *
+ * 'bare'    — stdin was read directly; no child was spawned.
+ * 'wrapped' — a child was spawned; all I/O fields are populated.
+ *
+ * The discriminant eliminates runtime null assertions in buildPostPayload():
+ * childStdout/childStderr are typed as string (not string|null) in the wrapped
+ * variant, so the compiler enforces correctness instead of a throw.
  */
-interface StdinAndWrapOutput {
-  stdinJson: string;
-  childStdout: string | null;
-  childStderr: string | null;
-  childExitCode: number;
-  /** Signal-death warning from wrapped mode, if any. */
-  hookwatchLogFromWrap: string | null;
-}
+type StdinAndWrapOutput =
+  | { mode: 'bare'; stdinJson: string }
+  | {
+      mode: 'wrapped';
+      stdinJson: string;
+      /** The original wrapArgs array — stored here to avoid a separate wrapArgs parameter. */
+      wrapArgs: string[];
+      childStdout: string;
+      childStderr: string;
+      childExitCode: number;
+      /** Signal-death warning from wrapped mode, if any. */
+      hookwatchLogFromWrap: string | null;
+    };
 
 /**
  * Steps 1+2: Reads stdin and — in wrapped mode — spawns the child process,
  * tees its I/O, and captures its exit code.
  *
- * In bare mode, stdinJson is read from Bun.stdin and child* fields are null/0.
- * In wrapped mode, runWrapped() supplies all fields.
+ * In bare mode, returns mode:'bare' with stdinJson only.
+ * In wrapped mode, returns mode:'wrapped' with all I/O fields populated.
  */
 async function readStdinAndWrapOutput(wrapArgs: string[] | null): Promise<StdinAndWrapOutput> {
   if (wrapArgs === null) {
-    return {
-      stdinJson: await Bun.stdin.text(),
-      childStdout: null,
-      childStderr: null,
-      childExitCode: 0,
-      hookwatchLogFromWrap: null,
-    };
+    return { mode: 'bare', stdinJson: await Bun.stdin.text() };
   }
 
   // Wrapped mode: runWrapped() reads stdin, tees child I/O, returns everything
   const wrapResult = await runWrapped(wrapArgs);
   return {
+    mode: 'wrapped',
+    wrapArgs,
     stdinJson: wrapResult.stdin,
     childStdout: wrapResult.stdout,
     childStderr: wrapResult.stderr,
@@ -180,29 +187,20 @@ async function readStdinAndWrapOutput(wrapArgs: string[] | null): Promise<StdinA
  * In bare mode, stdout stores the preliminary hook output JSON (what Claude
  * Code would see). In wrapped mode, stdout/stderr/exitCode are the child's
  * captured values.
+ *
+ * The StdinAndWrapOutput discriminant guarantees childStdout/childStderr are
+ * non-null strings in the wrapped branch — no runtime null assertions needed.
  */
 function buildPostPayload(opts: {
   event: ReturnType<typeof parseHookEvent>;
-  wrapArgs: string[] | null;
-  childStdout: string | null;
-  childStderr: string | null;
-  childExitCode: number;
+  stdinAndWrap: StdinAndWrapOutput;
   elapsedMs: number;
   hookwatchLog: string | null;
   preliminaryHookOutputJson: string;
 }): EventPostPayload {
-  const {
-    event,
-    wrapArgs,
-    childStdout,
-    childStderr,
-    childExitCode,
-    elapsedMs,
-    hookwatchLog,
-    preliminaryHookOutputJson,
-  } = opts;
+  const { event, stdinAndWrap, elapsedMs, hookwatchLog, preliminaryHookOutputJson } = opts;
 
-  if (wrapArgs === null) {
+  if (stdinAndWrap.mode === 'bare') {
     return {
       mode: 'bare',
       stdout: preliminaryHookOutputJson,
@@ -212,18 +210,12 @@ function buildPostPayload(opts: {
     };
   }
 
-  // In wrapped mode, childStdout/childStderr are always non-null (set by
-  // runWrapped()). The null branch is only for bare mode, handled above.
-  if (childStdout === null || childStderr === null) {
-    throw new Error('childStdout/childStderr must be non-null in wrapped mode');
-  }
-
   return {
     mode: 'wrapped',
-    wrappedCommand: wrapArgs.join(' '),
-    stdout: childStdout,
-    stderr: childStderr,
-    exitCode: childExitCode,
+    wrappedCommand: stdinAndWrap.wrapArgs.join(' '),
+    stdout: stdinAndWrap.childStdout,
+    stderr: stdinAndWrap.childStderr,
+    exitCode: stdinAndWrap.childExitCode,
     hookDurationMs: elapsedMs,
     event,
     hookwatchLog,
@@ -240,20 +232,21 @@ function processPostResult(
   wrapArgs: string[] | null,
 ): void {
   if (!postResult.ok) {
-    const reason = postResult.failureReason ?? 'Failed to POST event to server';
+    const { failureReason, failureKind } = postResult;
     const detail = postResult.detail ? `: ${postResult.detail}` : '';
 
-    if (postResult.failureKind === 'spawn' || postResult.failureKind === 'retry') {
-      exitFatal(reason);
+    if (failureKind === 'spawn' || failureKind === 'retry') {
+      exitFatal(failureReason);
     }
 
-    logEntries.push(`[error] ${reason}${detail}`);
+    logEntries.push(`[error] ${failureReason}${detail}`);
 
     if (wrapArgs !== null) {
       console.error(
-        `[hookwatch] Failed to POST wrapped event (${reason}) — continuing (best-effort)`,
+        `[hookwatch] Failed to POST wrapped event (${failureReason}) — continuing (best-effort)`,
       );
     }
+    return;
   }
 
   if (postResult.versionMismatchLog !== undefined) {
@@ -293,12 +286,11 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // Step 1+2: Read stdin (and optionally spawn child in wrapped mode)
   // -------------------------------------------------------------------------
 
-  const { stdinJson, childStdout, childStderr, childExitCode, hookwatchLogFromWrap } =
-    await readStdinAndWrapOutput(wrapArgs);
+  const stdinAndWrap = await readStdinAndWrapOutput(wrapArgs);
 
   // Propagate signal-death warning from wrapped mode into logEntries
-  if (hookwatchLogFromWrap !== null) {
-    logEntries.push(hookwatchLogFromWrap);
+  if (stdinAndWrap.mode === 'wrapped' && stdinAndWrap.hookwatchLogFromWrap !== null) {
+    logEntries.push(stdinAndWrap.hookwatchLogFromWrap);
   }
 
   // -------------------------------------------------------------------------
@@ -313,8 +305,8 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // In wrapped mode (fallbackExitCode = childExitCode): forwards child exit code
   // on parse failure (best-effort). In bare mode (fallbackExitCode = null):
   // calls exitFatal() → exit 0 + JSON stdout (fatal, non-blocking).
-  const fallbackExitCode = wrapArgs === null ? null : childExitCode;
-  const event = parseEventSafely(stdinJson, fallbackExitCode);
+  const fallbackExitCode = stdinAndWrap.mode === 'wrapped' ? stdinAndWrap.childExitCode : null;
+  const event = parseEventSafely(stdinAndWrap.stdinJson, fallbackExitCode);
 
   // -------------------------------------------------------------------------
   // Step 4: Resolve port
@@ -356,10 +348,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
 
   const postPayload = buildPostPayload({
     event,
-    wrapArgs,
-    childStdout,
-    childStderr,
-    childExitCode,
+    stdinAndWrap,
     elapsedMs,
     hookwatchLog,
     preliminaryHookOutputJson,
@@ -397,8 +386,8 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // Step 7: Forward child exit code (wrapped mode only)
   // -------------------------------------------------------------------------
 
-  if (wrapArgs !== null) {
-    process.exit(childExitCode);
+  if (stdinAndWrap.mode === 'wrapped') {
+    process.exit(stdinAndWrap.childExitCode);
   }
 }
 
