@@ -15,7 +15,9 @@ export const CURRENT_VERSION = 3;
  * wrapped_command (nullable): NULL = bare handler event; non-NULL = the
  * wrapped command string (Story 3.1).
  *
- * stdout, stderr (nullable): only populated for wrapped events.
+ * stdout (nullable): hook output JSON for bare events; captured child stdout
+ * for wrapped events. NULL only if no output was generated.
+ * stderr (nullable): captured child stderr for wrapped events; NULL for bare.
  * exit_code: NOT NULL DEFAULT 0 — Unix processes always exit 0-255.
  *
  * hookwatch_log (nullable): single column with severity prefix for
@@ -82,11 +84,16 @@ export function checkVersion(db: Database): VersionStatus {
 /**
  * Apply a fresh schema to an empty database and stamp with CURRENT_VERSION.
  * Called for brand-new databases (user_version=0) and after backup-recreate.
+ *
+ * Wrapped in a transaction so a process kill mid-schema leaves the DB in a
+ * clean state (either fully created or empty) — never partially initialized.
  */
 export function applyFreshSchema(db: Database): void {
-  db.run(CREATE_EVENTS_TABLE);
-  for (const stmt of CREATE_INDEXES) {
-    db.run(stmt);
-  }
-  db.run(`PRAGMA user_version = ${CURRENT_VERSION};`);
+  db.transaction(() => {
+    db.run(CREATE_EVENTS_TABLE);
+    for (const stmt of CREATE_INDEXES) {
+      db.run(stmt);
+    }
+    db.run(`PRAGMA user_version = ${CURRENT_VERSION};`);
+  })();
 }

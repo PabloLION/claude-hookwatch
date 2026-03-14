@@ -45,10 +45,32 @@ export function resetIdleTimer(): void {
   if (idleTimer !== null) clearTimeout(idleTimer);
   idleTimer = setTimeout(() => {
     process.stderr.write('[hookwatch] Idle timeout reached — shutting down server\n');
-    if (shutdownCallback !== null) shutdownCallback();
-    closeSseClients();
-    closeDb();
-    removePortFile();
+    // Each cleanup step runs independently so a failure in one does not
+    // prevent the remaining steps from executing.
+    try {
+      if (shutdownCallback !== null) shutdownCallback();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`[hookwatch] Error in shutdownCallback during idle shutdown: ${msg}\n`);
+    }
+    try {
+      closeSseClients();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`[hookwatch] Error closing SSE clients during idle shutdown: ${msg}\n`);
+    }
+    try {
+      closeDb();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`[hookwatch] Error closing DB during idle shutdown: ${msg}\n`);
+    }
+    try {
+      removePortFile();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`[hookwatch] Error removing port file during idle shutdown: ${msg}\n`);
+    }
     process.exit(0);
   }, IDLE_TIMEOUT_MS);
   // .unref() prevents the timer from keeping the process alive.

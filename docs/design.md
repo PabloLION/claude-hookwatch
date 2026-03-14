@@ -7,7 +7,8 @@ Created: 20260224, updated 20260225
 
 hookwatch is a Claude Code plugin that captures all 18 hook event types, stores
 them in a local SQLite database, and serves a web UI for browsing and querying
-events. It installs via `claude plugin install` and uninstalls cleanly.
+events. It installs via `hookwatch install` (which runs `bun link`) and
+registers with Claude Code using `claude --plugin-dir ./path`.
 
 The gap it fills: no existing tool combines full event coverage with plugin
 compliance. DazzleML/claude-session-logger is the only plugin-compliant tool but
@@ -89,7 +90,7 @@ G10,Slash commands,Non-goal,—
 G11,Transcript backup,Non-goal,—
 G12,Run tracking,Goal,v0
 G13,Session renaming (web UI edit),Goal,v1 (human UX)
-H1,claude plugin install,Goal,v0
+H1,Plugin install (`hookwatch install` + `claude --plugin-dir`),Goal,v0
 H2,Clean uninstall,Goal,v0
 H3,CLAUDE_PLUGIN_ROOT env var,Goal,v0
 I1,Proxy-based interception,Non-goal,—
@@ -187,10 +188,9 @@ hookwatch ships as a Claude Code plugin with this structure:
 
 ```text
 .claude-plugin/
-  plugin.json          — plugin manifest (generated, checked in for claude plugin install)
+  plugin.json          — plugin manifest (name, version, description, author)
 hooks/
-  hooks.json           — hook registration (all 18 event types)
-  handler.ts           — thin entry point; re-imports src/handler/index.ts
+  hooks.json           — hook registration (all 18 event types; commands invoke the `hookwatch` CLI binary)
 src/
   handler/
     index.ts           — actual handler logic (stdin → validate → POST)
@@ -373,11 +373,13 @@ Configurable data cleanup using a high-water / low-water mark pattern.
 - HITL events are inherently blocking (waiting for human input) and are exempt
   from this target
 - SQLite uses WAL mode — no blocking on concurrent reads
-- Single process per hook invocation (no child processes for logging)
+- Single process for bare mode; wrapped mode spawns the user's command as a
+  child. Server auto-start may spawn a detached server process.
 
 ### NFR-2: Security
 
-- Hook handler makes no network calls
+- Hook handler makes no external network calls — all communication is via
+  localhost HTTP to the hookwatch server
 - Web UI binds to localhost only — not accessible from other machines
 - Database file readable only by the owning user (file permissions 0600)
 - Event payloads are logged as-is — hookwatch does not inject, modify, or
@@ -397,8 +399,9 @@ Configurable data cleanup using a high-water / low-water mark pattern.
 - **Required runtime:** Bun (version TBD — target latest stable)
 - **Platforms:** macOS and Linux (Claude Code's primary platforms)
 - **Windows:** Not a v0 target. May work if Bun supports it, but untested.
-- **Plugin system:** Compatible with `claude plugin install` / `claude plugin
-  remove` as documented by Claude Code
+- **Plugin system:** Installs via `hookwatch install` (runs `bun link`);
+  registers with Claude Code via `claude --plugin-dir ./path`. Uninstalls
+  cleanly.
 
 ### NFR-4: Reliability
 

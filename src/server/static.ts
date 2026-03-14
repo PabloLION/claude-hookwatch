@@ -113,7 +113,18 @@ export async function handleStatic(pathname: string): Promise<Response> {
     } else {
       const tsFile = Bun.file(filePath);
       const source = await tsFile.text();
-      content = transpiler.transformSync(source);
+      let transformed: string;
+      try {
+        transformed = transpiler.transformSync(source);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return errorResponse(
+          'INTERNAL',
+          `Failed to transpile ${normalised}: ${message}`,
+          HTTP_INTERNAL_ERROR,
+        );
+      }
+      content = transformed;
       transpileCache.set(filePath, { mtime, content });
     }
 

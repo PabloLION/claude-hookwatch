@@ -3,7 +3,7 @@
  *
  * Design decisions:
  * - .loose() on ALL schemas — forward-compatible with Claude Code SDK additions.
- *   (.passthrough() was deprecated in Zod v4; .loose() is the replacement.)
+ *   (.passthrough() was replaced by .loose() in Zod v4.)
  * - systemMessage is optional on all schemas (base and event-specific).
  * - hookSpecificOutput applies only to PreToolUse — not a universal field.
  * - Stop has its own decision/reason fields; no hookSpecificOutput.

@@ -10,15 +10,15 @@
  *   spawnServer() — also reused by cli/ui.ts (Story 2.5)
  */
 
-import { mkdirSync, openSync } from 'node:fs';
+import { closeSync, mkdirSync, openSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { SPAWN_HEALTH_TIMEOUT_MS } from '@/config.ts';
 import { isErrnoException } from '@/guards.ts';
 import { errorMsg } from '@/handler/errors.ts';
 import { readPort, serverLogPath } from '@/paths.ts';
 
 const HEALTH_POLL_INTERVAL_MS = 100;
 const HEALTH_MAX_ATTEMPTS = 20; // 20 * 100ms = 2s max
-const HEALTH_FETCH_TIMEOUT_MS = 500;
 
 /** Absolute path to the server entry point.
  * import.meta.url is file:///…/src/server-spawn.ts
@@ -43,7 +43,7 @@ async function waitForHealth(): Promise<number | null> {
 
     try {
       const res = await fetch(`http://127.0.0.1:${port}/health`, {
-        signal: AbortSignal.timeout(HEALTH_FETCH_TIMEOUT_MS),
+        signal: AbortSignal.timeout(SPAWN_HEALTH_TIMEOUT_MS),
       });
       if (res.ok) {
         return port;
@@ -120,9 +120,13 @@ export async function spawnServer(): Promise<SpawnResult> {
       stderr: stdioTarget,
       detached: true,
     });
+    // Close the log fd in the parent — the child inherits its own copy.
+    // Leaving it open in the parent leaks a file descriptor.
+    if (logFd >= 0) closeSync(logFd);
   } catch (err) {
     const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to spawn server: ${msg}`);
+    if (logFd >= 0) closeSync(logFd);
     return { ok: false, failureKind: 'spawn' };
   }
 

@@ -16,3 +16,15 @@ export const DEFAULT_QUERY_LIMIT = 100;
 
 /** Prefix for the systemMessage injected into Claude Code's context. */
 export const SYSTEM_MESSAGE_PREFIX = 'hookwatch captured';
+
+/**
+ * Health fetch timeout for server-spawn.ts health probe (ms).
+ * Kept short — the handler waits on this before forwarding to Claude Code.
+ */
+export const SPAWN_HEALTH_TIMEOUT_MS = 500;
+
+/**
+ * Health fetch timeout for the CLI `ui` command (ms).
+ * CLI context is interactive and less latency-sensitive than the handler path.
+ */
+export const CLI_HEALTH_TIMEOUT_MS = 1000;

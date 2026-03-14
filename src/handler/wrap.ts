@@ -19,9 +19,11 @@
  *
  * Best-effort: if the child process fails to spawn, we still return an exit
  * code of 1 with empty capture buffers — the caller handles server reporting.
- * If the child is signal-killed, Bun's proc.exited already returns 128+N
- * (e.g. SIGKILL → 137). Signal deaths are detected via proc.signalCode and
- * a [warn] log entry is included in WrapResult.hookwatchLog for the caller.
+ * If the child is signal-killed, Bun's proc.exited typically returns 128+N
+ * (e.g. SIGKILL → 137), but may return null in edge cases. Signal deaths are
+ * detected via proc.signalCode with a 128+N fallback computed from the signal
+ * number. A [warn] log entry is included in WrapResult.hookwatchLog for the
+ * caller.
  *
  * STDOUT SUPPRESSION REMINDER: All hookwatch-internal logging goes to stderr
  * (console.error / process.stderr.write) — NEVER console.log().
@@ -87,11 +89,11 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
     teeStream(child.stderr, process.stderr),
   ]);
 
-  // In Bun, proc.exited resolves to the 128+N value for signal-killed children
-  // (proc.exitCode is null in that case). We detect signal deaths by checking
-  // proc.signalCode rather than rawExitCode — Bun already applies 128+N so we
-  // do not need to compute it ourselves, but we still need signalExitCode() as
-  // a fallback if rawExitCode is somehow null without a known signal code.
+  // In Bun, proc.exited typically resolves to the 128+N value for signal-killed
+  // children, but may return null in edge cases (proc.exitCode is null when
+  // signaled). We detect signal deaths by checking proc.signalCode rather than
+  // rawExitCode. signalExitCode() is the fallback if rawExitCode is null without
+  // a known signal code.
   const signalCode = child.signalCode ?? null;
   const isSignalKill = signalCode !== null;
 
@@ -147,12 +149,5 @@ async function teeStream(
   }
 
   // Decode all chunks into a single string
-  const total = chunks.reduce((sum, c) => sum + c.byteLength, 0);
-  const merged = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    merged.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return new TextDecoder().decode(merged);
+  return Buffer.concat(chunks).toString('utf-8');
 }

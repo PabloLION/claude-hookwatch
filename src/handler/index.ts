@@ -349,6 +349,9 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // -------------------------------------------------------------------------
 
   const elapsedMs = Date.now() - startMs;
+  // hookwatchLog snapshot is taken before POST. Version-mismatch warnings from
+  // the POST response are not included in the DB record but do appear in the
+  // stdout systemMessage that Claude Code sees.
   const hookwatchLog = logEntries.length > 0 ? logEntries.join('; ') : null;
 
   const postPayload = buildPostPayload({

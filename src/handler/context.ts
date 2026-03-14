@@ -7,12 +7,15 @@
 
 import { SYSTEM_MESSAGE_PREFIX } from '@/config.ts';
 import type { HookEvent } from '@/schemas/events.ts';
+import type { KnownEventName } from '@/types.ts';
 
 /**
  * Maps hook_event_name → the field name that contains the subtype string.
  * Event types absent from this map have no meaningful subtype (return null).
+ * Typed as Partial<Record<KnownEventName, string>> so typos in event names
+ * become compile-time errors.
  */
-const SUBTYPE_FIELD: Record<string, string> = {
+const SUBTYPE_FIELD: Partial<Record<KnownEventName, string>> = {
   SessionStart: 'source',
   SessionEnd: 'reason',
   PreToolUse: 'tool_name',
