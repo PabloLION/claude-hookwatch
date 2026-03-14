@@ -225,6 +225,11 @@ function buildPostPayload(opts: {
 /**
  * Processes the POST result: exits fatal on infrastructure failure, appends
  * non-fatal error and version mismatch entries to logEntries.
+ *
+ * Control flow note: the spawn/retry branch calls exitFatal() (typed never),
+ * so execution never continues to the logEntries.push() below for those
+ * failure kinds. TypeScript narrows postResult to the http/exception variant
+ * (which has a required detail field) after the early-exit branches.
  */
 function processPostResult(
   postResult: PostEventResult,
@@ -233,12 +238,16 @@ function processPostResult(
 ): void {
   if (!postResult.ok) {
     const { failureReason, failureKind } = postResult;
-    const detail = postResult.detail ? `: ${postResult.detail}` : '';
 
+    // Fatal: infrastructure broken — server cannot be reached at all.
+    // exitFatal() is typed as never, so these branches terminate the process.
     if (failureKind === 'spawn' || failureKind === 'retry') {
       exitFatal(failureReason);
     }
 
+    // After the spawn/retry guard above, failureKind is narrowed to
+    // 'http' | 'exception', and postResult.detail is a required string.
+    const detail = postResult.detail ? `: ${postResult.detail}` : '';
     logEntries.push(`[error] ${failureReason}${detail}`);
 
     if (wrapArgs !== null) {

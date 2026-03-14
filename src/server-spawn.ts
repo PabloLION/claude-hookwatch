@@ -72,10 +72,11 @@ async function waitForHealth(): Promise<number | null> {
  *   ok: false → server did not start; `failureKind` distinguishes:
  *     'spawn'  — Bun.spawn() itself threw (e.g. binary not found, EACCES).
  *     'retry'  — Bun.spawn() succeeded but health probe timed out.
+ *     `message` carries the specific error for structured propagation to callers.
  */
 export type SpawnResult =
   | { readonly ok: true; readonly port: number }
-  | { readonly ok: false; readonly failureKind: 'spawn' | 'retry' };
+  | { readonly ok: false; readonly failureKind: 'spawn' | 'retry'; readonly message: string };
 
 /**
  * Spawns the hookwatch server as a detached background process.
@@ -126,7 +127,7 @@ export async function spawnServer(): Promise<SpawnResult> {
     const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to spawn server: ${msg}`);
     if (logFd >= 0) closeSync(logFd);
-    return { ok: false, failureKind: 'spawn' };
+    return { ok: false, failureKind: 'spawn', message: msg };
   }
 
   // Unref immediately — the handler must not wait for the server process
@@ -138,10 +139,10 @@ export async function spawnServer(): Promise<SpawnResult> {
   const port = await waitForHealth();
 
   if (port === null) {
-    console.error(
-      `[hookwatch] Server health check timed out after ${(HEALTH_MAX_ATTEMPTS * HEALTH_POLL_INTERVAL_MS) / 1000}s`,
-    );
-    return { ok: false, failureKind: 'retry' };
+    const timeoutSecs = (HEALTH_MAX_ATTEMPTS * HEALTH_POLL_INTERVAL_MS) / 1000;
+    const message = `Server health check timed out after ${timeoutSecs}s`;
+    console.error(`[hookwatch] ${message}`);
+    return { ok: false, failureKind: 'retry', message };
   }
 
   console.error(`[hookwatch] Server ready on port ${port}`);

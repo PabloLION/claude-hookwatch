@@ -32,11 +32,12 @@ import type {
   WorktreeCreate,
   WorktreeRemove,
 } from '@/schemas/events.ts';
+import { SCHEMA_MAP } from '@/schemas/events.ts';
 import { BASE_SESSION_START, GENERIC_EVENT_BASE } from '@/test/fixtures.ts';
 import { createHandlerTestContext } from '@/test/setup.ts';
 import { runHandler } from '@/test/subprocess.ts';
 import { writePortFile } from '@/test/test-server.ts';
-import { buildSystemMessage, getEventSubtype } from './context.ts';
+import { buildSystemMessage, getEventSubtype, SUBTYPE_FIELD } from './context.ts';
 
 // ---------------------------------------------------------------------------
 // Unit tests: getEventSubtype
@@ -253,6 +254,32 @@ describe('getEventSubtype', () => {
       notification_type: 42,
     };
     expect(getEventSubtype(event)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SUBTYPE_FIELD schema validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Verifies that each value in SUBTYPE_FIELD (a field name string) exists as a
+ * key in the corresponding Zod event schema from SCHEMA_MAP. Catches typos in
+ * SUBTYPE_FIELD values at test time rather than at runtime.
+ */
+describe('SUBTYPE_FIELD schema validation', () => {
+  test('each SUBTYPE_FIELD value is a valid key in the corresponding SCHEMA_MAP schema', () => {
+    for (const [eventName, fieldName] of Object.entries(SUBTYPE_FIELD)) {
+      const schema = SCHEMA_MAP[eventName as keyof typeof SCHEMA_MAP];
+      // schema must exist (SUBTYPE_FIELD keys must be in SCHEMA_MAP)
+      expect(schema, `SCHEMA_MAP missing entry for "${eventName}"`).toBeDefined();
+      // Zod v4: shape is at schema.def.shape (not schema.shape)
+      const def = (schema as unknown as { def?: { shape?: Record<string, unknown> } }).def;
+      expect(def?.shape, `schema for "${eventName}" has no .def.shape`).toBeDefined();
+      expect(
+        def?.shape?.[fieldName],
+        `SUBTYPE_FIELD["${eventName}"] = "${fieldName}" but that field is not in ${eventName} schema`,
+      ).toBeDefined();
+    }
   });
 });
 
