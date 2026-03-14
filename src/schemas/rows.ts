@@ -18,6 +18,7 @@
 import { z } from 'zod';
 import type { EventRow } from '@/types.ts';
 import { toKnownEventName } from '@/types.ts';
+import { parseJsonWithPreview } from './parse-json.ts';
 
 // ---------------------------------------------------------------------------
 // EventRow schema
@@ -87,12 +88,6 @@ export function parseEventRow(obj: unknown): EventRow {
  *   ZodError     — if the parsed JSON does not satisfy eventRowSchema
  */
 export function parseSseEvent(data: string): EventRow {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(data);
-  } catch (err) {
-    const preview = data.length > 200 ? `${data.slice(0, 200)}\u2026` : data;
-    throw new SyntaxError(`SSE data is not valid JSON: ${preview}`, { cause: err });
-  }
+  const parsed = parseJsonWithPreview(data, 'SSE data');
   return parseEventRow(parsed);
 }

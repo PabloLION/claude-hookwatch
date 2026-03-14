@@ -17,6 +17,7 @@
  */
 
 import { z } from 'zod';
+import { parseJsonWithPreview } from './parse-json.ts';
 
 // ---------------------------------------------------------------------------
 // Base schema (all hooks)
@@ -101,12 +102,6 @@ export type StopOutput = z.infer<typeof stopOutputSchema>;
  *   ZodError     — if the parsed JSON does not satisfy hookOutputSchema
  */
 export function parseHookOutput(stdout: string): HookOutput {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stdout);
-  } catch (err) {
-    const preview = stdout.length > 200 ? `${stdout.slice(0, 200)}\u2026` : stdout;
-    throw new SyntaxError(`handler stdout is not valid JSON: ${preview}`, { cause: err });
-  }
+  const parsed = parseJsonWithPreview(stdout, 'handler stdout');
   return hookOutputSchema.parse(parsed);
 }

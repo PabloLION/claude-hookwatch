@@ -16,6 +16,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DEFAULT_PORT, IDLE_TIMEOUT_MS } from '@/config.ts';
 import { close as closeDb } from '@/db/connection.ts';
+import { errorMsg } from '@/errors.ts';
 import { isErrnoException } from '@/guards.ts';
 import { portFilePath } from '@/paths.ts';
 import { errorResponse } from '@/server/errors.ts';
@@ -102,9 +103,8 @@ function writePortFile(port: number): void {
     mkdirSync(dirname(portFile), { recursive: true });
     writeFileSync(portFile, String(port), { encoding: 'utf8' });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
     process.stderr.write(
-      `[hookwatch] Warning: could not write port file ${portFile}: ${message}\n`,
+      `[hookwatch] Warning: could not write port file ${portFile}: ${errorMsg(err)}\n`,
     );
   }
 }

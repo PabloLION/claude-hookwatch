@@ -13,44 +13,23 @@
  * no SQL string concatenation in this handler.
  */
 
-import { ZodError } from 'zod';
 import { openDb } from '@/db/connection.ts';
-import { isSqliteBusy } from '@/db/errors.ts';
 import { getDistinctSessions, queryEvents } from '@/db/queries.ts';
 import { queryFilterSchema } from '@/schemas/query.ts';
-import { errorResponse } from '@/server/errors.ts';
-import {
-  HTTP_BAD_REQUEST,
-  HTTP_INTERNAL_ERROR,
-  HTTP_OK,
-  HTTP_SERVICE_UNAVAILABLE,
-} from '@/server/http-status.ts';
+import { dbErrorResponse, parseRequestJson, zodErrorResponse } from '@/server/errors.ts';
+import { HTTP_OK } from '@/server/http-status.ts';
 
 export async function handleQuery(req: Request): Promise<Response> {
   // Parse JSON body
-  let raw: unknown;
-  try {
-    raw = await req.json();
-  } catch (err) {
-    process.stderr.write(
-      `[hookwatch] POST /api/query JSON parse error: ${err instanceof Error ? err.message : String(err)}\n`,
-    );
-    return errorResponse('INVALID_QUERY', 'Request body is not valid JSON', HTTP_BAD_REQUEST);
-  }
+  const parsed = await parseRequestJson(req);
+  if (!parsed.ok) return parsed.response;
 
   // Validate with Zod (applies defaults for limit/offset)
   let filter: ReturnType<typeof queryFilterSchema.parse>;
   try {
-    filter = queryFilterSchema.parse(raw);
+    filter = queryFilterSchema.parse(parsed.data);
   } catch (err) {
-    if (err instanceof ZodError) {
-      return errorResponse(
-        'INVALID_QUERY',
-        `Validation failed: ${err.issues.map((i) => i.message).join('; ')}`,
-        HTTP_BAD_REQUEST,
-      );
-    }
-    return errorResponse('INVALID_QUERY', 'Payload validation failed', HTTP_BAD_REQUEST);
+    return zodErrorResponse(err);
   }
 
   // Query the database — route on queryType discriminator
@@ -63,14 +42,6 @@ export async function handleQuery(req: Request): Promise<Response> {
     const events = queryEvents(db, filter);
     return Response.json(events, { status: HTTP_OK });
   } catch (err) {
-    if (isSqliteBusy(err)) {
-      return errorResponse(
-        'DB_LOCKED',
-        'Database is busy, retry shortly',
-        HTTP_SERVICE_UNAVAILABLE,
-      );
-    }
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return errorResponse('INTERNAL', message, HTTP_INTERNAL_ERROR);
+    return dbErrorResponse(err);
   }
 }

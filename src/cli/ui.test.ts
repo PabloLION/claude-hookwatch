@@ -3,9 +3,6 @@
  *
  * Covers:
  * - DEFAULT_PORT is 6004
- * - readPortFile: returns null when file is absent
- * - readPortFile: returns null for invalid content
- * - readPortFile: returns valid port from file content
  * - isServerRunning: returns false when nothing is listening
  * - isServerRunning: returns true when server responds with 200 /health
  * - isServerRunning: returns false when server responds non-200
@@ -13,16 +10,18 @@
  * - isPortOccupied: returns true when an HTTP server is listening
  * - openBrowser: spawns correct command on darwin
  * - openBrowser: spawns correct command on linux
+ *
+ * Note: readPortFile() was removed in ch-05ff (code deduplication).
+ * Port file reading is now done by readPort() from @/paths.ts and is tested
+ * in src/paths.test.ts.
  */
 
 import { afterAll, beforeAll, describe, expect, it, spyOn } from 'bun:test';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { DEFAULT_PORT } from '@/config.ts';
 import { startServer } from '@/server/index.ts';
 import { UNUSED_PORT_A, UNUSED_PORT_B, UNUSED_PORT_C } from '@/test/constants.ts';
 import { createTempXdgHome, type TempXdgHome } from '@/test/setup.ts';
-import { isPortOccupied, isServerRunning, openBrowser, readPortFile } from './ui.ts';
+import { isPortOccupied, isServerRunning, openBrowser } from './ui.ts';
 
 // ---------------------------------------------------------------------------
 // DEFAULT_PORT constant
@@ -31,75 +30,9 @@ import { isPortOccupied, isServerRunning, openBrowser, readPortFile } from './ui
 /** Snapshot value — test fails if DEFAULT_PORT changes without updating this. */
 const SNAPSHOT_DEFAULT_PORT = 6004;
 
-/** Port with surrounding whitespace — tests readPortFile whitespace trimming. */
-const TEST_WHITESPACE_PORT = 6010;
-
 describe('DEFAULT_PORT', () => {
   it('is 6004', () => {
     expect(DEFAULT_PORT).toBe(SNAPSHOT_DEFAULT_PORT);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// readPortFile
-// ---------------------------------------------------------------------------
-
-describe('readPortFile', () => {
-  let xdg: TempXdgHome;
-  let portFile: string;
-
-  beforeAll(() => {
-    xdg = createTempXdgHome('hookwatch-ui-test-');
-    const portDir = join(xdg.tmpDir, 'hookwatch');
-    mkdirSync(portDir, { recursive: true });
-    portFile = join(portDir, 'hookwatch.port');
-    // Override XDG_DATA_HOME so portFilePath() resolves to our temp dir
-    process.env.XDG_DATA_HOME = xdg.tmpDir;
-  });
-
-  afterAll(() => {
-    delete process.env.XDG_DATA_HOME;
-    xdg.cleanup();
-  });
-
-  it('returns null when port file is absent', () => {
-    // Ensure file does not exist
-    try {
-      rmSync(portFile);
-    } catch {
-      // Ignore — may not exist
-    }
-    expect(readPortFile()).toBeNull();
-  });
-
-  it('returns the port number from a valid port file', () => {
-    writeFileSync(portFile, String(DEFAULT_PORT), 'utf8');
-    expect(readPortFile()).toBe(DEFAULT_PORT);
-  });
-
-  it('returns the port number with surrounding whitespace stripped', () => {
-    writeFileSync(portFile, `  ${TEST_WHITESPACE_PORT}\n`, 'utf8');
-    expect(readPortFile()).toBe(TEST_WHITESPACE_PORT);
-  });
-
-  it('returns null for NaN content', () => {
-    writeFileSync(portFile, 'not-a-port', 'utf8');
-    expect(readPortFile()).toBeNull();
-  });
-
-  it('returns null for zero', () => {
-    writeFileSync(portFile, '0', 'utf8');
-    expect(readPortFile()).toBeNull();
-  });
-
-  it('returns null for port > 65535', () => {
-    writeFileSync(portFile, '99999', 'utf8');
-    expect(readPortFile()).toBeNull();
-  });
-
-  it('returns null for negative port', () => {
-    writeFileSync(portFile, '-1', 'utf8');
-    expect(readPortFile()).toBeNull();
   });
 });
 

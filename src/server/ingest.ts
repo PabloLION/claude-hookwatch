@@ -17,18 +17,17 @@
  * ch-lar: all DB values go through parameterized insertEvent() — no string concatenation.
  */
 
-import { ZodError } from 'zod';
 import { openDb } from '@/db/connection.ts';
-import { isSqliteBusy } from '@/db/errors.ts';
 import { getEventById, insertEvent } from '@/db/queries.ts';
+import { isRecord } from '@/guards.ts';
 import { parseHookEvent } from '@/schemas/events.ts';
-import { errorResponse } from '@/server/errors.ts';
 import {
-  HTTP_BAD_REQUEST,
-  HTTP_CREATED,
-  HTTP_INTERNAL_ERROR,
-  HTTP_SERVICE_UNAVAILABLE,
-} from '@/server/http-status.ts';
+  dbErrorResponse,
+  errorResponse,
+  parseRequestJson,
+  zodErrorResponse,
+} from '@/server/errors.ts';
+import { HTTP_BAD_REQUEST, HTTP_CREATED } from '@/server/http-status.ts';
 import { broadcast } from '@/server/stream.ts';
 import { toKnownEventName } from '@/types.ts';
 
@@ -67,26 +66,19 @@ function extractWrapFields(body: Record<string, unknown>): WrapFields {
 // ---------------------------------------------------------------------------
 
 export async function handleIngest(req: Request): Promise<Response> {
-  let raw: unknown;
-  try {
-    raw = await req.json();
-  } catch (err) {
-    process.stderr.write(
-      `[hookwatch] POST /api/events JSON parse error: ${err instanceof Error ? err.message : String(err)}\n`,
-    );
-    return errorResponse('INVALID_QUERY', 'Request body is not valid JSON', HTTP_BAD_REQUEST);
-  }
+  const parsed = await parseRequestJson(req);
+  if (!parsed.ok) return parsed.response;
+  const { data: raw } = parsed;
 
   // Guard: req.json() can return any JSON value (string, number, array, null).
   // Reject anything that is not a plain object before proceeding.
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+  if (!isRecord(raw)) {
     return errorResponse('INVALID_QUERY', 'Request body must be a JSON object', HTTP_BAD_REQUEST);
   }
 
   // Extract optional wrap fields explicitly for typed DB storage.
   // parseHookEvent(.loose()) would preserve them as untyped index entries,
   // but we need them as named, typed WrapFields for insertEvent().
-  // Cast to Record<string, unknown> is safe: the guard above rejects non-object bodies.
   const {
     wrappedCommand,
     wrappedStdout,
@@ -94,20 +86,13 @@ export async function handleIngest(req: Request): Promise<Response> {
     wrappedExitCode,
     hookDurationMs,
     hookwatchLog,
-  } = extractWrapFields(raw as Record<string, unknown>);
+  } = extractWrapFields(raw);
 
   let event: ReturnType<typeof parseHookEvent>;
   try {
     event = parseHookEvent(raw);
   } catch (err) {
-    if (err instanceof ZodError) {
-      return errorResponse(
-        'INVALID_QUERY',
-        `Validation failed: ${err.issues.map((i) => i.message).join('; ')}`,
-        HTTP_BAD_REQUEST,
-      );
-    }
-    return errorResponse('INVALID_QUERY', 'Payload validation failed', HTTP_BAD_REQUEST);
+    return zodErrorResponse(err);
   }
 
   // Insert into DB
@@ -133,16 +118,7 @@ export async function handleIngest(req: Request): Promise<Response> {
       hookwatch_log: hookwatchLog,
     });
   } catch (err) {
-    // Detect SQLite BUSY / LOCKED errors
-    if (isSqliteBusy(err)) {
-      return errorResponse(
-        'DB_LOCKED',
-        'Database is busy, retry shortly',
-        HTTP_SERVICE_UNAVAILABLE,
-      );
-    }
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return errorResponse('INTERNAL', message, HTTP_INTERNAL_ERROR);
+    return dbErrorResponse(err);
   }
 
   // Broadcast the saved row to all connected SSE clients.

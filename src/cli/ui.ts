@@ -16,33 +16,13 @@
  *   an error and exit 1.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
 import { defineCommand } from 'citty';
 import { CLI_HEALTH_TIMEOUT_MS, DEFAULT_PORT } from '@/config.ts';
 import { isErrnoException } from '@/guards.ts';
-import { portFilePath } from '@/paths.ts';
+import { readPort } from '@/paths.ts';
 import { spawnServer } from '@/server-spawn.ts';
 
 const PORT_PROBE_TIMEOUT_MS = 500;
-/** Maximum valid TCP port number. */
-const MAX_PORT = 65535;
-
-/**
- * Reads the port from the port file, or returns null if absent/invalid.
- */
-export function readPortFile(): number | null {
-  const path = portFilePath();
-  if (!existsSync(path)) return null;
-
-  try {
-    const content = readFileSync(path, 'utf8').trim();
-    const port = Number.parseInt(content, 10);
-    if (Number.isNaN(port) || port <= 0 || port > MAX_PORT) return null;
-    return port;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Checks if the hookwatch server at the given port responds to GET /health
@@ -125,10 +105,12 @@ export const uiCommand = defineCommand({
     description: 'Start the hookwatch server (if needed) and open the web UI',
   },
   async run() {
-    // Check if server is already running by reading the port file
-    const storedPort = readPortFile();
+    // Check if server is already running by reading the port file.
+    // readPort() always returns a port (falls back to DEFAULT_PORT on ENOENT);
+    // the real check is whether the server is actually responding at that port.
+    const { port: storedPort } = readPort();
 
-    if (storedPort !== null && (await isServerRunning(storedPort))) {
+    if (await isServerRunning(storedPort)) {
       console.log(`Server already running on port ${storedPort}.`);
       const existingUrl = `http://localhost:${storedPort}`;
       console.log(`Opening ${existingUrl} ...`);

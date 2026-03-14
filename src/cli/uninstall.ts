@@ -9,11 +9,9 @@
  */
 
 import { existsSync, rmSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { defineCommand } from 'citty';
-
-/** Absolute path to the package root (where package.json lives). */
-const PACKAGE_ROOT = resolve(import.meta.dir, '../..');
+import { PACKAGE_ROOT } from './paths.ts';
 
 /**
  * Runs `bun unlink` in the package root directory.

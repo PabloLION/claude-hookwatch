@@ -18,12 +18,8 @@
  */
 
 import { type ZodType, z } from 'zod';
+import { isRecord } from '@/guards.ts';
 import type { EVENT_NAMES } from '@/types.ts';
-
-/** Narrows unknown to a string-keyed record (excludes arrays). */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 // ---------------------------------------------------------------------------
 // Common fields (present on every event)
