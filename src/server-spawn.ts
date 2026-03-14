@@ -13,8 +13,8 @@
 import { closeSync, mkdirSync, openSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { SPAWN_HEALTH_TIMEOUT_MS } from '@/config.ts';
+import { errorMsg } from '@/errors.ts';
 import { isErrnoException } from '@/guards.ts';
-import { errorMsg } from '@/handler/errors.ts';
 import { readPort, serverLogPath } from '@/paths.ts';
 
 const HEALTH_POLL_INTERVAL_MS = 100;
@@ -104,7 +104,7 @@ export async function spawnServer(): Promise<SpawnResult> {
     logFd = openSync(logPath, 'a');
   } catch (err) {
     const msg = errorMsg(err);
-    console.error(`[hookwatch] Failed to open server log file ${logPath}: ${msg}`);
+    console.error(`[hookwatch] [warn] Failed to open server log file ${logPath}: ${msg}`);
     // Continue without log file — use inherited stderr as fallback
   }
 

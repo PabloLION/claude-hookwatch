@@ -19,6 +19,7 @@
 
 import { openDb } from '@/db/connection.ts';
 import { getEventById, insertEvent } from '@/db/queries.ts';
+import { errorMsg } from '@/errors.ts';
 import { isRecord } from '@/guards.ts';
 import { parseHookEvent } from '@/schemas/events.ts';
 import {
@@ -130,10 +131,13 @@ export async function handleIngest(req: Request): Promise<Response> {
     const row = getEventById(db, id);
     if (row !== null) {
       broadcast(row);
+    } else {
+      process.stderr.write(
+        `[hookwatch] Warning: event ${id} was inserted but could not be fetched for broadcast\n`,
+      );
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    process.stderr.write(`[hookwatch] broadcast failed for event ${id}: ${message}\n`);
+    process.stderr.write(`[hookwatch] broadcast failed for event ${id}: ${errorMsg(err)}\n`);
   }
 
   return Response.json({ id }, { status: HTTP_CREATED });

@@ -51,26 +51,28 @@ export function resetIdleTimer(): void {
     try {
       if (shutdownCallback !== null) shutdownCallback();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      process.stderr.write(`[hookwatch] Error in shutdownCallback during idle shutdown: ${msg}\n`);
+      process.stderr.write(
+        `[hookwatch] Error in shutdownCallback during idle shutdown: ${errorMsg(err)}\n`,
+      );
     }
     try {
       closeSseClients();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      process.stderr.write(`[hookwatch] Error closing SSE clients during idle shutdown: ${msg}\n`);
+      process.stderr.write(
+        `[hookwatch] Error closing SSE clients during idle shutdown: ${errorMsg(err)}\n`,
+      );
     }
     try {
       closeDb();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      process.stderr.write(`[hookwatch] Error closing DB during idle shutdown: ${msg}\n`);
+      process.stderr.write(`[hookwatch] Error closing DB during idle shutdown: ${errorMsg(err)}\n`);
     }
     try {
       removePortFile();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      process.stderr.write(`[hookwatch] Error removing port file during idle shutdown: ${msg}\n`);
+      process.stderr.write(
+        `[hookwatch] Error removing port file during idle shutdown: ${errorMsg(err)}\n`,
+      );
     }
     process.exit(0);
   }, IDLE_TIMEOUT_MS);
@@ -121,7 +123,7 @@ function removePortFile(): void {
     // All other errors (EACCES, EBUSY, etc.) indicate a real problem.
     if (!isErrnoException(err) || err.code !== 'ENOENT') {
       process.stderr.write(
-        `[hookwatch] Warning: could not remove port file ${portFile}: ${err instanceof Error ? err.message : String(err)}\n`,
+        `[hookwatch] Warning: could not remove port file ${portFile}: ${errorMsg(err)}\n`,
       );
     }
   }

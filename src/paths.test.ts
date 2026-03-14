@@ -12,7 +12,7 @@
  * Coverage:
  * - Valid port file → returns that port, warning is null
  * - Missing file (ENOENT) → returns DEFAULT_PORT, warning is null
- * - Invalid content (non-numeric, zero, >65535) → returns DEFAULT_PORT, warning is null
+ * - Invalid content (non-numeric, zero, >65535) → returns DEFAULT_PORT, warning is non-null
  * - OS error (EISDIR) → returns DEFAULT_PORT, warning is non-null string describing the error
  */
 
@@ -124,47 +124,52 @@ describe('missing port file (ENOENT)', () => {
 // ---------------------------------------------------------------------------
 
 describe('invalid port file content', () => {
-  test('non-numeric content → DEFAULT_PORT, warning null', () => {
+  test('non-numeric content → DEFAULT_PORT, non-null warning', () => {
     writePortFile('not-a-port');
     const result = readPort();
     expect(result.port).toBe(DEFAULT_PORT);
-    expect(result.warning).toBeNull();
+    expect(result.warning).not.toBeNull();
+    expect(result.warning).toContain('not-a-port');
   });
 
-  test('empty file → DEFAULT_PORT, warning null', () => {
+  test('empty file → DEFAULT_PORT, non-null warning', () => {
     writePortFile('');
     const result = readPort();
     expect(result.port).toBe(DEFAULT_PORT);
-    expect(result.warning).toBeNull();
+    expect(result.warning).not.toBeNull();
   });
 
-  test('port 0 (invalid) → DEFAULT_PORT, warning null', () => {
+  test('port 0 (invalid) → DEFAULT_PORT, non-null warning', () => {
     writePortFile('0');
     const result = readPort();
     expect(result.port).toBe(DEFAULT_PORT);
-    expect(result.warning).toBeNull();
+    expect(result.warning).not.toBeNull();
+    expect(result.warning).toContain('0');
   });
 
-  test('port 65536 (above max) → DEFAULT_PORT, warning null', () => {
+  test('port 65536 (above max) → DEFAULT_PORT, non-null warning', () => {
     writePortFile('65536');
     const result = readPort();
     expect(result.port).toBe(DEFAULT_PORT);
-    expect(result.warning).toBeNull();
+    expect(result.warning).not.toBeNull();
+    expect(result.warning).toContain('65536');
   });
 
-  test('negative port number → DEFAULT_PORT, warning null', () => {
+  test('negative port number → DEFAULT_PORT, non-null warning', () => {
     writePortFile('-1');
     const result = readPort();
     expect(result.port).toBe(DEFAULT_PORT);
-    expect(result.warning).toBeNull();
+    expect(result.warning).not.toBeNull();
+    expect(result.warning).toContain('-1');
   });
 
-  test("float string → DEFAULT_PORT, warning null (parseInt truncates to NaN for '6.5'...)", () => {
+  test("float string → DEFAULT_PORT, non-null warning (parseInt truncates to NaN for '6.5'...)", () => {
     // parseInt("6.5") = 6, which is valid — but "abc6" → NaN
     writePortFile('abc6');
     const result = readPort();
     expect(result.port).toBe(DEFAULT_PORT);
-    expect(result.warning).toBeNull();
+    expect(result.warning).not.toBeNull();
+    expect(result.warning).toContain('abc6');
   });
 });
 

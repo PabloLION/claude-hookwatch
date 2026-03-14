@@ -15,6 +15,7 @@
  *   Connection: keep-alive
  */
 
+import { errorMsg } from '@/errors.ts';
 import type { EventRow } from '@/types.ts';
 
 // ---------------------------------------------------------------------------
@@ -79,9 +80,7 @@ export function broadcast(event: EventRow): void {
       const isClosedStream =
         err instanceof TypeError && err.message.toLowerCase().includes('close');
       if (!isClosedStream) {
-        process.stderr.write(
-          `[hookwatch] Unexpected SSE enqueue error: ${err instanceof Error ? err.message : String(err)}\n`,
-        );
+        process.stderr.write(`[hookwatch] Unexpected SSE enqueue error: ${errorMsg(err)}\n`);
       }
       clients.delete(controller);
     }
@@ -107,9 +106,7 @@ export function closeAll(): void {
       const isAlreadyClosed =
         err instanceof TypeError && err.message.toLowerCase().includes('close');
       if (!isAlreadyClosed) {
-        process.stderr.write(
-          `[hookwatch] Unexpected SSE close error: ${err instanceof Error ? err.message : String(err)}\n`,
-        );
+        process.stderr.write(`[hookwatch] Unexpected SSE close error: ${errorMsg(err)}\n`);
       }
     }
   }

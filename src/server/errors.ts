@@ -69,7 +69,8 @@ export async function parseRequestJson(
   try {
     const data = await req.json();
     return { ok: true, data };
-  } catch {
+  } catch (err) {
+    process.stderr.write(`[hookwatch] Failed to parse request JSON: ${errorMsg(err)}\n`);
     return {
       ok: false,
       response: errorResponse('INVALID_QUERY', 'Request body is not valid JSON', HTTP_BAD_REQUEST),

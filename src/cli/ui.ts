@@ -18,6 +18,7 @@
 
 import { defineCommand } from 'citty';
 import { CLI_HEALTH_TIMEOUT_MS, DEFAULT_PORT } from '@/config.ts';
+import { errorMsg } from '@/errors.ts';
 import { isErrnoException } from '@/guards.ts';
 import { readPort } from '@/paths.ts';
 import { spawnServer } from '@/server-spawn.ts';
@@ -34,7 +35,18 @@ export async function isServerRunning(port: number): Promise<boolean> {
       signal: AbortSignal.timeout(CLI_HEALTH_TIMEOUT_MS),
     });
     return res.ok;
-  } catch {
+  } catch (err) {
+    // ConnectionRefused / ECONNREFUSED: server not running — expected, silent
+    // DOMException: AbortSignal timeout fired — expected, silent
+    const outerCode = isErrnoException(err) ? err.code : undefined;
+    const cause = err instanceof Error ? err.cause : undefined;
+    const innerCode = isErrnoException(cause) ? cause.code : undefined;
+    const code = outerCode ?? innerCode;
+    const isExpected =
+      code === 'ConnectionRefused' || code === 'ECONNREFUSED' || err instanceof DOMException;
+    if (!isExpected) {
+      process.stderr.write(`[hookwatch] Unexpected health probe error: ${errorMsg(err)}\n`);
+    }
     return false;
   }
 }
