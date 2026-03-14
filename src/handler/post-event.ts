@@ -97,10 +97,13 @@ export function isConnectionError(err: unknown): boolean {
  *   'spawn' | 'retry' → infrastructure broken → caller should exitFatal().
  *   'http'  | 'exception' → transient → caller appends failureReason to logEntries.
  *
- *   'spawn'     — Bun.spawn() failed to start the server process.
- *   'retry'     — Server was spawned but health probe timed out.
- *   'http'      — Server returned a non-2xx HTTP response.
- *   'exception' — Non-connection exception (e.g. fetch timeout, abort).
+ *   'spawn'     — Bun.spawn() failed to start the server process. No detail.
+ *   'retry'     — Server was spawned but health probe timed out. No detail.
+ *   'http'      — Server returned a non-2xx HTTP response. detail = response body.
+ *   'exception' — Non-connection exception (e.g. fetch timeout, abort). detail = error message.
+ *
+ * The ok:false variants are split so callers have structural certainty:
+ * spawn/retry have no detail field; http/exception always have detail.
  */
 export type PostEventResult =
   | {
@@ -110,9 +113,15 @@ export type PostEventResult =
     }
   | {
       readonly ok: false;
-      readonly failureKind: 'spawn' | 'retry' | 'http' | 'exception';
+      readonly failureKind: 'spawn' | 'retry';
       readonly failureReason: string;
-      readonly detail?: string;
+    }
+  | {
+      readonly ok: false;
+      readonly failureKind: 'http' | 'exception';
+      readonly failureReason: string;
+      /** Response body (http) or error message (exception). */
+      readonly detail: string;
     };
 
 /**
@@ -258,11 +267,11 @@ export async function postEvent(port: number, opts: EventPostPayload): Promise<P
   const spawnResult: SpawnResult = await spawnServer();
 
   if (!spawnResult.ok) {
-    const { failureKind } = spawnResult;
+    const { failureKind, message } = spawnResult;
     const failureReason =
       failureKind === 'spawn'
-        ? 'Spawn failed — server process could not be started'
-        : 'Spawn failed — server did not become healthy in time';
+        ? `Spawn failed — server process could not be started: ${message}`
+        : `Spawn failed — server did not become healthy in time: ${message}`;
     console.error(`[hookwatch] ${failureReason}`);
     return { ok: false, failureKind, failureReason };
   }
