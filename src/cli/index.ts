@@ -7,7 +7,7 @@
  *   uninstall  — uninstall + cleanup
  *   ui         — start server + open browser
  *
- * Handler mode (18 PascalCase event families):
+ * Handler mode (PascalCase event families):
  *   hookwatch PreToolUse   — read stdin, delegate to handler
  *   hookwatch SessionStart — etc.
  *
@@ -62,7 +62,7 @@ const main = defineCommand({
     install: installCommand,
     uninstall: uninstallCommand,
     ui: uiCommand,
-    // 18 PascalCase event handler subcommands
+    // PascalCase event handler subcommands (one per EVENT_NAMES entry)
     SessionStart: makeEventCommand('SessionStart'),
     SessionEnd: makeEventCommand('SessionEnd'),
     UserPromptSubmit: makeEventCommand('UserPromptSubmit'),

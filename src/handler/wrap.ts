@@ -141,7 +141,6 @@ async function teeStream(
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
-      // Write to terminal immediately (pass-through)
       try {
         dest.write(value);
       } catch (err) {
@@ -150,13 +149,11 @@ async function teeStream(
           destErrorLogged = true;
         }
       }
-      // Accumulate for capture regardless of tee outcome
       chunks.push(value);
     }
   } finally {
     reader.releaseLock();
   }
 
-  // Decode all chunks into a single string
   return Buffer.concat(chunks).toString('utf-8');
 }

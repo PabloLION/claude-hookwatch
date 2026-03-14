@@ -10,7 +10,7 @@
 
 import { EVENT_NAMES } from '@/types.ts';
 
-/** All 18 PascalCase event types that hookwatch handles. Same set as EVENT_NAMES. */
+/** All PascalCase event types that hookwatch handles. Same set as EVENT_NAMES. */
 export const EVENT_TYPES = EVENT_NAMES;
 
 export type EventType = (typeof EVENT_TYPES)[number];

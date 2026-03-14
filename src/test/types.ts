@@ -2,7 +2,6 @@
  * Shared type definitions for hookwatch test utilities.
  *
  * These types are used across integration and E2E test files.
- * Exported via @/test barrel (src/test/index.ts).
  */
 
 import { expect } from 'bun:test';

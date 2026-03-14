@@ -26,7 +26,6 @@ interface BaseEventPayload {
 /**
  * Payload for bare mode: no child process was spawned.
  * stdout stores the hook output JSON (what Claude Code sees).
- * exit_code is always 0 (bare mode never exits non-zero).
  */
 export interface BareEventPayload extends BaseEventPayload {
   readonly mode: 'bare';
@@ -201,7 +200,8 @@ function buildRequestBody(opts: EventPostPayload): string {
       body[snake] = opts[camel];
     }
   } else {
-    // Bare mode: stdout is the hook output JSON; exit_code is always 0
+    // Bare mode: stdout is the hook output JSON. exit_code is always 0
+    // because bare mode never exits non-zero (passive observer principle).
     body.stdout = opts.stdout;
     body.exit_code = 0;
   }

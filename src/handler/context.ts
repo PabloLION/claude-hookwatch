@@ -35,8 +35,9 @@ const SUBTYPE_FIELD: Partial<Record<KnownEventName, string>> = {
  * Returns null for event types that have no meaningful subtype, or when the
  * expected field is absent or not a string.
  *
- * HookEvent types use .loose() schemas, so they have an index signature
- * ([key: string]: unknown) that allows accessing fields not in the static type.
+ * HookEvent types are inferred from .loose() schemas, which produce types with
+ * an index signature ([key: string]: unknown), allowing dynamic field access
+ * without unsafe casts even for fields not declared in the static type.
  */
 export function getEventSubtype(event: HookEvent): string | null {
   const field = SUBTYPE_FIELD[event.hook_event_name];

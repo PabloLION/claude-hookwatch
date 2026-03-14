@@ -28,7 +28,7 @@ export const BASE_SESSION_START: Record<string, unknown> = {
 };
 
 /**
- * Common fields shared by all 18 hook event types.
+ * Common fields shared by all hook event types.
  * Use as a base when building event-specific test payloads.
  */
 export const GENERIC_EVENT_BASE: Record<string, unknown> = {

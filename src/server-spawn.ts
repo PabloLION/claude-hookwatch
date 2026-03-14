@@ -93,7 +93,6 @@ export type SpawnResult =
 export async function spawnServer(): Promise<SpawnResult> {
   const logPath = serverLogPath();
 
-  // Ensure log directory exists.
   // recursive: true already handles EEXIST — real errors (EACCES, ENOSPC, etc.)
   // must propagate so the caller knows the spawn setup failed.
   mkdirSync(dirname(logPath), { recursive: true });
