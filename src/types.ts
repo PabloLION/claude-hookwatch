@@ -10,7 +10,7 @@
 // ---------------------------------------------------------------------------
 
 /**
- * All 18 known Claude Code hook event name literals, in alphabetical order.
+ * All known Claude Code hook event name literals, in alphabetical order.
  * Use as const preserves the tuple of string literals for type inference.
  */
 export const EVENT_NAMES = [

@@ -1,5 +1,5 @@
 /**
- * Zod schemas for all 18 Claude Code hook event types.
+ * Zod schemas for all Claude Code hook event types.
  *
  * Design decisions:
  * - .loose() on ALL schemas — unknown fields are preserved, not stripped.
@@ -306,7 +306,7 @@ export type HookEvent =
 /**
  * Maps every known hook_event_name to its Zod schema.
  * Keyed by the EVENT_NAMES tuple from src/types.ts — the compiler enforces
- * that all 18 known event names have a corresponding schema entry.
+ * that all known event names have a corresponding schema entry.
  * Adding a new event type requires only a schema definition above and one
  * entry here; no switch case needed.
  */

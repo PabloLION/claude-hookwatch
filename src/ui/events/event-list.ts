@@ -20,12 +20,12 @@
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
-// NOTE: Cross-directory imports in src/ui/ intentionally use relative paths
-// (e.g. '../shared/html.ts') rather than the '@/' alias. These files are
-// transpiled on-the-fly by Bun.Transpiler and delivered as browser ES modules.
-// The '@/' alias is a TypeScript-only path mapping — the browser has no bundler
-// to resolve it. The importmap in index.html only covers vendor packages.
-// Using '@/' here would produce unresolvable bare specifiers in the browser.
+// NOTE: This file uses both '@/' and relative imports.
+// '@/' imports (e.g. '@/config.ts', '@/schemas/rows.ts') resolve to files outside
+// src/ui/. Bun.Transpiler rewrites tsconfig paths before serving, so '@/' works
+// for cross-module imports. Relative paths (e.g. '../shared/html.ts') are used
+// for intra-UI imports by convention — they are explicit, browser-safe, and do
+// not depend on Bun.Transpiler's tsconfig rewriting for correctness.
 
 import type { Signal } from '@preact/signals';
 import { useEffect, useState } from 'preact/hooks';
