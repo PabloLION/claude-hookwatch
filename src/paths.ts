@@ -57,9 +57,9 @@ export function configPath(): string {
 // ---------------------------------------------------------------------------
 
 export interface ReadPortResult {
-  port: number;
+  readonly port: number;
   /** Non-null when the port file was unreadable due to a non-ENOENT OS error. */
-  warning: string | null;
+  readonly warning: string | null;
 }
 
 /**

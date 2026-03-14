@@ -62,30 +62,30 @@ export function toKnownEventName(name: string): KnownEventName {
  * snake_case matches database column names.
  */
 export interface EventRow {
-  id: number;
-  timestamp: number;
+  readonly id: number;
+  readonly timestamp: number;
   /** Normalized hook event name. Unrecognized event types stored as "unknown". */
-  event: KnownEventName;
-  session_id: string;
-  cwd: string;
-  tool_name: string | null;
-  session_name: string | null;
-  hook_duration_ms: number | null;
-  stdin: string;
+  readonly event: KnownEventName;
+  readonly session_id: string;
+  readonly cwd: string;
+  readonly tool_name: string | null;
+  readonly session_name: string | null;
+  readonly hook_duration_ms: number | null;
+  readonly stdin: string;
   /** NULL = bare handler event; non-NULL = wrapped command string */
-  wrapped_command: string | null;
+  readonly wrapped_command: string | null;
   /** Captured child stdout (wrapped mode); hookwatch JSON output (bare mode) */
-  stdout: string | null;
+  readonly stdout: string | null;
   /** Captured child stderr (wrapped mode); NULL for bare mode */
-  stderr: string | null;
+  readonly stderr: string | null;
   /** Child exit code. NOT NULL DEFAULT 0 — Unix processes always exit 0-255. */
-  exit_code: number;
+  readonly exit_code: number;
   /**
    * Hookwatch-internal diagnostics with severity prefix.
    * Format: "[error] msg" or "[warn] msg" or "[error] msg1; [warn] msg2".
    * NULL = no issues. See devlog: 20260308-hookwatch-log-column-design.md
    */
-  hookwatch_log: string | null;
+  readonly hookwatch_log: string | null;
 }
 
 /**
@@ -101,11 +101,11 @@ export type InsertEventParams = Omit<EventRow, 'id'>;
 
 /** Result returned by runWrapped() after the child process exits. */
 export interface WrapResult {
-  exitCode: number;
+  readonly exitCode: number;
   /** Raw stdin content (the Claude Code event JSON) — for the caller to parse. */
-  stdin: string;
-  stdout: string;
-  stderr: string;
+  readonly stdin: string;
+  readonly stdout: string;
+  readonly stderr: string;
   /**
    * Hookwatch-internal diagnostic log entry for signal deaths, or undefined
    * when the child exited normally. Format: "[warn] exit 137 (likely SIGKILL
@@ -115,5 +115,5 @@ export interface WrapResult {
    * Optional here (not nullable) because signal-kill is the only source.
    * Converted to `string | null` for DB storage via `?? null` in the caller.
    */
-  hookwatchLog?: string;
+  readonly hookwatchLog?: string;
 }

@@ -36,8 +36,8 @@ const CONTENT_TYPES: Record<string, string> = {
 };
 
 interface CacheEntry {
-  mtime: number;
-  content: string;
+  readonly mtime: number;
+  readonly content: string;
 }
 
 // In-memory transpile cache — keyed by resolved file path

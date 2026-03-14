@@ -83,7 +83,7 @@ function hasContent(value: string | null | undefined): value is string {
 }
 
 interface EventDetailProps {
-  entry: RowEntry;
+  readonly entry: RowEntry;
 }
 
 export function EventDetail({ entry }: EventDetailProps): ReturnType<typeof html> {

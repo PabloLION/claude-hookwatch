@@ -74,8 +74,8 @@ async function waitForHealth(): Promise<number | null> {
  *     'retry'  — Bun.spawn() succeeded but health probe timed out.
  */
 export type SpawnResult =
-  | { ok: true; port: number }
-  | { ok: false; failureKind: 'spawn' | 'retry' };
+  | { readonly ok: true; readonly port: number }
+  | { readonly ok: false; readonly failureKind: 'spawn' | 'retry' };
 
 /**
  * Spawns the hookwatch server as a detached background process.

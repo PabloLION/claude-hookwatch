@@ -36,12 +36,12 @@ import { toKnownEventName } from '@/types.ts';
 // ---------------------------------------------------------------------------
 
 interface WrapFields {
-  wrappedCommand: string | null;
-  wrappedStdout: string | null;
-  wrappedStderr: string | null;
-  wrappedExitCode: number;
-  hookDurationMs: number | null;
-  hookwatchLog: string | null;
+  readonly wrappedCommand: string | null;
+  readonly wrappedStdout: string | null;
+  readonly wrappedStderr: string | null;
+  readonly wrappedExitCode: number;
+  readonly hookDurationMs: number | null;
+  readonly hookwatchLog: string | null;
 }
 
 /**

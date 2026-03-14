@@ -16,11 +16,11 @@ const FETCH_TIMEOUT_MS = 5000;
 
 /** Common fields shared by both bare and wrapped event payloads. */
 interface BaseEventPayload {
-  event: HookEvent;
+  readonly event: HookEvent;
   /** Hookwatch processing overhead in ms (excludes child process wall time). */
-  hookDurationMs: number | null;
+  readonly hookDurationMs: number | null;
   /** Accumulated non-fatal hookwatch log entries; null = no entries. */
-  hookwatchLog: string | null;
+  readonly hookwatchLog: string | null;
 }
 
 /**
@@ -29,9 +29,9 @@ interface BaseEventPayload {
  * exit_code is always 0 (bare mode never exits non-zero).
  */
 export interface BareEventPayload extends BaseEventPayload {
-  mode: 'bare';
+  readonly mode: 'bare';
   /** Hook output JSON written to stdout — what Claude Code sees. */
-  stdout: string;
+  readonly stdout: string;
 }
 
 /**
@@ -39,15 +39,15 @@ export interface BareEventPayload extends BaseEventPayload {
  * exit_code reflects the child's actual exit code.
  */
 export interface WrappedEventPayload extends BaseEventPayload {
-  mode: 'wrapped';
+  readonly mode: 'wrapped';
   /** Command string to store in wrapped_command column. */
-  wrappedCommand: string;
+  readonly wrappedCommand: string;
   /** Captured child stdout. */
-  stdout: string;
+  readonly stdout: string;
   /** Captured child stderr. */
-  stderr: string;
+  readonly stderr: string;
   /** Child exit code (pass-through from wrapped command). */
-  exitCode: number;
+  readonly exitCode: number;
 }
 
 /** Discriminated union for postEvent() payload — bare vs wrapped mode. */
@@ -104,15 +104,15 @@ export function isConnectionError(err: unknown): boolean {
  */
 export type PostEventResult =
   | {
-      ok: true;
+      readonly ok: true;
       /** Present when server version differs from handler version. */
-      versionMismatchLog?: string;
+      readonly versionMismatchLog?: string;
     }
   | {
-      ok: false;
-      failureKind: 'spawn' | 'retry' | 'http' | 'exception';
-      failureReason: string;
-      detail?: string;
+      readonly ok: false;
+      readonly failureKind: 'spawn' | 'retry' | 'http' | 'exception';
+      readonly failureReason: string;
+      readonly detail?: string;
     };
 
 /**

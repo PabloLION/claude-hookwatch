@@ -20,7 +20,7 @@ import type { EventRow } from '@/types.ts';
 import { html } from '../shared/html.ts';
 
 interface WrapViewerProps {
-  event: EventRow;
+  readonly event: EventRow;
 }
 
 /**
