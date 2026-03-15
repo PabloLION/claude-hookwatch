@@ -17,6 +17,7 @@
  */
 
 import type { Signal } from '@preact/signals';
+import { errorMsg } from '@/errors.ts';
 import { parseSseEvent } from '@/schemas/rows.ts';
 import type { EventRow } from '@/types.ts';
 import type { RowEntry } from '../events/event-list.ts';
@@ -48,7 +49,7 @@ export function startSseClient(
       // Invalid SSE event — wrap as an invalid RowEntry and always show it.
       // Session filter is skipped: invalid rows indicate a system issue that
       // the operator needs to see regardless of the active session filter.
-      const error = err instanceof Error ? err.message : String(err);
+      const error = errorMsg(err);
       console.error('hookwatch: SSE event failed validation', err, ev.data);
       // Store raw string when JSON.parse itself failed (data is not an object).
       let raw: unknown;
