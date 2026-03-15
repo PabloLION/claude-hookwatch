@@ -18,7 +18,7 @@
  * returns is appended after the child's output.
  *
  * Best-effort: if the child process fails to spawn, we still return an exit
- * code of 1 with empty capture buffers — the caller handles server reporting.
+ * code of 1 with empty stdout/stderr buffers — the caller handles server reporting.
  * If the child is signal-killed, Bun's proc.exited typically returns 128+N
  * (e.g. SIGKILL → 137), but may return null in edge cases. Signal deaths are
  * detected via proc.signalCode with a 128+N fallback computed from the signal

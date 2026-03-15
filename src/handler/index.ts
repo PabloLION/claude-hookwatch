@@ -164,7 +164,15 @@ type StdinAndWrapOutput =
  */
 async function readStdinAndWrapOutput(wrapArgs: string[] | null): Promise<StdinAndWrapOutput> {
   if (wrapArgs === null) {
-    return { mode: 'bare', stdinJson: await Bun.stdin.text() };
+    let stdinJson: string;
+    try {
+      stdinJson = await Bun.stdin.text();
+    } catch (err) {
+      const msg = errorMsg(err);
+      process.stderr.write(`[hookwatch] [error] Failed to read stdin: ${msg}\n`);
+      stdinJson = '';
+    }
+    return { mode: 'bare', stdinJson };
   }
 
   // Wrapped mode: runWrapped() reads stdin, tees child I/O, returns everything
