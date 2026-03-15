@@ -14,7 +14,7 @@
  */
 
 import { statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { extname, resolve } from 'node:path';
 import { errorMsg } from '@/errors.ts';
 import { isErrnoException } from '@/guards.ts';
 import { errorResponse } from '@/server/errors.ts';
@@ -61,12 +61,6 @@ function resolveUiPath(pathname: string): string | null {
   }
 
   return resolved;
-}
-
-function extname(filePath: string): string {
-  const dot = filePath.lastIndexOf('.');
-  if (dot === -1) return '';
-  return filePath.slice(dot);
 }
 
 /**
