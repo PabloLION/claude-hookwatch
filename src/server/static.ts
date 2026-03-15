@@ -18,7 +18,7 @@ import { extname, resolve } from 'node:path';
 import { errorMsg } from '@/errors.ts';
 import { isErrnoException } from '@/guards.ts';
 import { errorResponse } from '@/server/errors.ts';
-import { HTTP_INTERNAL_ERROR, HTTP_NOT_FOUND, HTTP_OK } from '@/server/http-status.ts';
+import { HTTP_OK } from '@/server/http-status.ts';
 
 // Resolve src/ui/ relative to this file's directory (src/server/ → ../ui/)
 const UI_DIR = resolve(import.meta.dir, '../ui');
@@ -73,7 +73,7 @@ export async function handleStatic(pathname: string): Promise<Response> {
 
   const filePath = resolveUiPath(normalised);
   if (filePath === null) {
-    return errorResponse('NOT_FOUND', 'Path not allowed', HTTP_NOT_FOUND);
+    return errorResponse('NOT_FOUND', 'Path not allowed');
   }
 
   // Check file existence
@@ -84,7 +84,7 @@ export async function handleStatic(pathname: string): Promise<Response> {
     // ENOENT is the normal "file not found" case — return 404.
     // All other errors (EACCES, EIO, etc.) indicate a real problem — log and return 500.
     if (isErrnoException(err) && err.code === 'ENOENT') {
-      return errorResponse('NOT_FOUND', `File not found: ${normalised}`, HTTP_NOT_FOUND);
+      return errorResponse('NOT_FOUND', `File not found: ${normalised}`);
     }
     process.stderr.write(`[hookwatch] Static file error for ${normalised}: ${errorMsg(err)}\n`);
     return errorResponse('INTERNAL', `Could not read file: ${normalised}`, HTTP_INTERNAL_ERROR);
@@ -108,11 +108,7 @@ export async function handleStatic(pathname: string): Promise<Response> {
         transformed = transpiler.transformSync(source);
       } catch (err) {
         const message = errorMsg(err);
-        return errorResponse(
-          'INTERNAL',
-          `Failed to transpile ${normalised}: ${message}`,
-          HTTP_INTERNAL_ERROR,
-        );
+        return errorResponse('INTERNAL', `Failed to transpile ${normalised}: ${message}`);
       }
       content = transformed;
       transpileCache.set(filePath, { mtime, content });

@@ -28,7 +28,7 @@ import {
   parseRequestJson,
   zodErrorResponse,
 } from '@/server/errors.ts';
-import { HTTP_BAD_REQUEST, HTTP_CREATED } from '@/server/http-status.ts';
+import { HTTP_CREATED } from '@/server/http-status.ts';
 import { broadcast } from '@/server/stream.ts';
 import { toKnownEventName } from '@/types.ts';
 
@@ -74,7 +74,7 @@ export async function handleIngest(req: Request): Promise<Response> {
   // Guard: req.json() can return any JSON value (string, number, array, null).
   // Reject anything that is not a plain object before proceeding.
   if (!isRecord(raw)) {
-    return errorResponse('INVALID_QUERY', 'Request body must be a JSON object', HTTP_BAD_REQUEST);
+    return errorResponse('INVALID_QUERY', 'Request body must be a JSON object');
   }
 
   // Extract optional wrap fields explicitly for typed DB storage.
