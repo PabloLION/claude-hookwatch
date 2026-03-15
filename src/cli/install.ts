@@ -129,11 +129,16 @@ export const installCommand = defineCommand({
       console.log(`[dry-run] Would write ${pluginJsonPath}:`);
       console.log(pluginJsonContent);
     } else {
-      if (!existsSync(pluginDir)) {
-        mkdirSync(pluginDir, { recursive: true });
+      try {
+        if (!existsSync(pluginDir)) {
+          mkdirSync(pluginDir, { recursive: true });
+        }
+        await Bun.write(pluginJsonPath, `${pluginJsonContent}\n`);
+        console.log(`Wrote ${pluginJsonPath}`);
+      } catch (err) {
+        process.stderr.write(`[hookwatch] Failed to write ${pluginJsonPath}: ${errorMsg(err)}\n`);
+        process.exit(1);
       }
-      await Bun.write(pluginJsonPath, `${pluginJsonContent}\n`);
-      console.log(`Wrote ${pluginJsonPath}`);
     }
 
     // 2. Generate hooks/hooks.json
@@ -145,11 +150,16 @@ export const installCommand = defineCommand({
       console.log(`[dry-run] Would write ${hooksJsonPath}:`);
       console.log(hooksJsonContent);
     } else {
-      if (!existsSync(hooksDir)) {
-        mkdirSync(hooksDir, { recursive: true });
+      try {
+        if (!existsSync(hooksDir)) {
+          mkdirSync(hooksDir, { recursive: true });
+        }
+        await Bun.write(hooksJsonPath, `${hooksJsonContent}\n`);
+        console.log(`Wrote ${hooksJsonPath}`);
+      } catch (err) {
+        process.stderr.write(`[hookwatch] Failed to write ${hooksJsonPath}: ${errorMsg(err)}\n`);
+        process.exit(1);
       }
-      await Bun.write(hooksJsonPath, `${hooksJsonContent}\n`);
-      console.log(`Wrote ${hooksJsonPath}`);
     }
 
     // 3. Run bun link

@@ -95,8 +95,14 @@ export async function spawnServer(): Promise<SpawnResult> {
   const logPath = serverLogPath();
 
   // recursive: true already handles EEXIST — real errors (EACCES, ENOSPC, etc.)
-  // must propagate so the caller knows the spawn setup failed.
-  mkdirSync(dirname(logPath), { recursive: true });
+  // are caught and returned as a structured spawn failure.
+  try {
+    mkdirSync(dirname(logPath), { recursive: true });
+  } catch (err) {
+    const message = `Failed to create log directory: ${errorMsg(err)}`;
+    console.error(`[hookwatch] ${message}`);
+    return { ok: false, failureKind: 'spawn' as const, message };
+  }
 
   // Open log file for append (create if absent)
   let logFd = -1;
