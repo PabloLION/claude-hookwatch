@@ -12,3 +12,9 @@ export const EXPECTED_EVENT_TYPE_COUNT = 18;
 export const UNUSED_PORT_A = 19999;
 export const UNUSED_PORT_B = 19998;
 export const UNUSED_PORT_C = 19997;
+
+/** Prefix used in hookwatch stderr log lines. */
+export const HOOKWATCH_LOG_PREFIX = '[hookwatch]';
+
+/** Slice offset to strip the trailing "\n\n" from SSE frames. */
+export const SSE_FRAME_TAIL = -2;
