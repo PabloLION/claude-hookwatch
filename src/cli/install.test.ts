@@ -13,6 +13,7 @@
 import { describe, expect, it } from 'bun:test';
 import { EXPECTED_EVENT_TYPE_COUNT } from '@/test/constants.ts';
 import { EVENT_TYPES, type EventType } from './events.ts';
+import { buildHooksJson, buildPluginJson } from './plugin-files.ts';
 
 // ---------------------------------------------------------------------------
 // EVENT_TYPES sanity checks
@@ -62,33 +63,8 @@ describe('EVENT_TYPES', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Plugin manifest JSON generation (logic extracted from install.ts)
+// Plugin manifest JSON generation (shared module: src/cli/plugin-files.ts)
 // ---------------------------------------------------------------------------
-
-/** Reproduces buildPluginJson() logic for unit testing. */
-function buildPluginJson(pkg: { name: string; version: string; description: string }): object {
-  return {
-    name: pkg.name,
-    version: pkg.version,
-    description: pkg.description,
-    author: { name: 'PabloLION' },
-  };
-}
-
-/** Reproduces buildHooksJson() logic for unit testing. */
-function buildHooksJson(
-  eventTypes: readonly string[],
-): Record<string, Array<{ hooks: Array<{ type: string; command: string }> }>> {
-  const hooks: Record<string, Array<{ hooks: Array<{ type: string; command: string }> }>> = {};
-  for (const eventType of eventTypes) {
-    hooks[eventType] = [
-      {
-        hooks: [{ type: 'command', command: `hookwatch ${eventType}` }],
-      },
-    ];
-  }
-  return hooks;
-}
 
 describe('buildPluginJson', () => {
   it('returns correct shape', () => {
@@ -115,14 +91,14 @@ describe('buildPluginJson', () => {
 
 describe('buildHooksJson', () => {
   it('creates an entry for every event type', () => {
-    const hooks = buildHooksJson(EVENT_TYPES);
+    const hooks = buildHooksJson();
     for (const eventType of EVENT_TYPES) {
       expect(hooks[eventType]).toBeDefined();
     }
   });
 
   it('each entry has exactly one hooks wrapper with one command', () => {
-    const hooks = buildHooksJson(EVENT_TYPES);
+    const hooks = buildHooksJson();
     for (const eventType of EVENT_TYPES) {
       const entries = hooks[eventType];
       expect(entries).toHaveLength(1);
@@ -139,7 +115,7 @@ describe('buildHooksJson', () => {
   });
 
   it('command format for all 18 types uses hookwatch prefix', () => {
-    const hooks = buildHooksJson(EVENT_TYPES);
+    const hooks = buildHooksJson();
     for (const eventType of EVENT_TYPES) {
       const cmd = hooks[eventType]?.[0]?.hooks[0]?.command;
       expect(cmd).toBe(`hookwatch ${eventType}`);

@@ -12,7 +12,7 @@
  * Error codes used in responses: DB_LOCKED, NOT_FOUND, INVALID_QUERY, INTERNAL
  */
 
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DEFAULT_PORT, IDLE_TIMEOUT_MS } from '@/config.ts';
 import { close as closeDb } from '@/db/connection.ts';
@@ -99,11 +99,11 @@ function cancelIdleTimer(): void {
  * Failure is non-fatal — the handler falls back to DEFAULT_PORT when the file
  * is absent, so a failed write should not crash the server.
  */
-function writePortFile(port: number): void {
+async function writePortFile(port: number): Promise<void> {
   const portFile = portFilePath();
   try {
     mkdirSync(dirname(portFile), { recursive: true });
-    writeFileSync(portFile, String(port), { encoding: 'utf8' });
+    await Bun.write(portFile, String(port));
   } catch (err) {
     process.stderr.write(
       `[hookwatch] Warning: could not write port file ${portFile}: ${errorMsg(err)}\n`,
@@ -223,7 +223,7 @@ export async function startServer(): Promise<{ port: number; stop: () => void }>
     throw err;
   }
 
-  writePortFile(DEFAULT_PORT);
+  await writePortFile(DEFAULT_PORT);
 
   const stop = (): void => {
     cancelIdleTimer();

@@ -11,9 +11,9 @@
  * Called automatically by the `generate` npm script.
  */
 
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { EVENT_NAMES } from '../src/types.ts';
+import { buildHooksJson, buildPluginJson } from '../src/cli/plugin-files.ts';
 
 // Resolve package root (one level up from scripts/)
 const PACKAGE_ROOT = resolve(import.meta.dir, '..');
@@ -23,18 +23,13 @@ const pkgJson = (await Bun.file(join(PACKAGE_ROOT, 'package.json')).json()) as {
   description: string;
 };
 
-/** All PascalCase event types registered in hooks.json. Single source of truth: src/types.ts. */
-const EVENT_TYPES = EVENT_NAMES;
-
 /**
  * Writes a file, creating parent directories as needed.
  */
-function writeFile(filePath: string, content: string): void {
+async function writeFile(filePath: string, content: string): Promise<void> {
   const dir = dirname(filePath);
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-  writeFileSync(filePath, content, 'utf8');
+  mkdirSync(dir, { recursive: true });
+  await Bun.write(filePath, content);
   console.log(`Generated: ${filePath}`);
 }
 
@@ -42,39 +37,18 @@ function writeFile(filePath: string, content: string): void {
 // .claude-plugin/plugin.json
 // ---------------------------------------------------------------------------
 
-const pluginJson = {
-  name: pkgJson.name,
-  version: pkgJson.version,
-  description: pkgJson.description,
-  author: { name: 'PabloLION' },
-};
-
-writeFile(
+await writeFile(
   join(PACKAGE_ROOT, '.claude-plugin', 'plugin.json'),
-  `${JSON.stringify(pluginJson, null, 2)}\n`,
+  `${JSON.stringify(buildPluginJson(pkgJson), null, 2)}\n`,
 );
 
 // ---------------------------------------------------------------------------
 // hooks/hooks.json
 // ---------------------------------------------------------------------------
 
-const hooksRecord: Record<string, Array<{ hooks: Array<{ type: string; command: string }> }>> = {};
-
-for (const eventType of EVENT_TYPES) {
-  hooksRecord[eventType] = [
-    {
-      hooks: [
-        {
-          type: 'command',
-          command: `hookwatch ${eventType}`,
-        },
-      ],
-    },
-  ];
-}
-
-const hooksJson = { hooks: hooksRecord };
-
-writeFile(join(PACKAGE_ROOT, 'hooks', 'hooks.json'), `${JSON.stringify(hooksJson, null, 2)}\n`);
+await writeFile(
+  join(PACKAGE_ROOT, 'hooks', 'hooks.json'),
+  `${JSON.stringify({ hooks: buildHooksJson() }, null, 2)}\n`,
+);
 
 console.log('Plugin files generated successfully.');
