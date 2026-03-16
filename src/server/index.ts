@@ -208,6 +208,10 @@ export async function startServer(): Promise<{ port: number; stop: () => void }>
       hostname: HOSTNAME,
       port: DEFAULT_PORT,
       fetch: dispatch,
+      error(err) {
+        process.stderr.write(`[hookwatch] Unhandled server error: ${errorMsg(err)}\n`);
+        return errorResponse('INTERNAL', 'An unexpected server error occurred');
+      },
     });
   } catch (err) {
     // Bun exposes .code on the error object; message text varies by platform
