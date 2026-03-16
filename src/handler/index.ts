@@ -245,18 +245,16 @@ function processPostResult(
   wrapArgs: string[] | null,
 ): void {
   if (!postResult.ok) {
-    const { failureReason, failureKind } = postResult;
-
     // Fatal: infrastructure broken — server cannot be reached at all.
     // exitFatal() is typed as never, so these branches terminate the process.
-    if (failureKind === 'spawn' || failureKind === 'retry') {
-      exitFatal(failureReason);
+    if (postResult.failureKind === 'spawn' || postResult.failureKind === 'retry') {
+      exitFatal(postResult.failureReason);
     }
 
-    // After the spawn/retry guard above, failureKind is narrowed to
-    // 'http' | 'exception', and postResult.detail is a required string.
+    // After the spawn/retry guard above, postResult is narrowed to the
+    // 'http' | 'exception' variant, and postResult.detail is a required string.
     const detail = postResult.detail ? `: ${postResult.detail}` : '';
-    logEntries.push(`[error] ${failureReason}${detail}`);
+    logEntries.push(`[error] ${postResult.failureReason}${detail}`);
 
     if (wrapArgs !== null) {
       console.error(
@@ -370,7 +368,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
     hookwatchLog,
     preliminaryHookOutputJson,
   });
-  const postResult: PostEventResult = await postEvent(port, postPayload);
+  const postResult = await postEvent(port, postPayload);
   processPostResult(postResult, logEntries, wrapArgs);
 
   // -------------------------------------------------------------------------

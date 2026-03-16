@@ -76,10 +76,8 @@ export function getEventSubtype(event: HookEvent): string | null {
  */
 export function buildSystemMessage(event: HookEvent, logEntries?: string[]): string {
   const subtype = getEventSubtype(event);
-  const base =
-    subtype === null
-      ? `${SYSTEM_MESSAGE_PREFIX} ${event.hook_event_name}`
-      : `${SYSTEM_MESSAGE_PREFIX} ${event.hook_event_name} (${subtype})`;
+  const suffix = subtype !== null ? ` (${subtype})` : '';
+  const base = `${SYSTEM_MESSAGE_PREFIX} ${event.hook_event_name}${suffix}`;
   if (logEntries && logEntries.length > 0) {
     return `${base} — ${logEntries.join('; ')}`;
   }
