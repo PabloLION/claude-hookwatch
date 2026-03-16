@@ -16,47 +16,8 @@ import { join } from 'node:path';
 import { defineCommand } from 'citty';
 import { errorMsg } from '@/errors.ts';
 import { description, name, version } from '../../package.json';
-import { EVENT_TYPES } from './events.ts';
 import { PACKAGE_ROOT } from './paths.ts';
-
-/**
- * Generates the content for .claude-plugin/plugin.json.
- */
-function buildPluginJson(): string {
-  return JSON.stringify(
-    {
-      name,
-      version,
-      description,
-      author: { name: 'PabloLION' },
-    },
-    null,
-    2,
-  );
-}
-
-/**
- * Generates the content for hooks/hooks.json.
- * Each event type maps to a command `hookwatch <EventType>`.
- */
-function buildHooksJson(): string {
-  const hooks: Record<string, Array<{ hooks: Array<{ type: string; command: string }> }>> = {};
-
-  for (const eventType of EVENT_TYPES) {
-    hooks[eventType] = [
-      {
-        hooks: [
-          {
-            type: 'command',
-            command: `hookwatch ${eventType}`,
-          },
-        ],
-      },
-    ];
-  }
-
-  return JSON.stringify({ hooks }, null, 2);
-}
+import { buildHooksJson, buildPluginJson } from './plugin-files.ts';
 
 /**
  * Checks whether `hookwatch` is already installed (reachable on PATH).
@@ -123,7 +84,7 @@ export const installCommand = defineCommand({
     // 1. Generate .claude-plugin/plugin.json
     const pluginDir = join(PACKAGE_ROOT, '.claude-plugin');
     const pluginJsonPath = join(pluginDir, 'plugin.json');
-    const pluginJsonContent = buildPluginJson();
+    const pluginJsonContent = `${JSON.stringify(buildPluginJson({ name, version, description }), null, 2)}\n`;
 
     if (dryRun) {
       console.log(`[dry-run] Would write ${pluginJsonPath}:`);
@@ -144,7 +105,7 @@ export const installCommand = defineCommand({
     // 2. Generate hooks/hooks.json
     const hooksDir = join(PACKAGE_ROOT, 'hooks');
     const hooksJsonPath = join(hooksDir, 'hooks.json');
-    const hooksJsonContent = buildHooksJson();
+    const hooksJsonContent = `${JSON.stringify({ hooks: buildHooksJson() }, null, 2)}\n`;
 
     if (dryRun) {
       console.log(`[dry-run] Would write ${hooksJsonPath}:`);
