@@ -368,7 +368,8 @@ describe('wrapped event fields', () => {
     const row = rows[0];
     expect(row.wrapped_command).toBe("sh -c 'echo hello world'");
     expect(row.stdout).toBe('hello world\n');
-    expect(row.stderr).toBe('');
+    // Empty string stderr is normalized to null by the server (no empty strings in DB)
+    expect(row.stderr).toBeNull();
     expect(row.exit_code).toBe(0);
     // Bare-handler nulls should NOT appear
     expect(row.wrapped_command).not.toBeNull();

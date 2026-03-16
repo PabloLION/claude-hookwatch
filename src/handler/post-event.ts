@@ -40,10 +40,10 @@ export interface WrappedEventPayload extends BaseEventPayload {
   readonly mode: 'wrapped';
   /** Command string to store in wrapped_command column. */
   readonly wrappedCommand: string;
-  /** Captured child stdout. */
-  readonly stdout: string;
-  /** Captured child stderr. */
-  readonly stderr: string;
+  /** Captured child stdout, or null when the child produced no output. */
+  readonly stdout: string | null;
+  /** Captured child stderr, or null when the child produced no output. */
+  readonly stderr: string | null;
   /** Child exit code (pass-through from wrapped command). */
   readonly exitCode: number;
 }

@@ -18,7 +18,7 @@
  * returns is appended after the child's output.
  *
  * Best-effort: if the child process fails to spawn, we still return an exit
- * code of 1 with empty stdout/stderr buffers — the caller handles server reporting.
+ * code of 1 with null stdout/stderr — the caller handles server reporting.
  * If the child is signal-killed, Bun's proc.exited is typed as Promise<number>
  * but we guard against null defensively. Signal deaths are
  * detected via proc.signalCode with a 128+N fallback computed from the signal
@@ -48,7 +48,7 @@ import { describeExitCode, signalExitCode } from './signals.ts';
 export async function runWrapped(cmd: string[]): Promise<WrapResult> {
   if (cmd.length === 0) {
     console.error('[hookwatch] runWrapped called with empty command');
-    return { exitCode: 1, stdin: '', stdout: '', stderr: '' };
+    return { exitCode: 1, stdin: '', stdout: null, stderr: null };
   }
 
   // Read stdin into a buffer so we can both pass it to the child AND parse it
@@ -61,7 +61,7 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
   } catch (err) {
     const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to read stdin: ${msg}`);
-    return { exitCode: 1, stdin: '', stdout: '', stderr: '' };
+    return { exitCode: 1, stdin: '', stdout: null, stderr: null };
   }
 
   // ReadableSubprocess = Subprocess<any, "pipe", "pipe"> — narrows stdout/stderr
@@ -77,15 +77,20 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
   } catch (err) {
     const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to spawn wrapped command: ${msg}`);
-    return { exitCode: 1, stdin: stdinContent, stdout: '', stderr: '' };
+    return { exitCode: 1, stdin: stdinContent, stdout: null, stderr: null };
   }
 
   // Tee stdout and stderr concurrently while waiting for the child to exit.
-  const [rawExitCode, capturedStdout, capturedStderr] = await Promise.all([
+  const [rawExitCode, rawStdout, rawStderr] = await Promise.all([
     child.exited,
     teeStream(child.stdout, process.stdout),
     teeStream(child.stderr, process.stderr),
   ]);
+
+  // Empty capture = null (nothing to store). Invariant: DB fields are either
+  // null (nothing) or a non-empty string (content). No empty strings stored.
+  const capturedStdout = rawStdout || null;
+  const capturedStderr = rawStderr || null;
 
   // In Bun, proc.exited typically resolves to the 128+N value for signal-killed
   // children, but may return null in edge cases (proc.exitCode is null when
