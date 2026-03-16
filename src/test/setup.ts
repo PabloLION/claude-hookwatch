@@ -98,7 +98,7 @@ export interface HandlerTestContext {
   readonly tmpDir: string;
   /** In-process HTTP test server that records received events. */
   readonly server: TestServer;
-  /** Remove tmpDir and stop the test server. Call in afterAll. */
+  /** Remove tmpDir and stop the test server. */
   readonly cleanup: () => void;
   /** Clear recorded events and reset nextStatus to 201. Call in afterEach. */
   readonly reset: () => void;
@@ -107,32 +107,37 @@ export interface HandlerTestContext {
 /**
  * Creates a shared temp directory and starts an in-process test server.
  *
- * Intended for use in beforeAll/afterAll/afterEach of handler test files:
+ * Registers setup/cleanup with the provided beforeAll/afterAll hooks so that
+ * ctx.server is guaranteed to be initialized before any test accesses it.
+ * Callers that need extra teardown logic (e.g. killProcessOnPort) should wrap
+ * their afterAll to run the extra work before calling ctx.cleanup().
  *
- *   const ctx = createHandlerTestContext("hookwatch-handler-test-");
- *   beforeAll(() => ctx.setup());
- *   afterAll(() => ctx.cleanup());
+ * Example:
+ *
+ *   const ctx = createHandlerTestContext(
+ *     'hookwatch-handler-test-',
+ *     beforeAll,
+ *     afterAll,
+ *   );
  *   afterEach(() => ctx.reset());
  *
  * The context exposes ctx.tmpDir for per-test XDG subdirectory creation and
  * ctx.server for inspecting received events and configuring responses.
  */
-export function createHandlerTestContext(prefix = 'hookwatch-handler-test-'): HandlerTestContext & {
-  setup: () => void;
-} {
+export function createHandlerTestContext(
+  prefix: string,
+  registerBeforeAll: (fn: () => void) => void,
+  registerAfterAll: (fn: () => void | Promise<void>) => void,
+): HandlerTestContext {
   const tmpDir = join(tmpdir(), `${prefix}${Date.now()}`);
   let server: TestServer;
 
-  return {
+  const ctx: HandlerTestContext = {
     get tmpDir() {
       return tmpDir;
     },
     get server() {
       return server;
-    },
-    setup() {
-      mkdirSync(tmpDir, { recursive: true });
-      server = startTestServer();
     },
     cleanup() {
       server?.stop();
@@ -144,4 +149,13 @@ export function createHandlerTestContext(prefix = 'hookwatch-handler-test-'): Ha
       server.serverVersion = null;
     },
   };
+
+  registerBeforeAll(() => {
+    mkdirSync(tmpDir, { recursive: true });
+    server = startTestServer();
+  });
+
+  registerAfterAll(() => ctx.cleanup());
+
+  return ctx;
 }

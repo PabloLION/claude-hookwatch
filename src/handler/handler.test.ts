@@ -46,18 +46,17 @@ const UNKNOWN_EVENT = {
   extra_field: 'preserved',
 };
 
-const ctx = createHandlerTestContext('hookwatch-handler-test-');
-
-beforeAll(() => {
-  ctx.setup();
-});
-
-afterAll(async () => {
+const ctx = createHandlerTestContext(
+  'hookwatch-handler-test-',
+  beforeAll,
   // Kill server processes BEFORE removing temp dirs — the spawned server may
   // still reference files in the temp directory while it is running.
-  await killProcessOnPort();
-  ctx.cleanup();
-});
+  (fn) =>
+    afterAll(async () => {
+      await killProcessOnPort();
+      fn();
+    }),
+);
 
 afterEach(() => {
   ctx.reset();
