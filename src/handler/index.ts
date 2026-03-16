@@ -137,8 +137,8 @@ function parseEventSafely(
  * 'wrapped' — a child was spawned; all I/O fields are populated.
  *
  * The discriminant eliminates runtime null assertions in buildPostPayload():
- * childStdout/childStderr are typed as string (not string|null) in the wrapped
- * variant, so the compiler enforces correctness instead of a throw.
+ * childStdout/childStderr are typed as string|null in the wrapped variant —
+ * null means the child produced no output (empty capture normalized to null).
  */
 type StdinAndWrapOutput =
   | { readonly mode: 'bare'; readonly stdinJson: string }
@@ -147,8 +147,8 @@ type StdinAndWrapOutput =
       readonly stdinJson: string;
       /** The original wrapArgs array — stored here to avoid a separate wrapArgs parameter. */
       readonly wrapArgs: string[];
-      readonly childStdout: string;
-      readonly childStderr: string;
+      readonly childStdout: string | null;
+      readonly childStderr: string | null;
       readonly childExitCode: number;
       /** Signal-death warning from wrapped mode, if any. */
       readonly hookwatchLogFromWrap: string | null;
@@ -196,7 +196,7 @@ async function readStdinAndWrapOutput(wrapArgs: string[] | null): Promise<StdinA
  * captured values.
  *
  * The StdinAndWrapOutput discriminant guarantees childStdout/childStderr are
- * non-null strings in the wrapped branch — no runtime null assertions needed.
+ * present (possibly null) in the wrapped branch — no runtime null assertions needed.
  */
 function buildPostPayload(opts: {
   event: ReturnType<typeof parseHookEvent>;

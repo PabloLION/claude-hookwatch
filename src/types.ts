@@ -104,8 +104,10 @@ export interface WrapResult {
   readonly exitCode: number;
   /** Raw stdin content (the Claude Code event JSON) — for the caller to parse. */
   readonly stdin: string;
-  readonly stdout: string;
-  readonly stderr: string;
+  /** Captured child stdout, or null when the child produced no output. */
+  readonly stdout: string | null;
+  /** Captured child stderr, or null when the child produced no output. */
+  readonly stderr: string | null;
   /**
    * Hookwatch-internal diagnostic log entry for signal deaths, or undefined
    * when the child exited normally. Format: "[warn] exit 137 (likely SIGKILL

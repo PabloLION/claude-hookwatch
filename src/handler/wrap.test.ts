@@ -121,10 +121,10 @@ describe('runWrapped — error handling', () => {
   test('returns exit 1 for non-existent command', async () => {
     const result = await runWrapRunner(['/nonexistent-binary-that-does-not-exist'], '');
 
-    // runWrapped catches spawn failure and returns exitCode 1
+    // runWrapped catches spawn failure and returns exitCode 1 with null I/O
     expect(result.wrapResult?.exitCode).toBe(1);
-    expect(result.wrapResult?.stdout).toBe('');
-    expect(result.wrapResult?.stderr).toBe('');
+    expect(result.wrapResult?.stdout).toBeNull();
+    expect(result.wrapResult?.stderr).toBeNull();
   });
 });
 

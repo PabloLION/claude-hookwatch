@@ -54,12 +54,18 @@ interface WrapFields {
  */
 function extractWrapFields(body: Record<string, unknown>): WrapFields {
   return {
-    wrappedCommand: typeof body.wrapped_command === 'string' ? body.wrapped_command : null,
-    wrappedStdout: typeof body.stdout === 'string' ? body.stdout : null,
-    wrappedStderr: typeof body.stderr === 'string' ? body.stderr : null,
+    // Normalize: non-string or empty string → null. Invariant: DB fields are
+    // either null (nothing) or a non-empty string (content).
+    wrappedCommand:
+      typeof body.wrapped_command === 'string' && body.wrapped_command
+        ? body.wrapped_command
+        : null,
+    wrappedStdout: typeof body.stdout === 'string' && body.stdout ? body.stdout : null,
+    wrappedStderr: typeof body.stderr === 'string' && body.stderr ? body.stderr : null,
     wrappedExitCode: typeof body.exit_code === 'number' ? body.exit_code : 0,
     hookDurationMs: typeof body.hook_duration_ms === 'number' ? body.hook_duration_ms : null,
-    hookwatchLog: typeof body.hookwatch_log === 'string' ? body.hookwatch_log : null,
+    hookwatchLog:
+      typeof body.hookwatch_log === 'string' && body.hookwatch_log ? body.hookwatch_log : null,
   };
 }
 
