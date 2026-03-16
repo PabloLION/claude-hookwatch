@@ -45,34 +45,8 @@ export function resetIdleTimer(): void {
   if (idleTimer !== null) clearTimeout(idleTimer);
   idleTimer = setTimeout(() => {
     process.stderr.write('[hookwatch] Idle timeout reached — shutting down server\n');
-    // Each cleanup step runs independently so a failure in one does not
-    // prevent the remaining steps from executing.
-    try {
-      if (shutdownCallback !== null) shutdownCallback();
-    } catch (err) {
-      process.stderr.write(
-        `[hookwatch] Error in shutdownCallback during idle shutdown: ${errorMsg(err)}\n`,
-      );
-    }
-    try {
-      closeSseClients();
-    } catch (err) {
-      process.stderr.write(
-        `[hookwatch] Error closing SSE clients during idle shutdown: ${errorMsg(err)}\n`,
-      );
-    }
-    try {
-      closeDb();
-    } catch (err) {
-      process.stderr.write(`[hookwatch] Error closing DB during idle shutdown: ${errorMsg(err)}\n`);
-    }
-    try {
-      removePortFile();
-    } catch (err) {
-      process.stderr.write(
-        `[hookwatch] Error removing port file during idle shutdown: ${errorMsg(err)}\n`,
-      );
-    }
+    // stop() handles all cleanup steps independently; just call it once.
+    if (shutdownCallback !== null) shutdownCallback();
     process.exit(0);
   }, IDLE_TIMEOUT_MS);
   // .unref() prevents the timer from keeping the process alive.
@@ -229,12 +203,36 @@ export async function startServer(): Promise<{ port: number; stop: () => void }>
   await writePortFile(DEFAULT_PORT);
 
   const stop = (): void => {
+    // cancelIdleTimer and clearing shutdownCallback are safe — no try-catch needed.
     cancelIdleTimer();
     shutdownCallback = null;
-    removePortFile();
-    closeSseClients();
-    closeDb();
-    server.stop(true);
+    // Each cleanup step runs independently so a failure in one does not
+    // prevent the remaining steps from executing.
+    try {
+      closeSseClients();
+    } catch (err) {
+      process.stderr.write(
+        `[hookwatch] Error closing SSE clients during shutdown: ${errorMsg(err)}\n`,
+      );
+    }
+    try {
+      server.stop(true);
+    } catch (err) {
+      process.stderr.write(`[hookwatch] Error stopping server during shutdown: ${errorMsg(err)}\n`);
+    }
+    try {
+      closeDb();
+    } catch (err) {
+      process.stderr.write(`[hookwatch] Error closing DB during shutdown: ${errorMsg(err)}\n`);
+    }
+    // removePortFile is last — it signals "server is gone" to other processes.
+    try {
+      removePortFile();
+    } catch (err) {
+      process.stderr.write(
+        `[hookwatch] Error removing port file during shutdown: ${errorMsg(err)}\n`,
+      );
+    }
   };
 
   // Register the stop callback so the idle timeout handler can invoke it
