@@ -55,6 +55,18 @@ export const eventRowSchema = z
   .loose();
 
 // ---------------------------------------------------------------------------
+// Compile-time alignment check
+// ---------------------------------------------------------------------------
+
+// Ensure eventRowSchema output matches EventRow in both directions.
+// If either line fails to compile, the Zod schema and TypeScript interface
+// have diverged (e.g. a field was added to EventRow but not to eventRowSchema).
+type _SchemaOutputMatchesEventRow = z.output<typeof eventRowSchema> extends EventRow ? true : never;
+type _EventRowMatchesSchemaOutput = EventRow extends z.output<typeof eventRowSchema> ? true : never;
+const _alignCheck1: _SchemaOutputMatchesEventRow = true;
+const _alignCheck2: _EventRowMatchesSchemaOutput = true;
+
+// ---------------------------------------------------------------------------
 // Parse factory — Boundary #4 (SSE / fetch event data)
 // ---------------------------------------------------------------------------
 
