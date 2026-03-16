@@ -12,16 +12,23 @@
 import { EVENT_TYPES } from './events.ts';
 
 export interface PluginJsonInput {
-  name: string;
-  version: string;
-  description: string;
+  readonly name: string;
+  readonly version: string;
+  readonly description: string;
+}
+
+interface PluginManifest {
+  readonly name: string;
+  readonly version: string;
+  readonly description: string;
+  readonly author: { readonly name: string };
 }
 
 /**
  * Builds the content object for .claude-plugin/plugin.json.
  * Version is read from the caller (package.json at import time).
  */
-export function buildPluginJson(pkg: PluginJsonInput): object {
+export function buildPluginJson(pkg: PluginJsonInput): PluginManifest {
   return {
     name: pkg.name,
     version: pkg.version,
@@ -30,6 +37,17 @@ export function buildPluginJson(pkg: PluginJsonInput): object {
   };
 }
 
+interface HookEntry {
+  readonly type: 'command';
+  readonly command: string;
+}
+
+interface HookMatcher {
+  readonly hooks: readonly HookEntry[];
+}
+
+type HooksJsonConfig = Record<string, readonly HookMatcher[]>;
+
 /**
  * Builds the content object for hooks/hooks.json.
  * Each event type maps to a command `hookwatch <EventType>`.
@@ -37,10 +55,8 @@ export function buildPluginJson(pkg: PluginJsonInput): object {
  * The `eventTypes` parameter defaults to the canonical EVENT_TYPES list.
  * Pass a custom list only in tests to inspect a specific subset of entries.
  */
-export function buildHooksJson(
-  eventTypes: readonly string[] = EVENT_TYPES,
-): Record<string, Array<{ hooks: Array<{ type: string; command: string }> }>> {
-  const hooks: Record<string, Array<{ hooks: Array<{ type: string; command: string }> }>> = {};
+export function buildHooksJson(eventTypes: readonly string[] = EVENT_TYPES): HooksJsonConfig {
+  const hooks: Record<string, HookMatcher[]> = {};
 
   for (const eventType of eventTypes) {
     hooks[eventType] = [

@@ -11,7 +11,7 @@
  *   --dry-run / -n  — preview without writing files or running bun link
  */
 
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { defineCommand } from 'citty';
 import { errorMsg } from '@/errors.ts';
@@ -91,10 +91,8 @@ export const installCommand = defineCommand({
       console.log(pluginJsonContent);
     } else {
       try {
-        if (!existsSync(pluginDir)) {
-          mkdirSync(pluginDir, { recursive: true });
-        }
-        await Bun.write(pluginJsonPath, `${pluginJsonContent}\n`);
+        mkdirSync(pluginDir, { recursive: true });
+        await Bun.write(pluginJsonPath, pluginJsonContent);
         console.log(`Wrote ${pluginJsonPath}`);
       } catch (err) {
         process.stderr.write(`[hookwatch] Failed to write ${pluginJsonPath}: ${errorMsg(err)}\n`);
@@ -112,10 +110,8 @@ export const installCommand = defineCommand({
       console.log(hooksJsonContent);
     } else {
       try {
-        if (!existsSync(hooksDir)) {
-          mkdirSync(hooksDir, { recursive: true });
-        }
-        await Bun.write(hooksJsonPath, `${hooksJsonContent}\n`);
+        mkdirSync(hooksDir, { recursive: true });
+        await Bun.write(hooksJsonPath, hooksJsonContent);
         console.log(`Wrote ${hooksJsonPath}`);
       } catch (err) {
         process.stderr.write(`[hookwatch] Failed to write ${hooksJsonPath}: ${errorMsg(err)}\n`);
