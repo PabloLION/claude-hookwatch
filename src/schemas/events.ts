@@ -331,6 +331,9 @@ export const SCHEMA_MAP = {
   InstructionsLoaded: instructionsLoadedSchema,
 } satisfies Record<(typeof EVENT_NAMES)[number], ZodType>;
 
+/** Type-level alias for typeof SCHEMA_MAP — consumers can import this without a value import. */
+export type SchemaMap = typeof SCHEMA_MAP;
+
 // ---------------------------------------------------------------------------
 // Discriminated parse function
 // ---------------------------------------------------------------------------
