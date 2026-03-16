@@ -1,11 +1,12 @@
 /**
  * POST /api/events — event ingestion endpoint.
  *
- * Accepts a JSON body with a Claude Code hook event payload, validates it with
- * the Zod discriminated-union schema, inserts into SQLite, and returns 201.
+ * Accepts a JSON body with a Claude Code hook event payload, validates it
+ * against event-specific Zod schemas via parseHookEvent(), inserts into SQLite,
+ * and returns 201.
  *
- * The request body may include optional top-level fields for wrapped events
- * (Story 3.1): `wrapped_command` (string), `stdout` (string), `stderr` (string),
+ * The request body may include optional top-level fields for wrapped events:
+ * `wrapped_command` (string), `stdout` (string), `stderr` (string),
  * `exit_code` (number, defaults to 0), `hookwatch_log` (string). When present
  * they are stored in DB columns; NULL/0 otherwise.
  *
@@ -47,7 +48,7 @@ interface WrapFields {
 
 /**
  * Extracts optional wrap fields from the parsed request body object.
- * These fields are present when the handler runs in wrapped mode (Story 3.1).
+ * These fields are present when the handler runs in wrapped mode.
  * Caller passes the validated request body (must be a plain object).
  * The handleIngest guard rejects non-object bodies before this function is called.
  */

@@ -1,10 +1,10 @@
 /**
- * Unit tests for src/db/queries.ts — getDistinctSessions (ch-6my) and
- * timestamp index usage verification (ch-ehym).
+ * Unit tests for src/db/queries.ts — getDistinctSessions and
+ * timestamp index usage verification.
  *
  * Tests for insertEvent, getEventById, getAllEvents are co-located in
- * schema.test.ts (Story 1.1). This file covers getDistinctSessions added in
- * Story 2.2, and EXPLAIN QUERY PLAN assertions for idx_events_timestamp.
+ * schema.test.ts. This file covers getDistinctSessions and
+ * EXPLAIN QUERY PLAN assertions for idx_events_timestamp.
  */
 
 import type { SQLQueryBindings } from 'bun:sqlite';
@@ -100,7 +100,7 @@ describe('getDistinctSessions', () => {
 });
 
 // ---------------------------------------------------------------------------
-// EXPLAIN QUERY PLAN — idx_events_timestamp index usage (ch-ehym)
+// EXPLAIN QUERY PLAN — idx_events_timestamp index usage
 // ---------------------------------------------------------------------------
 
 /**

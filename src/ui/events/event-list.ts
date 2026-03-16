@@ -13,7 +13,7 @@
  *   - Bare handler events (wrapped_command is null): outline/hollow badge style
  *   - Wrapped events (wrapped_command is non-null): solid/filled badge style
  *
- * Invalid row rendering (ch-lx8i):
+ * Invalid row rendering:
  *   - Rows that fail parseEventRow validation are kept as { valid: false } entries
  *   - Rendered with a red/error background and expandable raw data + error detail
  *

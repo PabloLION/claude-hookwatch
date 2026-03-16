@@ -1,5 +1,5 @@
 /**
- * Tests for the Bun HTTP server (Stories 1.3, 2.1a, ch-f2tr).
+ * Tests for the Bun HTTP server.
  *
  * Covers:
  *   - GET /health returns 200 with { status: "ok", app: "hookwatch", version: "<semver>" }
@@ -9,10 +9,10 @@
  *   - POST /api/events with a payload that fails Zod validation returns 400
  *   - Fixed port: startServer() throws PortInUseError when port is occupied
  *   - Unknown routes return 404 NOT_FOUND
- *   - POST /api/query: valid filter, empty result, invalid filter (Story 2.1a)
- *   - GET /: serves index.html (Story 2.1a)
- *   - GET /app.ts: transpiles .ts file (Story 2.1a)
- *   - GET /nonexistent.html: 404 for missing UI file (Story 2.1a)
+ *   - POST /api/query: valid filter, empty result, invalid filter
+ *   - GET /: serves index.html
+ *   - GET /app.ts: transpiles .ts file
+ *   - GET /nonexistent.html: 404 for missing UI file
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
@@ -253,7 +253,7 @@ describe('POST /api/events', () => {
     expect(body.error.message).toBe('Request body must be a JSON object');
   });
 
-  test('accepts wrapped_command field and returns 201 (Story 3.1)', async () => {
+  test('accepts wrapped_command field and returns 201', async () => {
     // When the handler runs in wrapped mode, it POSTs the event with an
     // additional wrapped_command field. The server should accept it.
     const res = await fetch(url(PATH_API_EVENTS), {
@@ -302,7 +302,7 @@ describe('fixed port', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Query endpoint (Story 2.1a)
+// Query endpoint
 // ---------------------------------------------------------------------------
 
 describe('POST /api/query', () => {
@@ -392,7 +392,7 @@ describe('POST /api/query', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Static file handler (Story 2.1a)
+// Static file handler
 // ---------------------------------------------------------------------------
 
 describe('GET /', () => {
@@ -428,7 +428,7 @@ describe('GET missing UI file', () => {
 });
 
 // ---------------------------------------------------------------------------
-// SSE stream endpoint (Story 2.4a)
+// SSE stream endpoint
 // ---------------------------------------------------------------------------
 
 describe('GET /api/events/stream', () => {

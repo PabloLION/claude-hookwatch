@@ -2,7 +2,7 @@
  * Bun HTTP server for hookwatch.
  *
  * Responsibilities:
- *   - Bind to 127.0.0.1 (never 0.0.0.0) — AC #1
+ *   - Bind to 127.0.0.1 (never 0.0.0.0)
  *   - Route dispatch: GET /health, POST /api/events, 404 fallback
  *   - Fixed port DEFAULT_PORT — error and exit if occupied (no auto-increment)
  *   - Write port to XDG port file after successful bind

@@ -3,17 +3,17 @@
  *
  * Coverage:
  * - postEvent(): non-201 response from server → non-fatal, failure reason in systemMessage
- * - postEvent(): server unavailable triggers auto-start (Story 1.5)
+ * - postEvent(): server unavailable triggers auto-start
  * - postEvent(): connection error → spawn → health probe → retry succeeds
  * - postEvent(): server down in wrapped mode — child exit code still forwarded
- * - Wrapped mode (Story 3.1): exit code forwarding, tee behaviour, POST body fields
+ * - Wrapped mode: exit code forwarding, tee behaviour, POST body fields
  * - Unified pipeline: bare/wrapped POST body contract (wrapped_command, exit_code, etc.)
  *
  * Strategy: run the handler as a child process via Bun.spawn(), feeding stdin
  * directly. This mirrors the real Claude Code hook invocation and avoids the
  * need to mock module-level globals.
  *
- * NOTE: Some tests trigger the auto-start path (Story 1.5), which spawns a
+ * NOTE: Some tests trigger the auto-start path, which spawns a
  * real server process. These are killed in afterAll to avoid leaking processes.
  */
 
@@ -138,7 +138,7 @@ describe('server non-2xx response', () => {
 // ---------------------------------------------------------------------------
 
 describe('auto-start (server unavailable)', () => {
-  test('server unavailable triggers auto-start (Story 1.5)', async () => {
+  test('server unavailable triggers auto-start', async () => {
     const xdgHome = join(ctx.tmpDir, 'server-unavailable');
     // Point at a port where no server is running — triggers auto-start
     writePortFile(xdgHome, UNUSED_PORT_A);
@@ -175,7 +175,7 @@ describe('auto-start (server unavailable)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Wrapped mode (Story 3.1): server-side behaviour
+// Wrapped mode: server-side behaviour
 // ---------------------------------------------------------------------------
 
 describe('wrapped mode', () => {
@@ -383,7 +383,7 @@ describe('unified pipeline', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Version mismatch detection (ch-8ff5)
+// Version mismatch detection
 // ---------------------------------------------------------------------------
 
 describe('version mismatch detection', () => {
@@ -466,7 +466,7 @@ describe('version mismatch detection', () => {
 });
 
 // ---------------------------------------------------------------------------
-// failureKind dispatch (ch-xs6p)
+// failureKind dispatch
 // ---------------------------------------------------------------------------
 
 /**

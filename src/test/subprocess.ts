@@ -6,9 +6,9 @@
  * points are significant enough to make unification more confusing than
  * helpful:
  *   - runHandler: no timeout, extra-args extend argv, env overlay only.
- *     Wrap mode uses `['--', ...wrapArgs]` — the `--` is consumed by Bun
- *     itself (not citty or the handler), so the handler's process.argv sees
- *     only the wrap args after it.
+ *     Wrap mode uses `['--', ...wrapArgs]` — the `--` separator prevents Bun
+ *     from interpreting subsequent arguments as its own flags (empirically
+ *     verified), so the handler's process.argv sees only the wrap args after it.
  *   - runWrapRunner: mandatory timeout + proc.kill() guard, WRAP_RESULT
  *     parsing from stderr, separate RunnerOutput type (not RunResult).
  *
@@ -138,8 +138,9 @@ export async function runHandler(
 
 /**
  * Runs the hookwatch handler in wrapped mode.
- * Wrap args are appended after `--` so Bun consumes the separator and the
- * handler's process.argv sees only the wrap args (not the `--` itself).
+ * Wrap args are appended after `--` so the separator prevents Bun from
+ * interpreting subsequent arguments as its own flags (empirically verified),
+ * and the handler's process.argv sees only the wrap args (not the `--` itself).
  */
 export async function runHandlerWrapped(
   stdinPayload: string,

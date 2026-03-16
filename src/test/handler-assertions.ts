@@ -10,12 +10,12 @@
  *   assertBareExitLegality  — bare mode (hookwatch as passive observer, no child)
  *   assertWrappedExitLegality — wrapped mode (child pass-through)
  *
- * Design decisions (ch-w2pd):
+ * Design decisions:
  * - Bare mode ALWAYS exits 0 (hookwatch is passive observer, never blocks Claude Code).
  * - Wrapped mode exits with the child's code (any 0-255).
  * - Both modes require valid hook JSON in stdout (continue: boolean) on exit 0.
  * - Fatal errors in bare mode exit 0 with hookwatch_fatal + systemMessage fields.
- * - POST failures are non-fatal (ch-6k4y): bare mode still exits 0.
+ * - POST failures are non-fatal: bare mode still exits 0.
  */
 
 import { expect } from 'bun:test';
@@ -82,7 +82,7 @@ function validateHookOutputJson(stdout: string, tag: string): void {
  *   with hookwatch_fatal: string AND continue: true AND systemMessage: string.
  *   Claude Code only parses stdout JSON at exit 0 — using exit 0 + systemMessage
  *   makes errors visible without ever blocking Claude Code.
- * - POST failures are non-fatal (ch-6k4y): bare mode exits 0 with failure
+ * - POST failures are non-fatal: bare mode exits 0 with failure
  *   reason in systemMessage, no hookwatch_fatal field.
  *
  * @param result - The RunResult from runHandler()

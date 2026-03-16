@@ -7,7 +7,7 @@
  *   - Bare events (wrapped_command is null): renders the standard detail with
  *     tool info header (for PreToolUse/PostToolUse/PostToolUseFailure) and the
  *     full stdin as formatted JSON.
- *   - Invalid entries (ch-lx8i): renders the validation error and raw data
+ *   - Invalid entries: renders the validation error and raw data
  *     so operators can diagnose schema mismatches without losing the payload.
  *
  * Full stdin as JSON.stringify(parsed, null, 2) inside <pre><code>.
@@ -35,7 +35,7 @@ const ERROR_HEADING_STYLE = {
 
 /**
  * Event types that carry tool information and warrant the tool info header.
- * PermissionRequest is NOT included — it is not a tool-use event.
+ * PermissionRequest is NOT included — it is a permission prompt, not a tool-use lifecycle event (Pre/Post/Failure).
  */
 const TOOL_EVENT_TYPES = new Set(['PreToolUse', 'PostToolUse', 'PostToolUseFailure']);
 
