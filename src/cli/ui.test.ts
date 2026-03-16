@@ -8,18 +8,18 @@
  * - isServerRunning: returns false when server responds non-200
  * - isPortOccupied: returns false when nothing is listening
  * - isPortOccupied: returns true when an HTTP server is listening
- * - openBrowser: spawns correct command on darwin
- * - openBrowser: spawns correct command on linux
+ * - openBrowser: delegates to `open` package
+ * - openBrowser: logs a warning and manual URL on failure
  *
  * Note: Port file reading is tested in src/paths.test.ts.
  */
 
-import { afterAll, beforeAll, describe, expect, it, spyOn } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, it, mock, spyOn } from 'bun:test';
 import { DEFAULT_PORT } from '@/config.ts';
 import { startServer } from '@/server/index.ts';
 import { UNUSED_PORT_A, UNUSED_PORT_B, UNUSED_PORT_C } from '@/test/constants.ts';
 import { createTempXdgHome, type TempXdgHome } from '@/test/setup.ts';
-import { isPortOccupied, isServerRunning, openBrowser } from './ui.ts';
+import { isPortOccupied, isServerRunning } from './ui.ts';
 
 // ---------------------------------------------------------------------------
 // DEFAULT_PORT constant
@@ -111,85 +111,45 @@ describe('isPortOccupied', () => {
 });
 
 // ---------------------------------------------------------------------------
-// openBrowser — platform dispatch (spy on Bun.spawn)
+// openBrowser — delegates to the `open` package
 // ---------------------------------------------------------------------------
 
 const TEST_UI_URL = 'http://localhost:6004';
 
-/** Minimal Bun.spawn mock: captures the cmd array, returns a resolved subprocess stub. */
-function makeSpawnMock(spawnedCommands: string[][]): typeof Bun.spawn {
-  return ((cmd: string[]) => {
-    spawnedCommands.push(cmd);
-    // Partial mock — only `exited` is exercised by openBrowser()
-    return { exited: Promise.resolve(0) } as ReturnType<typeof Bun.spawn>;
-  }) as unknown as typeof Bun.spawn;
-}
-
 describe('openBrowser', () => {
-  it("calls 'open' on darwin", async () => {
-    const originalPlatform = process.platform;
-    // Override process.platform
-    Object.defineProperty(process, 'platform', {
-      value: 'darwin',
-      configurable: true,
-    });
+  it('calls the open package with the URL', async () => {
+    // mock.module replaces the module before dynamic import picks it up
+    let capturedUrl: string | undefined;
+    mock.module('open', () => ({
+      default: (url: string) => {
+        capturedUrl = url;
+        return Promise.resolve(undefined);
+      },
+    }));
 
-    const spawnedCommands: string[][] = [];
-    const spawnSpy = spyOn(Bun, 'spawn').mockImplementation(makeSpawnMock(spawnedCommands));
+    const { openBrowser: openBrowserMocked } = await import('./ui.ts?t=1');
+    await openBrowserMocked(TEST_UI_URL);
 
-    await openBrowser(TEST_UI_URL);
-
-    expect(spawnedCommands).toHaveLength(1);
-    expect(spawnedCommands[0]?.[0]).toBe('open');
-    expect(spawnedCommands[0]?.[1]).toBe(TEST_UI_URL);
-
-    spawnSpy.mockRestore();
-    Object.defineProperty(process, 'platform', {
-      value: originalPlatform,
-      configurable: true,
-    });
+    expect(capturedUrl).toBe(TEST_UI_URL);
   });
 
-  it("calls 'xdg-open' on linux", async () => {
-    const originalPlatform = process.platform;
-    Object.defineProperty(process, 'platform', {
-      value: 'linux',
-      configurable: true,
-    });
+  it('logs a warning and manual URL when open throws', async () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    const logSpy = spyOn(console, 'log').mockImplementation(() => {});
 
-    const spawnedCommands: string[][] = [];
-    const spawnSpy = spyOn(Bun, 'spawn').mockImplementation(makeSpawnMock(spawnedCommands));
+    mock.module('open', () => ({
+      default: () => Promise.reject(new Error('spawn failed')),
+    }));
 
-    await openBrowser(TEST_UI_URL);
+    const { openBrowser: openBrowserMocked } = await import('./ui.ts?t=2');
+    await openBrowserMocked(TEST_UI_URL);
 
-    expect(spawnedCommands).toHaveLength(1);
-    expect(spawnedCommands[0]?.[0]).toBe('xdg-open');
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[hookwatch] Failed to open browser'),
+    );
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining(TEST_UI_URL));
 
-    spawnSpy.mockRestore();
-    Object.defineProperty(process, 'platform', {
-      value: originalPlatform,
-      configurable: true,
-    });
-  });
-
-  it('logs a warning on unknown platform without spawning', async () => {
-    const originalPlatform = process.platform;
-    Object.defineProperty(process, 'platform', {
-      value: 'freebsd',
-      configurable: true,
-    });
-
-    const spawnedCommands: string[][] = [];
-    const spawnSpy = spyOn(Bun, 'spawn').mockImplementation(makeSpawnMock(spawnedCommands));
-
-    // Should not throw, and should not spawn
-    await openBrowser(TEST_UI_URL);
-    expect(spawnedCommands).toHaveLength(0);
-
-    spawnSpy.mockRestore();
-    Object.defineProperty(process, 'platform', {
-      value: originalPlatform,
-      configurable: true,
-    });
+    warnSpy.mockRestore();
+    logSpy.mockRestore();
   });
 });
