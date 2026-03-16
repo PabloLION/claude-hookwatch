@@ -102,7 +102,15 @@ export async function handleStatic(pathname: string): Promise<Response> {
       content = cached.content;
     } else {
       const tsFile = Bun.file(filePath);
-      const source = await tsFile.text();
+      let source: string;
+      try {
+        source = await tsFile.text();
+      } catch (err) {
+        process.stderr.write(
+          `[hookwatch] Static file read error for ${normalised}: ${errorMsg(err)}\n`,
+        );
+        return errorResponse('INTERNAL', `Could not read file: ${normalised}`);
+      }
       let transformed: string;
       try {
         transformed = transpiler.transformSync(source);
