@@ -16,6 +16,7 @@
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
+import { errorMsg } from '@/errors.ts';
 import type { EventRow } from '@/types.ts';
 import { html } from '../shared/html.ts';
 import { hasContent } from '../shared/utils.ts';
@@ -45,10 +46,7 @@ function formatStdin(stdinJson: string): string {
     const parsed: unknown = JSON.parse(stdinJson);
     return JSON.stringify(parsed, null, 2);
   } catch (err) {
-    console.warn(
-      '[hookwatch] formatStdin: could not parse stdin JSON:',
-      err instanceof Error ? err.message : String(err),
-    );
+    console.warn('[hookwatch] formatStdin: could not parse stdin JSON:', errorMsg(err));
     return stdinJson;
   }
 }

@@ -26,6 +26,18 @@ import { spawnServer } from '@/server-spawn.ts';
 const PORT_PROBE_TIMEOUT_MS = 500;
 
 /**
+ * Extract the error code from an unknown thrown value.
+ * Bun wraps connection errors: the code may be on err itself or on err.cause.
+ * Returns undefined when neither layer carries an errno code.
+ */
+function extractErrorCode(err: unknown): string | undefined {
+  const outerCode = isErrnoException(err) ? err.code : undefined;
+  const cause = err instanceof Error ? err.cause : undefined;
+  const innerCode = isErrnoException(cause) ? cause.code : undefined;
+  return outerCode ?? innerCode;
+}
+
+/**
  * Checks if the hookwatch server at the given port responds to GET /health
  * with a 200 OK.
  */
@@ -38,10 +50,7 @@ export async function isServerRunning(port: number): Promise<boolean> {
   } catch (err) {
     // ConnectionRefused / ECONNREFUSED: server not running — expected, silent
     // DOMException: AbortSignal timeout fired — expected, silent
-    const outerCode = isErrnoException(err) ? err.code : undefined;
-    const cause = err instanceof Error ? err.cause : undefined;
-    const innerCode = isErrnoException(cause) ? cause.code : undefined;
-    const code = outerCode ?? innerCode;
+    const code = extractErrorCode(err);
     const isExpected =
       code === 'ConnectionRefused' || code === 'ECONNREFUSED' || err instanceof DOMException;
     if (!isExpected) {
@@ -65,11 +74,7 @@ export async function isPortOccupied(port: number): Promise<boolean> {
     return true;
   } catch (err) {
     // Connection refused / timeout → port is free
-    // Bun wraps connection errors: the code may be on err itself or on err.cause
-    const outerCode = isErrnoException(err) ? err.code : undefined;
-    const cause = err instanceof Error ? err.cause : undefined;
-    const innerCode = isErrnoException(cause) ? cause.code : undefined;
-    const code = outerCode ?? innerCode;
+    const code = extractErrorCode(err);
     // If the fetch itself errored (not just a bad status), port is not occupied
     // unless the error is a non-connection error (e.g., timeout with something listening)
     if (code === 'ConnectionRefused' || code === 'ECONNREFUSED') {

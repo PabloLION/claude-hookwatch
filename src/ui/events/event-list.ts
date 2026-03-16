@@ -23,6 +23,7 @@
 import type { Signal } from '@preact/signals';
 import { useEffect, useState } from 'preact/hooks';
 import { DEFAULT_QUERY_LIMIT } from '@/config.ts';
+import { errorMsg } from '@/errors.ts';
 import { parseEventRow } from '@/schemas/rows.ts';
 import type { EventRow } from '@/types.ts';
 import { html } from '../shared/html.ts';
@@ -285,7 +286,7 @@ async function fetchEvents(eventList: Signal<RowEntry[]>, sessionId: string | nu
       try {
         return { valid: true, row: parseEventRow(item) };
       } catch (err) {
-        const error = err instanceof Error ? err.message : String(err);
+        const error = errorMsg(err);
         console.warn('hookwatch: event row failed validation', error, item);
         return { valid: false, raw: item, error, key: nextInvalidRowKey() };
       }
