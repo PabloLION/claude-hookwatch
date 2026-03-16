@@ -12,7 +12,6 @@
  *   (NFR12) — unknown filter fields added in future API versions are preserved,
  *   not stripped, so older server code does not reject newer client requests.
  *
- * Source: planning-artifacts/architecture.md (schema design decisions).
  * Naming: camelCase + Schema suffix (e.g. queryFilterSchema), PascalCase inferred types.
  */
 

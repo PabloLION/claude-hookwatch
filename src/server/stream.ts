@@ -75,7 +75,7 @@ export function broadcast(event: EventRow): void {
     try {
       controller.enqueue(message);
     } catch (err) {
-      // TypeError with "closed" in the message is the normal case when the
+      // TypeError with "close" in the message is the normal case when the
       // client has disconnected. Any other error is unexpected — log it.
       const isClosedStream =
         err instanceof TypeError && err.message.toLowerCase().includes('close');

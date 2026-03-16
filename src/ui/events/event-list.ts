@@ -20,13 +20,6 @@
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
-// NOTE: This file uses both '@/' and relative imports.
-// '@/' imports (e.g. '@/config.ts', '@/schemas/rows.ts') resolve to files outside
-// src/ui/. Bun.Transpiler rewrites tsconfig paths before serving, so '@/' works
-// for cross-module imports. Relative paths (e.g. '../shared/html.ts') are used
-// for intra-UI imports by convention — they are explicit, browser-safe, and do
-// not depend on Bun.Transpiler's tsconfig rewriting for correctness.
-
 import type { Signal } from '@preact/signals';
 import { useEffect, useState } from 'preact/hooks';
 import { DEFAULT_QUERY_LIMIT } from '@/config.ts';

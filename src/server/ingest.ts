@@ -14,7 +14,7 @@
  *   - 503 DB_LOCKED      — SQLite SQLITE_BUSY (WAL writer conflict)
  *   - 500 INTERNAL       — any other unexpected error
  *
- * ch-lar: all DB values go through parameterized insertEvent() — no string concatenation.
+ * All DB values go through parameterized insertEvent() — no string concatenation.
  */
 
 import { openDb } from '@/db/connection.ts';

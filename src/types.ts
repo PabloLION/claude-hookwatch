@@ -46,7 +46,7 @@ export type KnownEventName = (typeof EVENT_NAMES)[number] | 'unknown';
 
 /**
  * Normalize a raw hook_event_name string to KnownEventName.
- * If the name is one of the 18 documented event types, it is returned
+ * If the name is one of the documented event types in EVENT_NAMES, it is returned
  * as-is. Otherwise "unknown" is returned.
  */
 export function toKnownEventName(name: string): KnownEventName {

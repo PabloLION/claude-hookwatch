@@ -4,7 +4,7 @@ import type { EventRow, InsertEventParams } from '@/types.ts';
 
 /**
  * Insert a new event row using a parameterized query.
- * ch-lar: NO string concatenation — all values passed as parameters.
+ * All values passed as parameters — no string concatenation.
  * Returns the auto-generated id.
  */
 export function insertEvent(db: Database, params: InsertEventParams): number {
@@ -54,7 +54,7 @@ export function getAllEvents(db: Database): EventRow[] {
  * Retrieve distinct session IDs ordered by most recent activity first.
  * Used to populate the session filter dropdown in the web UI.
  * LIMIT 200 is sufficient for the dropdown — keeps query fast on large DBs.
- * ch-lar: no user input — static query, no parameterization needed.
+ * No user input — static query, no parameterization needed.
  */
 export function getDistinctSessions(db: Database): string[] {
   const stmt = db.prepare<{ session_id: string }, []>(
@@ -66,7 +66,7 @@ export function getDistinctSessions(db: Database): string[] {
 /**
  * Retrieve events with optional filters, ordered by timestamp DESC (newest first).
  *
- * ch-lar: all filter values are passed as parameterized ? placeholders — no
+ * All filter values are passed as parameterized ? placeholders — no
  * string concatenation is performed on user-supplied values. The WHERE clause
  * conditions are built statically from a fixed allowed set; only the bound
  * values vary at runtime.
