@@ -11,6 +11,7 @@
 import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { defineCommand } from 'citty';
+import { errorMsg } from '@/errors.ts';
 import { PACKAGE_ROOT } from './paths.ts';
 
 /**
@@ -45,8 +46,12 @@ function removeFile(filePath: string, dryRun: boolean): void {
   if (dryRun) {
     console.log(`[dry-run] Would remove ${filePath}`);
   } else {
-    rmSync(filePath, { force: true });
-    console.log(`Removed ${filePath}`);
+    try {
+      rmSync(filePath, { force: true });
+      console.log(`Removed ${filePath}`);
+    } catch (err) {
+      console.warn(`[hookwatch] Could not remove ${filePath}: ${errorMsg(err)} — continuing`);
+    }
   }
 }
 
