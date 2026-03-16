@@ -265,6 +265,10 @@ function processPostResult(
   if (postResult.versionMismatchLog !== undefined) {
     logEntries.push(postResult.versionMismatchLog);
   }
+
+  if (postResult.spawnWarning !== undefined) {
+    logEntries.push(postResult.spawnWarning);
+  }
 }
 
 // ---------------------------------------------------------------------------
