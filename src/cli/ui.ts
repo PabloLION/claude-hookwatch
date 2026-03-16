@@ -5,11 +5,6 @@
  * it using spawnServer() from src/server-spawn.ts. Then opens the web UI
  * in the system browser.
  *
- * Platform detection:
- *   darwin  — open
- *   linux   — xdg-open
- *   win32   — start (not officially supported but handled gracefully)
- *
  * Port strategy:
  *   Fixed default port: DEFAULT_PORT (6004). If the port is occupied by a
  *   non-hookwatch process (port responds but health check fails), print
@@ -17,6 +12,7 @@
  */
 
 import { defineCommand } from 'citty';
+import open from 'open';
 import { CLI_HEALTH_TIMEOUT_MS, DEFAULT_PORT } from '@/config.ts';
 import { errorMsg } from '@/errors.ts';
 import { isErrnoException } from '@/guards.ts';
@@ -89,31 +85,16 @@ export async function isPortOccupied(port: number): Promise<boolean> {
 }
 
 /**
- * Opens a URL in the system default browser.
- * Handles darwin, linux, and win32.
+ * Opens a URL in the system default browser using the `open` package.
+ * Falls back to a manual URL hint if the open call fails.
  */
 export async function openBrowser(url: string): Promise<void> {
-  const platform = process.platform;
-
-  let command: string;
-  if (platform === 'darwin') {
-    command = 'open';
-  } else if (platform === 'linux') {
-    command = 'xdg-open';
-  } else if (platform === 'win32') {
-    command = 'start';
-  } else {
-    console.warn(`[hookwatch] Unknown platform "${platform}" — cannot open browser automatically.`);
+  try {
+    await open(url);
+  } catch (err) {
+    console.warn(`[hookwatch] Failed to open browser: ${errorMsg(err)}`);
     console.log(`  Open manually: ${url}`);
-    return;
   }
-
-  const proc = Bun.spawn([command, url], {
-    stdout: 'inherit',
-    stderr: 'inherit',
-  });
-
-  await proc.exited;
 }
 
 export const uiCommand = defineCommand({
