@@ -2,8 +2,8 @@
 
 Claude Code plugin that captures all 18 hook event types, stores them in a
 local SQLite database, and serves a web UI for browsing and querying events.
-Install with `claude plugin install`, uninstall cleanly with `claude plugin
-uninstall`.
+Install with `hookwatch install` (registers via `bun link`), then activate with
+`claude --plugin-dir <path>`. Uninstall cleanly with `hookwatch uninstall`.
 
 ## Mandatory Rules
 
@@ -42,8 +42,10 @@ hookwatch/
 ├── AGENTS.md
 ├── README.md
 ├── .gitignore
-├── plugin.json              — generated, checked in for `claude plugin install`
-├── hooks.json               — generated, registered event types
+├── .claude-plugin/
+│   └── plugin.json          — plugin manifest for `claude --plugin-dir`
+├── hooks/
+│   └── hooks.json           — generated, registered event types
 │
 ├── src/
 │   ├── handler/             — hook entry point (stdin → validate → POST)
@@ -51,7 +53,7 @@ hookwatch/
 │   ├── db/                  — bun:sqlite: schema, migrations, query helpers
 │   ├── schemas/             — Zod schemas for all 18 event types
 │   ├── ui/                  — Preact + htm web UI components
-│   └── cli/                 — citty subcommands (install, uninstall, open, wrap)
+│   └── cli/                 — citty subcommands (install, uninstall, ui) + 18 PascalCase event subcommands
 │
 ├── tests/                   — integration tests only
 └── planning-artifacts/      — BMAD workflow outputs (not shipped)
@@ -64,7 +66,7 @@ Concern,Technology,Notes
 Runtime,Bun,Runs .ts natively — no transpilation or build step
 Database,bun:sqlite (built-in),"WAL mode, zero external deps"
 Validation,Zod,Only runtime dependency — validates stdin payloads
-CLI,citty,"~10KB, 4 subcommands: install uninstall open wrap"
+CLI,citty,"~10KB, 3 subcommands: install uninstall ui — plus 18 PascalCase event family subcommands"
 Web UI,Preact + htm,Tagged template literals — no JSX transform needed
 State,Preact signals,~1KB — automatic reactivity without prop drilling
 Styling,Pico CSS + CSS-in-JS,Pico for base styles; custom via style objects
