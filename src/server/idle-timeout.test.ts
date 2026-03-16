@@ -12,13 +12,12 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { resolve } from 'node:path';
 
 // ---------------------------------------------------------------------------
 // Test constants
 // ---------------------------------------------------------------------------
 
-/** Base-36 radix used for generating a random suffix in temp dir names. */
-const RADIX_36 = 36;
 /** Number of keep-alive request cycles in the activity test. */
 const KEEPALIVE_CYCLES = 3;
 /** Interval between keep-alive requests (ms). */
@@ -31,6 +30,12 @@ const POST_ACTIVITY_MARGIN_MS = 300;
 const NO_ACTIVITY_TEST_TIMEOUT_MS = 5000;
 /** bun:test timeout for the keep-alive test (ms). */
 const KEEPALIVE_TEST_TIMEOUT_MS = 8000;
+
+/**
+ * Absolute path to the idle-timeout server fixture script.
+ * Resolved relative to this test file so it works regardless of cwd.
+ */
+const FIXTURE_SCRIPT = resolve(import.meta.dir, '../test/fixtures/idle-timeout-server.ts');
 
 // ---------------------------------------------------------------------------
 // Unit tests — verify resetIdleTimer is exported and callable
@@ -57,7 +62,7 @@ describe('resetIdleTimer (unit)', () => {
 // ---------------------------------------------------------------------------
 
 /**
- * Spawn a self-contained server subprocess with a short idle timeout.
+ * Spawn the idle-timeout server fixture with a short idle timeout.
  * The subprocess:
  *   1. Starts a Bun.serve() server with a configurable idle timeout
  *   2. Writes the bound port to stdout (signals readiness)
@@ -65,61 +70,17 @@ describe('resetIdleTimer (unit)', () => {
  *
  * Uses a separate port range (6900+) to avoid colliding with the main test
  * servers started by server.test.ts.
+ *
+ * @param timeoutMs - Idle timeout in milliseconds passed to the fixture via env.
  */
 function spawnServerWithTimeout(timeoutMs: number): Bun.Subprocess {
-  const tmpDataHome = `/tmp/hookwatch-idle-test-${Date.now()}-${Math.random().toString(RADIX_36).slice(2)}`;
-
-  const script = String.raw`
-    import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-    import { dirname } from "node:path";
-
-    const BASE_PORT = 6900;
-    const HOSTNAME = "127.0.0.1";
-    const IDLE_TIMEOUT_MS = ${timeoutMs};
-    const TMP_DATA_HOME = ${JSON.stringify(tmpDataHome)};
-
-    let idleTimer = null;
-
-    function resetIdleTimer() {
-      if (idleTimer !== null) clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => {
-        process.stderr.write("[hookwatch-test] Idle timeout reached — shutting down\n");
-        process.exit(0);
-      }, IDLE_TIMEOUT_MS);
-      idleTimer.unref();
-    }
-
-    for (let port = BASE_PORT; port <= BASE_PORT + 60; port++) {
-      try {
-        const server = Bun.serve({
-          hostname: HOSTNAME,
-          port,
-          fetch(req) {
-            resetIdleTimer();
-            return new Response("ok");
-          },
-        });
-
-        // Signal readiness to the parent process
-        process.stdout.write(String(port) + "\n");
-
-        // Start the initial idle timer
-        resetIdleTimer();
-        break;
-      } catch (err) {
-        const isAddrInUse =
-          err instanceof Error &&
-          (err.code === "EADDRINUSE" || err.message.includes("address already in use"));
-        if (isAddrInUse) continue;
-        throw err;
-      }
-    }
-  `;
-
-  return Bun.spawn(['bun', '--eval', script], {
+  return Bun.spawn(['bun', 'run', FIXTURE_SCRIPT], {
     stdout: 'pipe',
     stderr: 'pipe',
-    env: { ...process.env },
+    env: {
+      ...process.env,
+      HOOKWATCH_TEST_IDLE_TIMEOUT_MS: String(timeoutMs),
+    },
   });
 }
 
