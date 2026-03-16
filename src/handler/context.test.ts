@@ -262,9 +262,10 @@ describe('getEventSubtype', () => {
 // ---------------------------------------------------------------------------
 
 /**
- * Verifies that each value in SUBTYPE_FIELD (a field name string) exists as a
- * key in the corresponding Zod event schema from SCHEMA_MAP. Catches typos in
- * SUBTYPE_FIELD values at test time rather than at runtime.
+ * Verifies that each non-null value in SUBTYPE_FIELD (a field name string)
+ * exists as a key in the corresponding Zod event schema from SCHEMA_MAP.
+ * Catches typos in SUBTYPE_FIELD values at test time rather than at runtime.
+ * Null entries mean "no subtype for this event type" and are skipped.
  */
 describe('SUBTYPE_FIELD schema validation', () => {
   test('each SUBTYPE_FIELD value is a valid key in the corresponding SCHEMA_MAP schema', () => {
@@ -272,6 +273,8 @@ describe('SUBTYPE_FIELD schema validation', () => {
       const schema = SCHEMA_MAP[eventName as keyof typeof SCHEMA_MAP];
       // schema must exist (SUBTYPE_FIELD keys must be in SCHEMA_MAP)
       expect(schema, `SCHEMA_MAP missing entry for "${eventName}"`).toBeDefined();
+      // null means "no subtype for this event type" — skip field validation
+      if (fieldName === null) continue;
       // Zod v4: shape is at schema.def.shape (not schema.shape)
       const def = (schema as unknown as { def?: { shape?: Record<string, unknown> } }).def;
       expect(def?.shape, `schema for "${eventName}" has no .def.shape`).toBeDefined();

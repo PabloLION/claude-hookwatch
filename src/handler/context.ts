@@ -21,18 +21,20 @@ type KnownKeys<T> = {
 type SchemaField<K extends keyof SchemaMap> = keyof KnownKeys<z.infer<SchemaMap[K]>> & string;
 
 /**
- * Maps hook_event_name → the field that contains the subtype string.
+ * Maps hook_event_name → the field that contains the subtype string, or null
+ * when the event type has no meaningful subtype.
  * Values are compile-checked against the corresponding schema's declared
  * fields — a field-name typo is a compile error.
- * Event types absent from this map have no meaningful subtype (return null).
+ * All keys in SchemaMap must be present; null = no subtype for that event type.
  */
 type SubtypeFieldMap = {
-  [K in keyof SchemaMap]?: SchemaField<K>;
+  [K in keyof SchemaMap]: SchemaField<K> | null;
 };
 
 export const SUBTYPE_FIELD: SubtypeFieldMap = {
   SessionStart: 'source',
   SessionEnd: 'reason',
+  UserPromptSubmit: null,
   PreToolUse: 'tool_name',
   PostToolUse: 'tool_name',
   PostToolUseFailure: 'tool_name',
@@ -40,15 +42,21 @@ export const SUBTYPE_FIELD: SubtypeFieldMap = {
   Notification: 'notification_type',
   SubagentStart: 'agent_type',
   SubagentStop: 'agent_type',
+  Stop: null,
   PreCompact: 'trigger',
+  TeammateIdle: null,
+  TaskCompleted: null,
   ConfigChange: 'source',
+  WorktreeCreate: null,
+  WorktreeRemove: null,
   InstructionsLoaded: 'trigger',
 };
 
 /**
  * Extracts a subtype string from the event based on the event type.
- * Returns null for event types that have no meaningful subtype, or when the
- * expected field is absent or not a string.
+ * Returns null when SUBTYPE_FIELD maps the event to null (no meaningful
+ * subtype), when the event name is unknown, or when the expected field is
+ * absent or not a string.
  *
  * HookEvent types are inferred from .loose() schemas, which produce types with
  * an index signature ([key: string]: unknown), allowing dynamic field access
@@ -56,9 +64,8 @@ export const SUBTYPE_FIELD: SubtypeFieldMap = {
  */
 export function getEventSubtype(event: HookEvent): string | null {
   const name = event.hook_event_name;
-  if (!(name in SUBTYPE_FIELD)) return null;
   const field = SUBTYPE_FIELD[name as keyof SubtypeFieldMap];
-  if (field === undefined) return null;
+  if (field === null || field === undefined) return null;
   const value = event[field];
   return typeof value === 'string' ? value : null;
 }
