@@ -69,13 +69,16 @@ async function waitForHealth(): Promise<number | null> {
  *
  * Discriminated on the `ok` field:
  *   ok: true  → server is ready; `port` is the port it's listening on.
+ *              `warning` is set when the log file could not be opened —
+ *              the server still starts (inherited stderr fallback) but
+ *              diagnostics may be lost.
  *   ok: false → server did not start; `failureKind` distinguishes:
  *     'spawn'  — Bun.spawn() itself threw (e.g. binary not found, EACCES).
  *     'retry'  — Bun.spawn() succeeded but health probe timed out.
  *     `message` carries the specific error for structured propagation to callers.
  */
 export type SpawnResult =
-  | { readonly ok: true; readonly port: number }
+  | { readonly ok: true; readonly port: number; readonly warning?: string }
   | { readonly ok: false; readonly failureKind: 'spawn' | 'retry'; readonly message: string };
 
 /**
@@ -106,11 +109,13 @@ export async function spawnServer(): Promise<SpawnResult> {
 
   // Open log file for append (create if absent)
   let logFd = -1;
+  let logFileWarning: string | undefined;
   try {
     logFd = openSync(logPath, 'a');
   } catch (err) {
     const msg = errorMsg(err);
     console.error(`[hookwatch] [warn] Failed to open server log file ${logPath}: ${msg}`);
+    logFileWarning = `[warn] server log file unavailable (${msg}), diagnostics may be lost`;
     // Continue without log file — use inherited stderr as fallback
   }
 
@@ -152,5 +157,5 @@ export async function spawnServer(): Promise<SpawnResult> {
   }
 
   console.error(`[hookwatch] Server ready on port ${port}`);
-  return { ok: true, port };
+  return { ok: true, port, ...(logFileWarning !== undefined && { warning: logFileWarning }) };
 }

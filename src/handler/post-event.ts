@@ -108,6 +108,13 @@ export type PostEventResult =
       readonly ok: true;
       /** Present when server version differs from handler version. */
       readonly versionMismatchLog?: string;
+      /**
+       * Present when the server was auto-spawned and its log file could not be
+       * opened. The server started successfully (inherited stderr fallback) but
+       * diagnostics may be lost. Caller should push this into logEntries so it
+       * appears in the systemMessage.
+       */
+      readonly spawnWarning?: string;
     }
   | {
       readonly ok: false;
@@ -276,13 +283,19 @@ export async function postEvent(port: number, opts: EventPostPayload): Promise<P
   }
 
   // Retry POST with the port returned by the health check
-  const { port: spawnedPort } = spawnResult;
+  const { port: spawnedPort, warning: spawnWarning } = spawnResult;
   try {
-    return await postWithVersionCheck(
+    const retryResult = await postWithVersionCheck(
       `http://127.0.0.1:${spawnedPort}/api/events`,
       payload,
       'Retry: server returned',
     );
+    // Propagate log-file warning (if any) alongside the POST result so the
+    // handler can surface it in the systemMessage via logEntries.
+    if (retryResult.ok && spawnWarning !== undefined) {
+      return { ...retryResult, spawnWarning };
+    }
+    return retryResult;
   } catch (err) {
     const detail = errorMsg(err);
     const failureReason = 'Retry exhausted — failed to POST event to server after spawn';
