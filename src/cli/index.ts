@@ -52,6 +52,10 @@ function makeEventCommand(eventType: EventType) {
   });
 }
 
+// PascalCase event handler subcommands — generated from EVENT_TYPES so that
+// adding a new event type in src/types.ts automatically registers it here.
+const eventSubCommands = Object.fromEntries(EVENT_TYPES.map((e) => [e, makeEventCommand(e)]));
+
 const main = defineCommand({
   meta: {
     name: pkgName,
@@ -62,25 +66,7 @@ const main = defineCommand({
     install: installCommand,
     uninstall: uninstallCommand,
     ui: uiCommand,
-    // PascalCase event handler subcommands (one per EVENT_NAMES entry)
-    SessionStart: makeEventCommand('SessionStart'),
-    SessionEnd: makeEventCommand('SessionEnd'),
-    UserPromptSubmit: makeEventCommand('UserPromptSubmit'),
-    PreToolUse: makeEventCommand('PreToolUse'),
-    PostToolUse: makeEventCommand('PostToolUse'),
-    PostToolUseFailure: makeEventCommand('PostToolUseFailure'),
-    PermissionRequest: makeEventCommand('PermissionRequest'),
-    Notification: makeEventCommand('Notification'),
-    SubagentStart: makeEventCommand('SubagentStart'),
-    SubagentStop: makeEventCommand('SubagentStop'),
-    Stop: makeEventCommand('Stop'),
-    TeammateIdle: makeEventCommand('TeammateIdle'),
-    TaskCompleted: makeEventCommand('TaskCompleted'),
-    InstructionsLoaded: makeEventCommand('InstructionsLoaded'),
-    ConfigChange: makeEventCommand('ConfigChange'),
-    WorktreeCreate: makeEventCommand('WorktreeCreate'),
-    WorktreeRemove: makeEventCommand('WorktreeRemove'),
-    PreCompact: makeEventCommand('PreCompact'),
+    ...eventSubCommands,
   },
 });
 

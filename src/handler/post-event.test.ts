@@ -20,15 +20,12 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import type { parseHookEvent } from '@/schemas/events.ts';
+import { parseHookOutput } from '@/schemas/output.ts';
+import { HOOKWATCH_LOG_PREFIX, UNUSED_PORT_A, UNUSED_PORT_B } from '@/test/constants.ts';
 import { BASE_SESSION_START } from '@/test/fixtures.ts';
 import { assertBareExitLegality, assertWrappedExitLegality } from '@/test/handler-assertions.ts';
 import { createHandlerTestContext } from '@/test/setup.ts';
-import {
-  killProcessOnPort,
-  parseStdout,
-  runHandler,
-  runHandlerWrapped,
-} from '@/test/subprocess.ts';
+import { killProcessOnPort, runHandler, runHandlerWrapped } from '@/test/subprocess.ts';
 import { firstEventBody, startTestServer, writePortFile } from '@/test/test-server.ts';
 import { VERSION } from '@/version.ts';
 import type { PostEventResult } from './post-event.ts';
@@ -38,17 +35,8 @@ import { postEvent } from './post-event.ts';
 // Module-level constants
 // ---------------------------------------------------------------------------
 
-/** Prefix used in hookwatch stderr log lines. */
-const HOOKWATCH_LOG_PREFIX = '[hookwatch]';
-
 /** Substring present in version mismatch log/systemMessage entries. */
 const VERSION_MISMATCH_SUBSTR = 'Version mismatch';
-
-/** Port with no server running — triggers auto-start path. */
-const UNUSED_AUTO_START_PORT_A = 19999;
-
-/** Port with no server running — triggers auto-start in wrapped mode. */
-const UNUSED_AUTO_START_PORT_B = 19998;
 
 /**
  * Builds a minimal BareEventPayload for unit-level postEvent() calls.
@@ -106,7 +94,7 @@ describe('server non-2xx response', () => {
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain('500');
     // Non-fatal: stdout is normal hook output JSON (not hookwatch_fatal)
-    const parsed = parseStdout(result.stdout);
+    const parsed = parseHookOutput(result.stdout);
     expect(parsed.hookwatch_fatal).toBeUndefined();
     expect(parsed.continue).toBe(true);
     expect(typeof parsed.systemMessage).toBe('string');
@@ -137,7 +125,7 @@ describe('server non-2xx response', () => {
 
     assertBareExitLegality(result, 'stdout-post-failure');
     expect(result.exitCode).toBe(0);
-    const parsed = parseStdout(result.stdout);
+    const parsed = parseHookOutput(result.stdout);
     expect(parsed.continue).toBe(true);
     // systemMessage must contain the HTTP status so the user can see the issue
     expect(typeof parsed.systemMessage).toBe('string');
@@ -153,7 +141,7 @@ describe('auto-start (server unavailable)', () => {
   test('server unavailable triggers auto-start (Story 1.5)', async () => {
     const xdgHome = join(ctx.tmpDir, 'server-unavailable');
     // Point at a port where no server is running — triggers auto-start
-    writePortFile(xdgHome, UNUSED_AUTO_START_PORT_A);
+    writePortFile(xdgHome, UNUSED_PORT_A);
 
     const result = await runHandler(JSON.stringify(BASE_SESSION_START), {
       XDG_DATA_HOME: xdgHome,
@@ -169,7 +157,7 @@ describe('auto-start (server unavailable)', () => {
 
   test('wrapped mode: server down, child exit code still forwarded (best-effort)', async () => {
     const xdgHome = join(ctx.tmpDir, 'wrap-server-down');
-    writePortFile(xdgHome, UNUSED_AUTO_START_PORT_B);
+    writePortFile(xdgHome, UNUSED_PORT_B);
 
     const result = await runHandlerWrapped(
       JSON.stringify(BASE_SESSION_START),
@@ -415,7 +403,7 @@ describe('version mismatch detection', () => {
     // No version error in stderr
     expect(result.stderr).not.toContain(VERSION_MISMATCH_SUBSTR);
     // No version error in systemMessage
-    const parsed = parseStdout(result.stdout);
+    const parsed = parseHookOutput(result.stdout);
     expect(parsed.systemMessage as string).not.toContain(VERSION_MISMATCH_SUBSTR);
   });
 
@@ -437,7 +425,7 @@ describe('version mismatch detection', () => {
     expect(result.stderr).toContain(VERSION_MISMATCH_SUBSTR);
     expect(result.stderr).toContain(staleVersion);
     // Version mismatch appears in systemMessage (visible to Claude Code agent)
-    const parsed = parseStdout(result.stdout);
+    const parsed = parseHookOutput(result.stdout);
     expect(parsed.continue).toBe(true);
     expect(parsed.systemMessage as string).toContain('[error] Version mismatch');
     expect(parsed.systemMessage as string).toContain(staleVersion);
@@ -472,7 +460,7 @@ describe('version mismatch detection', () => {
     assertBareExitLegality(result, 'version-header-absent');
     expect(result.exitCode).toBe(0);
     expect(result.stderr).not.toContain(VERSION_MISMATCH_SUBSTR);
-    const parsed = parseStdout(result.stdout);
+    const parsed = parseHookOutput(result.stdout);
     expect(parsed.systemMessage as string).not.toContain(VERSION_MISMATCH_SUBSTR);
   });
 });
@@ -594,7 +582,7 @@ describe('failureKind — integration: non-fatal dispatch in handleHook()', () =
 
     assertBareExitLegality(result, 'fk-http-nonfatal');
     expect(result.exitCode).toBe(0);
-    const parsed = parseStdout(result.stdout);
+    const parsed = parseHookOutput(result.stdout);
     // Non-fatal: hookwatch_fatal must NOT be present
     expect(parsed.hookwatch_fatal).toBeUndefined();
     // Failure reason appears in systemMessage (user-visible, non-blocking)
@@ -613,7 +601,7 @@ describe('failureKind — integration: non-fatal dispatch in handleHook()', () =
 
     assertBareExitLegality(result, 'fk-http-503');
     expect(result.exitCode).toBe(0);
-    const parsed = parseStdout(result.stdout);
+    const parsed = parseHookOutput(result.stdout);
     expect(parsed.hookwatch_fatal).toBeUndefined();
     expect(parsed.systemMessage as string).toContain('503');
   });

@@ -9,17 +9,15 @@
  */
 
 import { afterEach, describe, expect, test } from 'bun:test';
+import { HTTP_OK } from '@/server/http-status.ts';
 import { broadcast, closeAll, handleStream } from '@/server/stream.ts';
+import { SSE_FRAME_TAIL } from '@/test/constants.ts';
 import { makeEventRow } from '@/test/fixtures.ts';
 
 // ---------------------------------------------------------------------------
 // Test constants
 // ---------------------------------------------------------------------------
 
-/** HTTP 200 OK status. */
-const HTTP_OK = 200;
-/** Slice offset to strip the trailing "\n\n" from SSE frames. */
-const SSE_FRAME_TAIL = -2;
 /** Custom event id used to verify SSE payload round-trips correctly. */
 const TEST_EVENT_ID_ALT = 42;
 /** SSE event URL used by all stream tests. */

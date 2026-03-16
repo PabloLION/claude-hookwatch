@@ -17,7 +17,9 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { close as closeDb } from '@/db/connection.ts';
+import { HTTP_BAD_REQUEST, HTTP_CREATED, HTTP_NOT_FOUND, HTTP_OK } from '@/server/http-status.ts';
 import { PortInUseError, startServer } from '@/server/index.ts';
+import { SSE_FRAME_TAIL } from '@/test/constants.ts';
 import { BASE_SESSION_START } from '@/test/fixtures.ts';
 import { VERSION } from '@/version.ts';
 
@@ -33,20 +35,10 @@ const PATH_API_EVENTS = '/api/events';
 const PATH_API_QUERY = '/api/query';
 /** Response header name for content-type. */
 const HEADER_CONTENT_TYPE = 'content-type';
-/** HTTP 200 OK. */
-const HTTP_OK = 200;
-/** HTTP 201 Created. */
-const HTTP_CREATED = 201;
-/** HTTP 400 Bad Request. */
-const HTTP_BAD_REQUEST = 400;
-/** HTTP 404 Not Found. */
-const HTTP_NOT_FOUND = 404;
 /** Short sleep before reading the SSE connection (ms). */
 const SSE_CONNECTION_SLEEP_MS = 50;
 /** Timeout for waiting on an SSE broadcast chunk (ms). */
 const SSE_CHUNK_TIMEOUT_MS = 2000;
-/** Slice offset to strip the trailing "\n\n" from SSE frames. */
-const SSE_FRAME_TAIL = -2;
 
 // Use a temp in-memory DB path for tests to avoid polluting real data.
 // We override XDG_DATA_HOME so both connection.ts and index.ts use the temp dir.
@@ -151,14 +143,12 @@ describe('X-Hookwatch-Version header', () => {
 // Event ingestion
 // ---------------------------------------------------------------------------
 
-const validSessionStart = BASE_SESSION_START;
-
 describe('POST /api/events', () => {
   test('returns 201 with id for valid payload', async () => {
     const res = await fetch(url(PATH_API_EVENTS), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(validSessionStart),
+      body: JSON.stringify(BASE_SESSION_START),
     });
     expect(res.status).toBe(HTTP_CREATED);
     const body = await res.json();
@@ -201,7 +191,7 @@ describe('POST /api/events', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ...validSessionStart,
+        ...BASE_SESSION_START,
         // "startup" is the valid value; use something invalid for source
         source: 'invalid_source_value',
       }),
@@ -270,7 +260,7 @@ describe('POST /api/events', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ...validSessionStart,
+        ...BASE_SESSION_START,
         session_id: 'wrap-test-session',
         wrapped_command: './my-hook.sh arg1',
       }),
@@ -321,7 +311,7 @@ describe('POST /api/query', () => {
     await fetch(url(PATH_API_EVENTS), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(validSessionStart),
+      body: JSON.stringify(BASE_SESSION_START),
     });
   });
 
@@ -341,14 +331,14 @@ describe('POST /api/query', () => {
     const res = await fetch(url(PATH_API_QUERY), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: validSessionStart.session_id }),
+      body: JSON.stringify({ session_id: BASE_SESSION_START.session_id }),
     });
     expect(res.status).toBe(HTTP_OK);
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
     expect(body.length).toBeGreaterThan(0);
     for (const row of body) {
-      expect(row.session_id).toBe(validSessionStart.session_id);
+      expect(row.session_id).toBe(BASE_SESSION_START.session_id);
     }
   });
 

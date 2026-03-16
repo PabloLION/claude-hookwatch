@@ -25,18 +25,17 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { parseHookOutput } from '@/schemas/output.ts';
+import { HOOKWATCH_LOG_PREFIX } from '@/test/constants.ts';
 import { BASE_SESSION_START } from '@/test/fixtures.ts';
 import { assertBareExitLegality } from '@/test/handler-assertions.ts';
 import { createHandlerTestContext } from '@/test/setup.ts';
-import { killProcessOnPort, parseStdout, runHandler } from '@/test/subprocess.ts';
+import { killProcessOnPort, runHandler } from '@/test/subprocess.ts';
 import { firstEventBody, writePortFile } from '@/test/test-server.ts';
 
 // ---------------------------------------------------------------------------
 // Shared test fixtures and constants
 // ---------------------------------------------------------------------------
-
-/** Prefix used in hookwatch stderr log lines. */
-const HOOKWATCH_LOG_PREFIX = '[hookwatch]';
 
 const UNKNOWN_EVENT = {
   session_id: 'test-session-002',
@@ -150,7 +149,7 @@ describe('stdin parsing', () => {
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain(HOOKWATCH_LOG_PREFIX);
     expect(ctx.server.events).toHaveLength(0);
-    const parsed = parseStdout(result.stdout);
+    const parsed = parseHookOutput(result.stdout);
     expect(typeof parsed.hookwatch_fatal).toBe('string');
     expect(parsed.continue).toBe(true);
     expect(typeof parsed.systemMessage).toBe('string');
@@ -167,7 +166,7 @@ describe('stdin parsing', () => {
     assertBareExitLegality(result, 'stdin-empty');
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(0);
-    const parsed = parseStdout(result.stdout);
+    const parsed = parseHookOutput(result.stdout);
     expect(typeof parsed.hookwatch_fatal).toBe('string');
     expect(parsed.continue).toBe(true);
     expect(typeof parsed.systemMessage).toBe('string');
@@ -216,7 +215,7 @@ describe('Zod validation', () => {
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toContain(HOOKWATCH_LOG_PREFIX);
     expect(ctx.server.events).toHaveLength(0);
-    const parsed = parseStdout(result.stdout);
+    const parsed = parseHookOutput(result.stdout);
     expect(typeof parsed.hookwatch_fatal).toBe('string');
     expect(parsed.continue).toBe(true);
     expect(typeof parsed.systemMessage).toBe('string');
@@ -238,7 +237,7 @@ describe('Zod validation', () => {
     assertBareExitLegality(result, 'zod-bad-enum');
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(0);
-    const parsed = parseStdout(result.stdout);
+    const parsed = parseHookOutput(result.stdout);
     expect(typeof parsed.hookwatch_fatal).toBe('string');
     expect(parsed.continue).toBe(true);
     expect(typeof parsed.systemMessage).toBe('string');
@@ -283,7 +282,7 @@ describe('unknown event forwarding', () => {
     assertBareExitLegality(result, 'unknown-event-bad');
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(0);
-    const parsed = parseStdout(result.stdout);
+    const parsed = parseHookOutput(result.stdout);
     expect(typeof parsed.hookwatch_fatal).toBe('string');
     expect(parsed.continue).toBe(true);
     expect(typeof parsed.systemMessage).toBe('string');

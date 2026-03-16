@@ -71,23 +71,8 @@ export function makeEvent(overrides: Partial<InsertEventParams> = {}): InsertEve
 /**
  * Creates a minimal EventRow (read-side) for use in SSE / stream tests.
  * Includes id which InsertEventParams omits.
+ * Defaults are derived from makeEvent() to avoid duplicating them.
  */
-export function makeEventRow(overrides: Partial<EventRow> = {}): EventRow {
-  return {
-    id: 1,
-    timestamp: 1700000000000,
-    event: 'SessionStart',
-    session_id: 'sess-test-001',
-    cwd: '/tmp',
-    tool_name: null,
-    session_name: null,
-    hook_duration_ms: null,
-    stdin: '{}',
-    wrapped_command: null,
-    stdout: null,
-    stderr: null,
-    exit_code: 0,
-    hookwatch_log: null,
-    ...overrides,
-  };
+export function makeEventRow({ id = 1, ...rest }: Partial<EventRow> = {}): EventRow {
+  return { id, ...makeEvent(rest) };
 }

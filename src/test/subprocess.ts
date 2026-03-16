@@ -18,9 +18,6 @@
 
 import { join } from 'node:path';
 import { DEFAULT_PORT } from '@/config.ts';
-import type { HookOutput } from '@/schemas/output.ts';
-import { parseHookOutput } from '@/schemas/output.ts';
-
 import type { WrapResult } from '@/types.ts';
 
 /** Milliseconds to wait after SIGTERM before assuming the process has exited. */
@@ -83,18 +80,6 @@ export async function killProcessOnPort(port: number = DEFAULT_PORT): Promise<vo
   } catch {
     // lsof may not be available or port may be unused
   }
-}
-
-// ---------------------------------------------------------------------------
-// Output parsing
-// ---------------------------------------------------------------------------
-
-/**
- * Parses handler subprocess stdout as a validated HookOutput object.
- * Delegates to parseHookOutput() (Boundary #2 factory).
- */
-export function parseStdout(stdout: string): HookOutput {
-  return parseHookOutput(stdout);
 }
 
 // ---------------------------------------------------------------------------
