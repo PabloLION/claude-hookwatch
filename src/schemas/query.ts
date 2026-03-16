@@ -16,6 +16,7 @@
  */
 
 import { z } from 'zod';
+import { EVENT_NAMES } from '@/types.ts';
 
 // ---------------------------------------------------------------------------
 // Query filter schema
@@ -29,7 +30,13 @@ export const queryFilterSchema = z
      */
     queryType: z.enum(['events', 'sessions']).optional().default('events'),
     session_id: z.string().optional(),
-    hook_event_name: z.string().optional(),
+    /**
+     * Filter by known hook event name. Misspelled or future event names
+     * produce a Zod validation error (HTTP 400) rather than silently returning
+     * no results. Unknown/future event names are intentionally excluded from
+     * this endpoint — the query API is for known events only.
+     */
+    hook_event_name: z.enum(EVENT_NAMES).optional(),
     limit: z.number().int().positive().max(1000).optional().default(100),
     offset: z.number().int().nonnegative().optional().default(0),
   })

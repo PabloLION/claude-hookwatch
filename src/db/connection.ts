@@ -65,6 +65,13 @@ function openAndInit(path: string): Database {
     return conn;
   }
 
+  if (status !== 'mismatch') {
+    // Exhaustive check: adding a new VersionStatus without handling it here
+    // produces a compile error (never is not assignable to VersionStatus).
+    const _exhaustive: never = status;
+    throw new Error(`Unhandled version status: ${String(_exhaustive)}`);
+  }
+
   // status === "mismatch": backup old DB, open fresh one
   const versionRow = conn.query<{ user_version: number }, []>('PRAGMA user_version;').get();
   if (versionRow === null) {

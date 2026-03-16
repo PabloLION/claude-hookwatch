@@ -17,13 +17,26 @@ import { errorMsg } from '@/errors.ts';
 import {
   HTTP_BAD_REQUEST,
   HTTP_INTERNAL_ERROR,
+  HTTP_NOT_FOUND,
   HTTP_SERVICE_UNAVAILABLE,
 } from '@/server/http-status.ts';
 
 export type ErrorCode = 'DB_LOCKED' | 'NOT_FOUND' | 'INVALID_QUERY' | 'INTERNAL';
 
-export function errorResponse(code: ErrorCode, message: string, status: number): Response {
-  return Response.json({ error: { code, message } }, { status });
+/**
+ * Compile-time mapping from ErrorCode to HTTP status.
+ * satisfies Record<ErrorCode, number> ensures every ErrorCode has a status.
+ * Adding a new ErrorCode without updating this map is a compile error.
+ */
+const ERROR_STATUS = {
+  DB_LOCKED: HTTP_SERVICE_UNAVAILABLE,
+  NOT_FOUND: HTTP_NOT_FOUND,
+  INVALID_QUERY: HTTP_BAD_REQUEST,
+  INTERNAL: HTTP_INTERNAL_ERROR,
+} as const satisfies Record<ErrorCode, number>;
+
+export function errorResponse(code: ErrorCode, message: string): Response {
+  return Response.json({ error: { code, message } }, { status: ERROR_STATUS[code] });
 }
 
 /**
@@ -38,10 +51,9 @@ export function zodErrorResponse(err: unknown): Response {
     return errorResponse(
       'INVALID_QUERY',
       `Validation failed: ${err.issues.map((i) => i.message).join('; ')}`,
-      HTTP_BAD_REQUEST,
     );
   }
-  return errorResponse('INVALID_QUERY', 'Payload validation failed', HTTP_BAD_REQUEST);
+  return errorResponse('INVALID_QUERY', 'Payload validation failed');
 }
 
 /**
@@ -52,10 +64,18 @@ export function zodErrorResponse(err: unknown): Response {
  */
 export function dbErrorResponse(err: unknown): Response {
   if (isSqliteBusy(err)) {
-    return errorResponse('DB_LOCKED', 'Database is busy, retry shortly', HTTP_SERVICE_UNAVAILABLE);
+    return errorResponse('DB_LOCKED', 'Database is busy, retry shortly');
   }
-  return errorResponse('INTERNAL', errorMsg(err), HTTP_INTERNAL_ERROR);
+  return errorResponse('INTERNAL', errorMsg(err));
 }
+
+/**
+ * Return type of parseRequestJson.
+ * Discriminated union on `ok` so callers narrow with a simple `if (!parsed.ok)` guard.
+ */
+export type ParseJsonResult =
+  | { readonly ok: true; readonly data: unknown }
+  | { readonly ok: false; readonly response: Response };
 
 /**
  * Parses a request body as JSON.
@@ -63,9 +83,7 @@ export function dbErrorResponse(err: unknown): Response {
  * Returns `{ ok: true, data }` on success, or `{ ok: false, response }` with a
  * 400 INVALID_QUERY response when the body is not valid JSON.
  */
-export async function parseRequestJson(
-  req: Request,
-): Promise<{ ok: true; data: unknown } | { ok: false; response: Response }> {
+export async function parseRequestJson(req: Request): Promise<ParseJsonResult> {
   try {
     const data = await req.json();
     return { ok: true, data };
@@ -73,7 +91,7 @@ export async function parseRequestJson(
     process.stderr.write(`[hookwatch] Failed to parse request JSON: ${errorMsg(err)}\n`);
     return {
       ok: false,
-      response: errorResponse('INVALID_QUERY', 'Request body is not valid JSON', HTTP_BAD_REQUEST),
+      response: errorResponse('INVALID_QUERY', 'Request body is not valid JSON'),
     };
   }
 }
