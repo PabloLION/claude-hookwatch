@@ -12,8 +12,7 @@ import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { close, openDb } from '@/db/connection.ts';
-import type { TestServer } from './test-server.ts';
-import { startTestServer } from './test-server.ts';
+import { startTestServer, type TestServer } from './test-server.ts';
 
 // ---------------------------------------------------------------------------
 // XDG_DATA_HOME isolation

@@ -7,7 +7,8 @@
  */
 
 import { VERSION } from '@/version.ts';
+import { HTTP_OK } from './http-status.ts';
 
 export function handleHealth(_req: Request): Response {
-  return Response.json({ status: 'ok', app: 'hookwatch', version: VERSION }, { status: 200 });
+  return Response.json({ status: 'ok', app: 'hookwatch', version: VERSION }, { status: HTTP_OK });
 }

@@ -17,6 +17,7 @@
 
 import { errorMsg } from '@/errors.ts';
 import type { EventRow } from '@/types.ts';
+import { HTTP_OK } from './http-status.ts';
 
 // ---------------------------------------------------------------------------
 // Client registry
@@ -48,7 +49,7 @@ export function handleStream(_req: Request): Response {
   });
 
   return new Response(stream, {
-    status: 200,
+    status: HTTP_OK,
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
