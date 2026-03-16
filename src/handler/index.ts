@@ -168,8 +168,7 @@ async function readStdinAndWrapOutput(wrapArgs: string[] | null): Promise<StdinA
       stdinJson = await Bun.stdin.text();
     } catch (err) {
       const msg = errorMsg(err);
-      process.stderr.write(`[hookwatch] [error] Failed to read stdin: ${msg}\n`);
-      stdinJson = '';
+      exitFatal(`hookwatch: failed to read stdin: ${msg}`);
     }
     return { mode: 'bare', stdinJson };
   }
