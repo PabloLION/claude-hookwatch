@@ -31,7 +31,7 @@ import { uninstallCommand } from './uninstall.ts';
  * Modes:
  *   - Bare:    `hookwatch PreToolUse`           — reads stdin, posts event
  *   - Wrapped: `hookwatch PreToolUse ./hook.sh` — spawns ./hook.sh, tees I/O,
- *               posts event with captured output (Story 3.1)
+ *               posts event with captured output
  *
  * All rawArgs after the event type subcommand are passed directly to
  * runHandler() as the wrapped command. No filtering — flags intended for

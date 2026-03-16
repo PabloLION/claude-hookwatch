@@ -1,5 +1,5 @@
 /**
- * Tests for the hookwatch ui command logic (Story 2.5).
+ * Tests for the hookwatch ui command logic.
  *
  * Covers:
  * - DEFAULT_PORT is 6004
@@ -11,9 +11,7 @@
  * - openBrowser: spawns correct command on darwin
  * - openBrowser: spawns correct command on linux
  *
- * Note: readPortFile() was removed in ch-05ff (code deduplication).
- * Port file reading is now done by readPort() from @/paths.ts and is tested
- * in src/paths.test.ts.
+ * Note: Port file reading is tested in src/paths.test.ts.
  */
 
 import { afterAll, beforeAll, describe, expect, it, spyOn } from 'bun:test';

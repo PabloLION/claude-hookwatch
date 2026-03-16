@@ -129,7 +129,7 @@ describe('runWrapped — error handling', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tests: signal handling (ch-qddi)
+// Tests: signal handling
 // ---------------------------------------------------------------------------
 
 describe('runWrapped — signal-killed child', () => {

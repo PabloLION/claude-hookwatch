@@ -9,7 +9,7 @@
  * - default offset is 0: start from the beginning of the result set
  *   (callers paginate by incrementing offset in steps of limit).
  * - .loose() for forward compatibility: same convention as event schemas
- *   (NFR12) — unknown filter fields added in future API versions are preserved,
+ *   — unknown filter fields added in future API versions are preserved,
  *   not stripped, so older server code does not reject newer client requests.
  *
  * Naming: camelCase + Schema suffix (e.g. queryFilterSchema), PascalCase inferred types.

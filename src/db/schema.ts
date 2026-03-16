@@ -13,7 +13,7 @@ export const CURRENT_VERSION = 3;
  * is preserved in the `stdin` column for forward compatibility.
  *
  * wrapped_command (nullable): NULL = bare handler event; non-NULL = the
- * wrapped command string (Story 3.1).
+ * wrapped command string.
  *
  * stdout (nullable): hook output JSON for bare events; captured child stdout
  * for wrapped events. NULL only if no output was generated.

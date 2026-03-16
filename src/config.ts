@@ -1,8 +1,8 @@
 /**
  * Configurable defaults for hookwatch.
  *
- * These constants will be overridable via config.toml when ch-1ex5.1 lands.
- * Until then they serve as the single source of truth for all default values.
+ * These constants are the single source of truth for all default values.
+ * A future config.toml override mechanism is planned (ch-1ex5.1) but not yet implemented.
  */
 
 /** Default server port. */

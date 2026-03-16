@@ -14,7 +14,7 @@
  * directly. This mirrors the real Claude Code hook invocation and avoids the
  * need to mock module-level globals.
  *
- * NOTE: Some tests trigger the auto-start path (Story 1.5), which spawns a
+ * NOTE: Some tests trigger the auto-start path, which spawns a
  * real server process. These are killed in afterAll to avoid leaking processes.
  *
  * Wrapped mode, unified pipeline, server error, and auto-start tests live in

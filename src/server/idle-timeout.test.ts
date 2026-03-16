@@ -1,5 +1,5 @@
 /**
- * Tests for idle timeout behavior (Story 2.6).
+ * Tests for idle timeout behavior.
  *
  * Unit tests cover:
  *   - resetIdleTimer is callable without throwing

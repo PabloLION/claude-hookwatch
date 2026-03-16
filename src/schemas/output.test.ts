@@ -300,7 +300,7 @@ describe('stopOutputSchema — validation failures', () => {
 });
 
 // ---------------------------------------------------------------------------
-// systemMessage format tests (AC #3)
+// systemMessage format tests
 // ---------------------------------------------------------------------------
 
 describe('systemMessage format — hookwatch convention', () => {
