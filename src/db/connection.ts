@@ -12,6 +12,12 @@ let db: Database | null = null;
 
 /**
  * Open (or return the cached) database connection.
+ *
+ * **First-call-wins singleton**: `dbPath` is only honoured on the very first
+ * call. Every subsequent call returns the already-open connection and ignores
+ * any `dbPath` argument. Callers that need a specific path must pass it on
+ * the first call (or ensure the first call happens via the default path).
+ *
  * On first open:
  *   1. Creates parent directory if needed.
  *   2. Opens the database file (bun:sqlite creates the file on open).
