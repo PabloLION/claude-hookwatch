@@ -101,7 +101,7 @@ export async function spawnServer(): Promise<SpawnResult> {
   } catch (err) {
     const message = `Failed to create log directory: ${errorMsg(err)}`;
     console.error(`[hookwatch] ${message}`);
-    return { ok: false, failureKind: 'spawn' as const, message };
+    return { ok: false, failureKind: 'spawn', message };
   }
 
   // Open log file for append (create if absent)

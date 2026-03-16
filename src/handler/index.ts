@@ -46,8 +46,7 @@ import { readPort } from '@/paths.ts';
 import { parseHookEvent } from '@/schemas/events.ts';
 import { hookOutputSchema } from '@/schemas/output.ts';
 import { buildSystemMessage } from './context.ts';
-import type { EventPostPayload, PostEventResult } from './post-event.ts';
-import { postEvent } from './post-event.ts';
+import { type EventPostPayload, type PostEventResult, postEvent } from './post-event.ts';
 import { runWrapped } from './wrap.ts';
 
 const SLOW_THRESHOLD_MS = 100;

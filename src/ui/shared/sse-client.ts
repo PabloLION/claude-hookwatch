@@ -20,8 +20,7 @@ import type { Signal } from '@preact/signals';
 import { errorMsg } from '@/errors.ts';
 import { parseSseEvent } from '@/schemas/rows.ts';
 import type { EventRow } from '@/types.ts';
-import type { RowEntry } from '../events/event-list.ts';
-import { nextInvalidRowKey } from '../events/event-list.ts';
+import { nextInvalidRowKey, type RowEntry } from '../events/event-list.ts';
 
 const SSE_ENDPOINT = '/api/events/stream';
 

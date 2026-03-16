@@ -15,8 +15,7 @@
  * ch-u88: all rendering via htm template literals — no innerHTML.
  */
 
-import type { HookEvent } from '@/schemas/events.ts';
-import { parseHookEvent } from '@/schemas/events.ts';
+import { type HookEvent, parseHookEvent } from '@/schemas/events.ts';
 import type { EventRow } from '@/types.ts';
 import { html } from '../shared/html.ts';
 import { hasContent } from '../shared/utils.ts';

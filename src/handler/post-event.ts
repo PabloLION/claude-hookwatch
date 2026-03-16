@@ -8,8 +8,7 @@
 import { errorMsg } from '@/errors.ts';
 import { isErrnoException } from '@/guards.ts';
 import type { HookEvent } from '@/schemas/events.ts';
-import type { SpawnResult } from '@/server-spawn.ts';
-import { spawnServer } from '@/server-spawn.ts';
+import { type SpawnResult, spawnServer } from '@/server-spawn.ts';
 import { VERSION } from '@/version.ts';
 
 const FETCH_TIMEOUT_MS = 5000;

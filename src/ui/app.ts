@@ -7,8 +7,7 @@
 
 import { signal } from '@preact/signals';
 import { render } from 'preact';
-import type { RowEntry } from './events/event-list.ts';
-import { EventList } from './events/event-list.ts';
+import { EventList, type RowEntry } from './events/event-list.ts';
 import { SessionFilter } from './sessions/session-filter.ts';
 import { html } from './shared/html.ts';
 import { startSseClient } from './shared/sse-client.ts';

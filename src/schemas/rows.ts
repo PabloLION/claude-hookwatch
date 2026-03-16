@@ -16,8 +16,7 @@
  */
 
 import { z } from 'zod';
-import type { EventRow } from '@/types.ts';
-import { toKnownEventName } from '@/types.ts';
+import { type EventRow, toKnownEventName } from '@/types.ts';
 import { parseJsonWithPreview } from './parse-json.ts';
 
 // ---------------------------------------------------------------------------
