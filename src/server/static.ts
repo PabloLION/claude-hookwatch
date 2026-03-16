@@ -87,7 +87,7 @@ export async function handleStatic(pathname: string): Promise<Response> {
       return errorResponse('NOT_FOUND', `File not found: ${normalised}`);
     }
     process.stderr.write(`[hookwatch] Static file error for ${normalised}: ${errorMsg(err)}\n`);
-    return errorResponse('INTERNAL', `Could not read file: ${normalised}`, HTTP_INTERNAL_ERROR);
+    return errorResponse('INTERNAL', `Could not read file: ${normalised}`);
   }
 
   const mtime = stat.mtimeMs;
