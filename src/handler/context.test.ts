@@ -371,15 +371,7 @@ describe('buildSystemMessage', () => {
 // Integration tests: systemMessage in hook stdout (subprocess)
 // ---------------------------------------------------------------------------
 
-const ctx = createHandlerTestContext('hookwatch-context-test-');
-
-beforeAll(() => {
-  ctx.setup();
-});
-
-afterAll(() => {
-  ctx.cleanup();
-});
+const ctx = createHandlerTestContext('hookwatch-context-test-', beforeAll, afterAll);
 
 afterEach(() => {
   ctx.reset();

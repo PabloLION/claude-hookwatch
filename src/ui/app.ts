@@ -38,4 +38,6 @@ function App() {
 const appEl = document.getElementById('app');
 if (appEl) {
   render(html`<${App} />`, appEl);
+} else {
+  console.error('[hookwatch] #app element not found — cannot render UI');
 }
