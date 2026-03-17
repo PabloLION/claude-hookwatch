@@ -68,6 +68,11 @@ const SLOW_THRESHOLD_MS = 100;
  * after the child exits — the child exit code is forwarded instead (best-effort).
  * exitFatal is only called in wrapped mode if an error occurs before the child
  * is spawned (e.g. stdin read failure at the process level).
+ *
+ * DO NOT call exitFatal() in wrapped mode after the child has already exited.
+ * The child exit code must be forwarded unchanged — Step 7 handles this via
+ * process.exit(childExitCode). Calling exitFatal() there would exit 0 and lose
+ * the child's exit code, breaking the pass-through contract.
  */
 function exitFatal(message: string): never {
   const errorOutput = JSON.stringify({
@@ -279,8 +284,18 @@ function processPostResult(
     switch (postResult.failureKind) {
       case 'spawn':
       case 'retry':
-        // Fatal: infrastructure broken — server cannot be reached at all.
-        exitFatal(postResult.failureReason);
+        if (wrapArgs !== null) {
+          // In wrapped mode: do NOT call exitFatal() — the child has already
+          // exited and its exit code must be forwarded. Push the failure to
+          // logEntries and return; Step 7 will call process.exit(childExitCode).
+          logEntries.push(`[error] ${postResult.failureReason}`);
+          console.error(
+            `[hookwatch] Server unreachable (${postResult.failureReason}) — forwarding child exit code`,
+          );
+        } else {
+          // In bare mode: fatal — infrastructure broken, server cannot be reached.
+          exitFatal(postResult.failureReason);
+        }
         break;
 
       case 'http':
@@ -415,6 +430,9 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
 
   // In wrapped mode, child stdout was already written by teeStream.
   // The hook JSON is appended after it.
+  // Known limitation: in wrapped mode, child stdout + hookwatch JSON are concatenated.
+  // Claude Code parses the last JSON object from stdout. If the child also outputs JSON,
+  // parsing may be ambiguous. Requires protocol change to fix — tracked in v2 scope.
   process.stdout.write(hookOutputJson);
 
   // Log slow handler execution to stderr (never stdout)
@@ -446,9 +464,14 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
 export async function runHandler(wrappedCommand?: string[]): Promise<void> {
   const wrapArgs = wrappedCommand && wrappedCommand.length > 0 ? wrappedCommand : null;
   await handleHook(wrapArgs).catch((err) => {
-    const msg = errorMsg(err);
-    console.error(`[hookwatch] Unexpected error: ${msg}`);
-    exitFatal(`Unexpected error: ${msg}`);
+    const stack = err instanceof Error ? err.stack : String(err);
+    console.error(`[hookwatch] Unexpected error:\n${stack}`);
+    if (wrapArgs !== null) {
+      // In wrapped mode: do NOT call exitFatal() — exit 0 would suppress the
+      // child's exit code. Exit 1 signals hookwatch itself crashed (not the child).
+      process.exit(1);
+    }
+    exitFatal(`Unexpected error: ${errorMsg(err)}`);
   });
 }
 
