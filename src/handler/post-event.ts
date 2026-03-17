@@ -113,6 +113,13 @@ export type PostEventResult =
        * opened. The server started successfully (inherited stderr fallback) but
        * diagnostics may be lost. Caller should push this into logEntries so it
        * appears in the systemMessage.
+       *
+       * Independent of versionMismatchLog: both can coexist (auto-spawn that
+       * also has a version mismatch), either alone, or neither. A `spawned`
+       * discriminant was considered but rejected — the caller (processPostResult)
+       * consumes both fields identically via `!== undefined` checks, so the
+       * structural certainty would add type complexity without eliminating any
+       * branches.
        */
       readonly spawnWarning?: string;
     }
