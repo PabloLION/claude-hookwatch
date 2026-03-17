@@ -204,7 +204,8 @@ export async function startServer(): Promise<{ port: number; stop: () => void }>
       port: DEFAULT_PORT,
       fetch: dispatch,
       error(err) {
-        process.stderr.write(`[hookwatch] Unhandled server error: ${errorMsg(err)}\n`);
+        const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
+        process.stderr.write(`[hookwatch] Unhandled server error:\n${detail}\n`);
         return errorResponse('INTERNAL', 'An unexpected server error occurred');
       },
     });

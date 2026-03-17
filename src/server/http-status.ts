@@ -2,7 +2,7 @@
  * Named HTTP status code constants for the hookwatch server.
  *
  * Centralised here so every server module uses the same names instead
- * of repeating raw numbers that SonarQube flags as magic numbers (S109).
+ * of repeating raw numbers that SonarLint flags as magic numbers (S109).
  */
 
 export const HTTP_OK = 200;

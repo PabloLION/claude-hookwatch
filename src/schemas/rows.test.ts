@@ -115,11 +115,10 @@ describe('eventRowSchema — full row with all optional fields', () => {
   });
 });
 
-describe('eventRowSchema — .loose() preserves unknown fields', () => {
-  test('future DB column is preserved', () => {
+describe('eventRowSchema — strips unknown fields', () => {
+  test('future DB column is stripped (no .loose())', () => {
     const result = eventRowSchema.parse({ ...minimalRow, future_column: 'new-value' });
-    const fields = result as ParsedEventFields;
-    expect(fields.future_column).toBe('new-value');
+    expect('future_column' in result).toBe(false);
   });
 });
 
@@ -286,10 +285,9 @@ describe('parseSseEvent — error handling', () => {
   });
 });
 
-describe('parseSseEvent — .loose() preserves unknown fields', () => {
-  test('future DB column is preserved', () => {
+describe('parseSseEvent — strips unknown fields', () => {
+  test('future DB column is stripped (no .loose())', () => {
     const result = parseSseEvent(JSON.stringify({ ...minimalRow, future_column: 'v2-data' }));
-    const fields = result as ParsedEventFields;
-    expect(fields.future_column).toBe('v2-data');
+    expect('future_column' in result).toBe(false);
   });
 });

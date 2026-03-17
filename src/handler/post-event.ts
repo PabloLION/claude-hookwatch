@@ -93,7 +93,8 @@ export function isConnectionError(err: unknown): boolean {
  *             caller should push it into logEntries.
  *
  * ok: false — POST failed. failureKind distinguishes fatal vs non-fatal paths:
- *   'spawn' | 'retry' → infrastructure broken → caller should exitFatal().
+ *   'spawn' | 'retry' → infrastructure broken → caller should exitFatal() in
+ *     bare mode. In wrapped mode, non-fatal — child exit code must be forwarded.
  *   'http'  | 'exception' → transient → caller appends failureReason to logEntries.
  *
  *   'spawn'     — Bun.spawn() failed to start the server process. No detail.

@@ -8,7 +8,7 @@
  *   2. Spawns the child command (Bun.spawn), piping the buffered stdin to it.
  *   3. Tees child stdout → process.stdout AND a capture buffer.
  *   4. Tees child stderr → process.stderr AND a capture buffer.
- *   5. Returns { exitCode, stdin, stdout, stderr }.
+ *   5. Returns a WrapResult with { outcome, exitCode, stdin, stdout, stderr, hookwatchLog }.
  *
  * The caller (index.ts) validates the stdin as an event, then POSTs
  * the event with captured I/O to the server.

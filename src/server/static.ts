@@ -119,6 +119,7 @@ export async function handleStatic(pathname: string): Promise<Response> {
         transformed = transpiler.transformSync(source);
       } catch (err) {
         const message = errorMsg(err);
+        process.stderr.write(`[hookwatch] Transpile error for ${normalised}: ${message}\n`);
         return errorResponse('INTERNAL', `Failed to transpile ${normalised}: ${message}`);
       }
       content = transformed;
@@ -139,11 +140,14 @@ export async function handleStatic(pathname: string): Promise<Response> {
       status: HTTP_OK,
       headers: { 'Content-Type': contentType },
     });
-  } catch {
+  } catch (err) {
     // Last-resort backstop: Bun.file() + new Response() are deferred I/O (no
     // read at construction), so filesystem errors surface during response
     // streaming (caught by Bun.serve error handler). This catch guards against
     // any synchronous Bun internal error during Response construction.
-    return errorResponse('NOT_FOUND', `File not found: ${normalised}`);
+    process.stderr.write(
+      `[hookwatch] Response construction error for ${normalised}: ${errorMsg(err)}\n`,
+    );
+    return errorResponse('INTERNAL', `Could not serve file: ${normalised}`);
   }
 }

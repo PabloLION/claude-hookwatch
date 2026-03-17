@@ -41,11 +41,10 @@
  *   Never mutate wrapped command exit code.
  */
 
-import type { z } from 'zod';
 import { errorMsg } from '@/errors.ts';
 import { readPort } from '@/paths.ts';
 import { type HookEvent, parseHookEvent } from '@/schemas/events.ts';
-import { hookOutputSchema } from '@/schemas/output.ts';
+import { type HookOutput, hookOutputSchema } from '@/schemas/output.ts';
 import { buildSystemMessage } from './context.ts';
 import { type EventPostPayload, type PostEventResult, postEvent } from './post-event.ts';
 import { runWrapped } from './wrap.ts';
@@ -147,7 +146,7 @@ function parseEventSafely(jsonStr: string, errorMode: ErrorMode): HookEvent {
  * only happen if hookOutputSchema itself changed incompatibly with the literal
  * object we build here, so it is treated as an internal error.
  */
-function buildHookOutput(systemMessage: string): z.output<typeof hookOutputSchema> {
+function buildHookOutput(systemMessage: string): HookOutput {
   try {
     return hookOutputSchema.parse({ continue: true, systemMessage });
   } catch (err) {
@@ -268,9 +267,11 @@ function buildPostPayload(opts: {
  * non-fatal error and version mismatch entries to logEntries.
  *
  * A switch on failureKind gives TypeScript structural certainty for each
- * variant. The 'spawn' and 'retry' cases call exitFatal() (typed never) so
- * the compiler knows they never fall through. The 'http' and 'exception'
- * cases have a required detail field — accessed here without assertion.
+ * variant. In bare mode, the 'spawn' and 'retry' cases call exitFatal()
+ * (typed never) so the compiler knows they never fall through. In wrapped
+ * mode, they push to logEntries and break (child exit code must be
+ * forwarded). The 'http' and 'exception' cases have a required detail
+ * field — accessed here without assertion.
  */
 function processPostResult(
   postResult: PostEventResult,
@@ -305,6 +306,12 @@ function processPostResult(
             `[hookwatch] Failed to POST wrapped event (${postResult.failureReason}) — continuing (best-effort)`,
           );
         }
+        break;
+      }
+
+      default: {
+        const _exhaustive: never = postResult.failureKind;
+        logEntries.push(`[error] Unknown failure kind: ${_exhaustive}`);
         break;
       }
     }

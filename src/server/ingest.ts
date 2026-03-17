@@ -77,7 +77,12 @@ function extractWrapFields(body: Record<string, unknown>): WrapFields {
     wrappedCommand: stringOrNull(body.wrapped_command),
     wrappedStdout: stringOrNull(body.stdout),
     wrappedStderr: stringOrNull(body.stderr),
-    wrappedExitCode: typeof body.exit_code === 'number' ? body.exit_code : 0,
+    wrappedExitCode:
+      typeof body.exit_code === 'number'
+        ? body.exit_code
+        : typeof body.exit_code === 'string' && !Number.isNaN(Number(body.exit_code))
+          ? Number(body.exit_code)
+          : 0,
     hookDurationMs: typeof body.hook_duration_ms === 'number' ? body.hook_duration_ms : null,
     hookwatchLog: stringOrNull(body.hookwatch_log),
   };
@@ -117,6 +122,14 @@ export async function handleIngest(req: Request): Promise<Response> {
     return zodErrorResponse(err);
   }
 
+  // Normalise event name — log a warning when a new event type is not yet recognised
+  const eventName = toKnownEventName(event.hook_event_name);
+  if (eventName === 'unknown') {
+    process.stderr.write(
+      `[hookwatch] [warn] Unrecognised event type "${event.hook_event_name}" — stored as "unknown"\n`,
+    );
+  }
+
   // Insert into DB
   let id: number;
   let db: ReturnType<typeof openDb>;
@@ -124,12 +137,12 @@ export async function handleIngest(req: Request): Promise<Response> {
     db = openDb();
     id = insertEvent(db, {
       timestamp: Date.now(),
-      event: toKnownEventName(event.hook_event_name),
+      event: eventName,
       session_id: event.session_id,
       cwd: event.cwd,
       tool_name:
         'tool_name' in event && typeof event.tool_name === 'string' ? event.tool_name : null,
-      // session_name is reserved for future use — no event type currently provides this field.
+      // session_name: not extracted from event payloads (hardcoded null).
       session_name: null,
       hook_duration_ms: hookDurationMs,
       stdin: JSON.stringify(event),

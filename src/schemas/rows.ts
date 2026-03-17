@@ -3,8 +3,9 @@
  * broadcast over SSE.
  *
  * Design decisions:
- * - .loose() — forward-compatible with future columns added to the DB schema.
- *   Unknown columns received over the wire are preserved, not stripped.
+ * - No .loose() — this schema validates data hookwatch itself writes.
+ *   Unknown columns are stripped (safe default). The alignment check below
+ *   requires matching index signatures; .loose() would break it.
  * - Nullable fields use z.string().nullable() / z.number().nullable() to
  *   match the SQLite column definitions exactly.
  * - exit_code is z.number() (NOT NULL DEFAULT 0 in the DB schema).
@@ -34,24 +35,22 @@ import { parseJsonWithPreview } from './parse-json.ts';
  * parseEventRow()/parseSseEvent() no longer need to call toKnownEventName()
  * manually after parse.
  */
-export const eventRowSchema = z
-  .object({
-    id: z.number(),
-    timestamp: z.number(),
-    event: z.string().transform(toKnownEventName),
-    session_id: z.string(),
-    cwd: z.string(),
-    tool_name: z.string().nullable(),
-    session_name: z.string().nullable(),
-    hook_duration_ms: z.number().nullable(),
-    stdin: z.string(),
-    wrapped_command: z.string().nullable(),
-    stdout: z.string().nullable(),
-    stderr: z.string().nullable(),
-    exit_code: z.number(),
-    hookwatch_log: z.string().nullable(),
-  })
-  .loose();
+export const eventRowSchema = z.object({
+  id: z.number(),
+  timestamp: z.number(),
+  event: z.string().transform(toKnownEventName),
+  session_id: z.string(),
+  cwd: z.string(),
+  tool_name: z.string().nullable(),
+  session_name: z.string().nullable(),
+  hook_duration_ms: z.number().nullable(),
+  stdin: z.string(),
+  wrapped_command: z.string().nullable(),
+  stdout: z.string().nullable(),
+  stderr: z.string().nullable(),
+  exit_code: z.number(),
+  hookwatch_log: z.string().nullable(),
+});
 
 // ---------------------------------------------------------------------------
 // Compile-time alignment check
