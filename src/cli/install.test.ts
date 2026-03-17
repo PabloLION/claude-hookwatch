@@ -10,7 +10,7 @@
  * - Unknown PascalCase event exit behavior
  */
 
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { EXPECTED_EVENT_TYPE_COUNT } from '@/test/constants.ts';
 import { EVENT_TYPES, type EventType } from './events.ts';
 import { buildHooksJson, buildPluginJson } from './plugin-files.ts';
@@ -20,19 +20,19 @@ import { buildHooksJson, buildPluginJson } from './plugin-files.ts';
 // ---------------------------------------------------------------------------
 
 describe('EVENT_TYPES', () => {
-  it('contains exactly 18 event types', () => {
+  test('contains exactly 18 event types', () => {
     expect(EVENT_TYPES).toHaveLength(EXPECTED_EVENT_TYPE_COUNT);
   });
 
-  it('starts with ConfigChange (alphabetical order from EVENT_NAMES)', () => {
+  test('starts with ConfigChange (alphabetical order from EVENT_NAMES)', () => {
     expect(EVENT_TYPES[0]).toBe('ConfigChange');
   });
 
-  it('ends with WorktreeRemove (alphabetical order from EVENT_NAMES)', () => {
+  test('ends with WorktreeRemove (alphabetical order from EVENT_NAMES)', () => {
     expect(EVENT_TYPES.at(-1)).toBe('WorktreeRemove');
   });
 
-  it('contains all documented event types', () => {
+  test('contains all documented event types', () => {
     const expected: EventType[] = [
       'ConfigChange',
       'InstructionsLoaded',
@@ -56,7 +56,7 @@ describe('EVENT_TYPES', () => {
     expect([...EVENT_TYPES]).toEqual(expected);
   });
 
-  it('has no duplicates', () => {
+  test('has no duplicates', () => {
     const unique = new Set(EVENT_TYPES);
     expect(unique.size).toBe(EVENT_TYPES.length);
   });
@@ -67,7 +67,7 @@ describe('EVENT_TYPES', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildPluginJson', () => {
-  it('returns correct shape', () => {
+  test('returns correct shape', () => {
     const pkg = {
       name: 'hookwatch',
       version: '0.1.0',
@@ -82,7 +82,7 @@ describe('buildPluginJson', () => {
     });
   });
 
-  it('propagates version from package.json', () => {
+  test('propagates version from package.json', () => {
     const pkg = { name: 'hookwatch', version: '9.9.9', description: 'd' };
     const result = buildPluginJson(pkg) as { version: string };
     expect(result.version).toBe('9.9.9');
@@ -90,14 +90,14 @@ describe('buildPluginJson', () => {
 });
 
 describe('buildHooksJson', () => {
-  it('creates an entry for every event type', () => {
+  test('creates an entry for every event type', () => {
     const hooks = buildHooksJson();
     for (const eventType of EVENT_TYPES) {
       expect(hooks[eventType]).toBeDefined();
     }
   });
 
-  it('each entry has exactly one hooks wrapper with one command', () => {
+  test('each entry has exactly one hooks wrapper with one command', () => {
     const hooks = buildHooksJson();
     for (const eventType of EVENT_TYPES) {
       const entries = hooks[eventType];
@@ -109,12 +109,12 @@ describe('buildHooksJson', () => {
     }
   });
 
-  it("command format is 'hookwatch <EventType>'", () => {
+  test("command format is 'hookwatch <EventType>'", () => {
     const hooks = buildHooksJson(['PreToolUse']);
     expect(hooks.PreToolUse?.[0]?.hooks[0]?.command).toBe('hookwatch PreToolUse');
   });
 
-  it('command format for all 18 types uses hookwatch prefix', () => {
+  test('command format for all 18 types uses hookwatch prefix', () => {
     const hooks = buildHooksJson();
     for (const eventType of EVENT_TYPES) {
       const cmd = hooks[eventType]?.[0]?.hooks[0]?.command;
@@ -128,7 +128,7 @@ describe('buildHooksJson', () => {
 // ---------------------------------------------------------------------------
 
 describe('generated hooks/hooks.json', () => {
-  it('exists and is valid JSON', async () => {
+  test('exists and is valid JSON', async () => {
     const file = Bun.file(`${import.meta.dir}/../../hooks/hooks.json`);
     const exists = await file.exists();
     expect(exists).toBe(true);
@@ -137,14 +137,14 @@ describe('generated hooks/hooks.json', () => {
     expect(() => JSON.parse(content)).not.toThrow();
   });
 
-  it('has a hooks property with 18 event type keys', async () => {
+  test('has a hooks property with 18 event type keys', async () => {
     const file = Bun.file(`${import.meta.dir}/../../hooks/hooks.json`);
     const content = JSON.parse(await file.text()) as { hooks: Record<string, unknown> };
     expect(typeof content.hooks).toBe('object');
     expect(Object.keys(content.hooks)).toHaveLength(EXPECTED_EVENT_TYPE_COUNT);
   });
 
-  it('all 18 event types are present in hooks', async () => {
+  test('all 18 event types are present in hooks', async () => {
     const file = Bun.file(`${import.meta.dir}/../../hooks/hooks.json`);
     const content = JSON.parse(await file.text()) as {
       hooks: Record<string, Array<{ hooks: Array<{ type: string; command: string }> }>>;
@@ -163,7 +163,7 @@ describe('generated hooks/hooks.json', () => {
 // ---------------------------------------------------------------------------
 
 describe('generated .claude-plugin/plugin.json', () => {
-  it('exists and is valid JSON', async () => {
+  test('exists and is valid JSON', async () => {
     const file = Bun.file(`${import.meta.dir}/../../.claude-plugin/plugin.json`);
     const exists = await file.exists();
     expect(exists).toBe(true);
@@ -172,7 +172,7 @@ describe('generated .claude-plugin/plugin.json', () => {
     expect(() => JSON.parse(content)).not.toThrow();
   });
 
-  it('has required fields: name, version, description, author', async () => {
+  test('has required fields: name, version, description, author', async () => {
     const file = Bun.file(`${import.meta.dir}/../../.claude-plugin/plugin.json`);
     const content = JSON.parse(await file.text()) as {
       name: string;

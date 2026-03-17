@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { TS_EARLY, TS_LATE, TS_MID } from '@/test/fixtures.ts';
 import { closeTestDb, setupTestDb, type TestDbHandle } from '@/test/setup.ts';
 import { close, openDb } from './connection.ts';
 import { getAllEvents, getEventById, insertEvent } from './queries.ts';
@@ -23,11 +24,6 @@ interface PragmaTableInfoRow {
   dflt_value: string | null;
   pk: number;
 }
-
-/** Test timestamps — deliberately out of order to verify sorting. */
-const TS_EARLY = 1000;
-const TS_MID = 2000;
-const TS_LATE = 3000;
 
 describe('database creation and WAL mode', () => {
   let handle: TestDbHandle;

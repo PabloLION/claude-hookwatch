@@ -10,6 +10,15 @@
 import type { EventRow, InsertEventParams } from '@/types.ts';
 
 // ---------------------------------------------------------------------------
+// Timestamp constants for sort-order tests
+// ---------------------------------------------------------------------------
+
+/** Deliberately out-of-order timestamps to verify sort behavior in tests. */
+export const TS_EARLY = 1000;
+export const TS_MID = 2000;
+export const TS_LATE = 3000;
+
+// ---------------------------------------------------------------------------
 // Hook input payloads (stdin to the handler)
 // ---------------------------------------------------------------------------
 
