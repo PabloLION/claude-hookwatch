@@ -51,6 +51,9 @@ const transpiler = new Bun.Transpiler({ loader: 'tsx' });
  * Returns null if the path escapes UI_DIR (traversal attack).
  */
 function resolveUiPath(pathname: string): string | null {
+  // Null byte in path is always invalid — reject before any filesystem call
+  if (pathname.includes('\0')) return null;
+
   // Strip leading slash so resolve() stays inside UI_DIR
   const relative = pathname.replace(/^\//, '');
   const resolved = resolve(UI_DIR, relative);

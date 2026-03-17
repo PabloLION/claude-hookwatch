@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { closeTestDb, setupTestDb, type TestDbHandle } from '@/test/setup.ts';
 import { close, openDb } from './connection.ts';
 import { getAllEvents, getEventById, insertEvent } from './queries.ts';
@@ -373,20 +374,25 @@ describe('version mismatch — backup-and-recreate', () => {
     handle.db.run('PRAGMA user_version = 2;');
     close();
 
-    // Pre-create a directory at the backup path so renameSync throws EISDIR.
-    // This is a reliable cross-platform failure: rename(file, directory) → EISDIR.
-    // When rename fails, the original DB is preserved at its original location.
-    const backupPath = `${handle.dbPath}.v2`;
-    mkdirSync(backupPath);
+    // Make the parent directory read-only so any renameSync target fails with
+    // EACCES regardless of the generated backup path (including timestamp suffix).
+    // Restore write permission in finally so afterEach cleanup can remove the dir.
+    const dbDir = dirname(handle.dbPath);
+    chmodSync(dbDir, 0o555);
 
     // Original DB is intact before the call
     expect(existsSync(handle.dbPath)).toBe(true);
 
-    // openDb must throw because renameSync fails with EISDIR
-    expect(() => openDb(handle.dbPath)).toThrow();
+    try {
+      // openDb must throw because renameSync fails with EACCES (read-only dir)
+      expect(() => openDb(handle.dbPath)).toThrow();
 
-    // Original DB must still exist (rename failed atomically — data not lost)
-    expect(existsSync(handle.dbPath)).toBe(true);
+      // Original DB must still exist (rename failed — data not lost)
+      expect(existsSync(handle.dbPath)).toBe(true);
+    } finally {
+      // Restore write permission so afterEach can clean up the directory
+      chmodSync(dbDir, 0o755);
+    }
   });
 
   test('fresh DB created from a placeholder (no prior content) opens cleanly', () => {

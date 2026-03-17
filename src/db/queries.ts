@@ -43,7 +43,9 @@ export function getEventById(db: Database, id: number): EventRow | null {
 
 /**
  * Retrieve all events, ordered by timestamp ascending.
- * For production use, callers should add LIMIT/OFFSET filters via selectEvents().
+ * For production use, callers should add LIMIT/OFFSET filters via queryEvents().
+ *
+ * Test utility — exercises the ORDER BY ASC index path. Not used in production.
  */
 export function getAllEvents(db: Database): EventRow[] {
   const stmt = db.prepare<EventRow, []>(`SELECT * FROM events ORDER BY timestamp ASC`);
@@ -91,8 +93,9 @@ export function queryEvents(db: Database, filter: QueryFilter): EventRow[] {
   const sql = `SELECT * FROM events ${where} ORDER BY timestamp DESC LIMIT ? OFFSET ?`;
   bindings.push(filter.limit, filter.offset);
 
-  // Cast unavoidable: dynamic SQL with variable-length bindings cannot satisfy
-  // prepare<T>'s fixed generic params. Other query functions use typed prepare<>.
-  const stmt = db.prepare(sql);
-  return stmt.all(...bindings) as EventRow[];
+  // Typed prepare: dynamic SQL with variable-length bindings cannot satisfy a fixed
+  // tuple type, so (string | number)[] is the most precise type expressible here.
+  // Other query functions use more specific typed prepare<EventRow, [T]> forms.
+  const stmt = db.prepare<EventRow, (string | number)[]>(sql);
+  return stmt.all(...bindings);
 }
