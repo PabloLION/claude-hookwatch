@@ -3,10 +3,10 @@
  *
  * Responsibilities:
  *   - Bind to 127.0.0.1 (never 0.0.0.0)
- *   - Route dispatch: GET /health, POST /api/events, 404 fallback
+ *   - Route dispatch: see dispatch() for full route table
  *   - Fixed port DEFAULT_PORT — error and exit if occupied (no auto-increment)
  *   - Write port to XDG port file after successful bind
- *   - Graceful shutdown: remove port file, close DB
+ *   - Graceful shutdown: close SSE clients → stop server → close DB → remove port file
  *   - Idle timeout: self-terminate after 1 hour of no HTTP requests
  *
  * Error codes used in responses: DB_LOCKED, NOT_FOUND, INVALID_QUERY, INTERNAL
