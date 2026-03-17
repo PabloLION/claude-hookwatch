@@ -22,7 +22,7 @@ import { openDb } from '@/db/connection.ts';
 import { getEventById, insertEvent } from '@/db/queries.ts';
 import { errorMsg } from '@/errors.ts';
 import { isRecord } from '@/guards.ts';
-import { parseHookEvent } from '@/schemas/events.ts';
+import { type HookEvent, parseHookEvent } from '@/schemas/events.ts';
 import {
   dbErrorResponse,
   errorResponse,
@@ -110,7 +110,7 @@ export async function handleIngest(req: Request): Promise<Response> {
     hookwatchLog,
   } = extractWrapFields(raw);
 
-  let event: ReturnType<typeof parseHookEvent>;
+  let event: HookEvent;
   try {
     event = parseHookEvent(raw);
   } catch (err) {

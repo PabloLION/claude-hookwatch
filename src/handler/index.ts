@@ -44,7 +44,7 @@
 import type { z } from 'zod';
 import { errorMsg } from '@/errors.ts';
 import { readPort } from '@/paths.ts';
-import { parseHookEvent } from '@/schemas/events.ts';
+import { type HookEvent, parseHookEvent } from '@/schemas/events.ts';
 import { hookOutputSchema } from '@/schemas/output.ts';
 import { buildSystemMessage } from './context.ts';
 import { type EventPostPayload, type PostEventResult, postEvent } from './post-event.ts';
@@ -68,6 +68,11 @@ const SLOW_THRESHOLD_MS = 100;
  * after the child exits — the child exit code is forwarded instead (best-effort).
  * exitFatal is only called in wrapped mode if an error occurs before the child
  * is spawned (e.g. stdin read failure at the process level).
+ *
+ * DO NOT call exitFatal() in wrapped mode after the child has already exited.
+ * The child exit code must be forwarded unchanged — Step 7 handles this via
+ * process.exit(childExitCode). Calling exitFatal() there would exit 0 and lose
+ * the child's exit code, breaking the pass-through contract.
  */
 function exitFatal(message: string): never {
   const errorOutput = JSON.stringify({
@@ -107,10 +112,7 @@ type ErrorMode = { mode: 'bare' } | { mode: 'wrapped'; fallbackExitCode: number 
  * @param errorMode - Termination strategy for parse failures
  * @returns Parsed and validated hook event. Never returns on failure.
  */
-function parseEventSafely(
-  jsonStr: string,
-  errorMode: ErrorMode,
-): ReturnType<typeof parseHookEvent> {
+function parseEventSafely(jsonStr: string, errorMode: ErrorMode): HookEvent {
   let parsed: unknown;
   try {
     parsed = JSON.parse(jsonStr);
@@ -231,7 +233,7 @@ async function readStdinAndWrapOutput(wrapArgs: string[] | null): Promise<StdinA
  * present (possibly null) in the wrapped branch — no runtime null assertions needed.
  */
 function buildPostPayload(opts: {
-  event: ReturnType<typeof parseHookEvent>;
+  event: HookEvent;
   stdinAndWrap: StdinAndWrapOutput;
   elapsedMs: number;
   hookwatchLog: string | null;
@@ -251,7 +253,7 @@ function buildPostPayload(opts: {
 
   return {
     mode: 'wrapped',
-    wrappedCommand: stdinAndWrap.wrapArgs.join(' '),
+    wrappedCommand: JSON.stringify(stdinAndWrap.wrapArgs),
     stdout: stdinAndWrap.childStdout,
     stderr: stdinAndWrap.childStderr,
     exitCode: stdinAndWrap.childExitCode,
@@ -279,8 +281,18 @@ function processPostResult(
     switch (postResult.failureKind) {
       case 'spawn':
       case 'retry':
-        // Fatal: infrastructure broken — server cannot be reached at all.
-        exitFatal(postResult.failureReason);
+        if (wrapArgs !== null) {
+          // In wrapped mode: do NOT call exitFatal() — the child has already
+          // exited and its exit code must be forwarded. Push the failure to
+          // logEntries and return; Step 7 will call process.exit(childExitCode).
+          logEntries.push(`[error] ${postResult.failureReason}`);
+          console.error(
+            `[hookwatch] Server unreachable (${postResult.failureReason}) — forwarding child exit code`,
+          );
+        } else {
+          // In bare mode: fatal — infrastructure broken, server cannot be reached.
+          exitFatal(postResult.failureReason);
+        }
         break;
 
       case 'http':
@@ -353,7 +365,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
 
   // Bare mode timer starts after stdin read (before event parse)
   // Wrapped mode timer starts here (after child exits — measures hookwatch overhead only)
-  const startMs = Date.now();
+  const startMs = performance.now();
 
   // parseEventSafely handles both try-catch blocks (JSON.parse + Zod validation).
   // In wrapped mode: forward child exit code on parse failure (best-effort).
@@ -387,7 +399,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // Step 5: POST event to server
   // -------------------------------------------------------------------------
 
-  const elapsedMs = Date.now() - startMs;
+  const elapsedMs = Math.round(performance.now() - startMs);
   // hookwatchLog snapshot is taken before POST. Version-mismatch warnings from
   // the POST response are not included in the DB record but do appear in the
   // stdout systemMessage that Claude Code sees.
@@ -415,6 +427,9 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
 
   // In wrapped mode, child stdout was already written by teeStream.
   // The hook JSON is appended after it.
+  // Known limitation: in wrapped mode, child stdout + hookwatch JSON are concatenated.
+  // Claude Code parses the last JSON object from stdout. If the child also outputs JSON,
+  // parsing may be ambiguous. Requires protocol change to fix — tracked in v2 scope.
   process.stdout.write(hookOutputJson);
 
   // Log slow handler execution to stderr (never stdout)
@@ -446,9 +461,14 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
 export async function runHandler(wrappedCommand?: string[]): Promise<void> {
   const wrapArgs = wrappedCommand && wrappedCommand.length > 0 ? wrappedCommand : null;
   await handleHook(wrapArgs).catch((err) => {
-    const msg = errorMsg(err);
-    console.error(`[hookwatch] Unexpected error: ${msg}`);
-    exitFatal(`Unexpected error: ${msg}`);
+    const stack = err instanceof Error ? err.stack : String(err);
+    console.error(`[hookwatch] Unexpected error:\n${stack}`);
+    if (wrapArgs !== null) {
+      // In wrapped mode: do NOT call exitFatal() — exit 0 would suppress the
+      // child's exit code. Exit 1 signals hookwatch itself crashed (not the child).
+      process.exit(1);
+    }
+    exitFatal(`Unexpected error: ${errorMsg(err)}`);
   });
 }
 
