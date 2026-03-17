@@ -26,7 +26,7 @@ interface PluginManifest {
 
 /**
  * Builds the content object for .claude-plugin/plugin.json.
- * Version is read from the caller (package.json at import time).
+ * Version and metadata are provided by the caller (typically from package.json).
  */
 export function buildPluginJson(pkg: PluginJsonInput): PluginManifest {
   return {
@@ -56,20 +56,7 @@ type HooksJsonConfig = Record<string, readonly HookMatcher[]>;
  * Pass a custom list only in tests to inspect a specific subset of entries.
  */
 export function buildHooksJson(eventTypes: readonly string[] = EVENT_TYPES): HooksJsonConfig {
-  const hooks: Record<string, HookMatcher[]> = {};
-
-  for (const eventType of eventTypes) {
-    hooks[eventType] = [
-      {
-        hooks: [
-          {
-            type: 'command',
-            command: `hookwatch ${eventType}`,
-          },
-        ],
-      },
-    ];
-  }
-
-  return hooks;
+  return Object.fromEntries(
+    eventTypes.map((e) => [e, [{ hooks: [{ type: 'command', command: `hookwatch ${e}` }] }]]),
+  );
 }

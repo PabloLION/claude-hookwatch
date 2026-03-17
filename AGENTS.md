@@ -72,7 +72,7 @@ State,Preact signals,~1KB — automatic reactivity without prop drilling
 Styling,Pico CSS + CSS-in-JS,Pico for base styles; custom via style objects
 Linting,Biome,Lint + format in one tool
 Testing,bun test,Built-in test runner
-Config,smol-toml,~/.config/hookwatch/config.toml (optional)
+Config,smol-toml,~/.config/hookwatch/config.toml (not yet used — planned for ch-1ex5.1)
 ```
 
 ## Database

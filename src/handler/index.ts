@@ -163,7 +163,7 @@ function buildHookOutput(systemMessage: string): z.output<typeof hookOutputSchem
  * childStdout/childStderr are typed as string|null in the wrapped variant —
  * null means the child produced no output (empty capture normalized to null).
  *
- * Design note (G13): WrapResult fields are spread individually rather than
+ * Design note: WrapResult fields are spread individually rather than
  * embedded as `wrapResult: WrapResult` because:
  *   - Both modes expose `stdinJson` at the top level for uniform access
  *   - Embedding WrapResult would create two names for the same data:
@@ -179,7 +179,7 @@ type StdinAndWrapOutput =
       readonly mode: 'wrapped';
       readonly stdinJson: string;
       /** The original wrapArgs array — stored here to avoid a separate wrapArgs parameter. */
-      readonly wrapArgs: string[];
+      readonly wrapArgs: readonly string[];
       readonly childStdout: string | null;
       readonly childStderr: string | null;
       readonly childExitCode: number;
@@ -281,7 +281,7 @@ function processPostResult(
       case 'retry':
         // Fatal: infrastructure broken — server cannot be reached at all.
         exitFatal(postResult.failureReason);
-        break; // unreachable — exitFatal() is typed never
+        break;
 
       case 'http':
       case 'exception': {

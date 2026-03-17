@@ -89,7 +89,13 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
   } catch (err) {
     const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to spawn wrapped command: ${msg}`);
-    return { exitCode: 1, stdin: stdinContent, stdout: null, stderr: null };
+    return {
+      exitCode: 1,
+      stdin: stdinContent,
+      stdout: null,
+      stderr: null,
+      hookwatchLog: `[error] failed to spawn wrapped command: ${msg}`,
+    };
   }
 
   // Tee stdout and stderr concurrently while waiting for the child to exit.

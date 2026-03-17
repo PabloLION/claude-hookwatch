@@ -18,7 +18,7 @@ import { isErrnoException } from '@/guards.ts';
 import { readPort, serverLogPath } from '@/paths.ts';
 
 const HEALTH_POLL_INTERVAL_MS = 100;
-const HEALTH_MAX_ATTEMPTS = 20; // 20 polls × 100ms sleep = 2s minimum; worst case ~12s with per-poll fetch timeout
+const HEALTH_MAX_ATTEMPTS = 20; // 20 polls × 100ms sleep = 2s minimum; worst case ~12s with 500ms per-poll fetch timeout
 
 /** Absolute path to the server entry point.
  * import.meta.url is file:///…/src/server-spawn.ts
@@ -77,7 +77,7 @@ async function waitForHealth(): Promise<number | null> {
  *     'retry'  — Bun.spawn() succeeded but health probe timed out.
  *     `message` carries the specific error for structured propagation to callers.
  *
- * Design note (G21): A `logFileOk: boolean` discriminant on the ok:true variant
+ * Design note: A `logFileOk: boolean` discriminant on the ok:true variant
  * was considered to distinguish "no warning" from "warning present" at the type
  * level. Skipped — there is only one call site and `warning !== undefined` already
  * covers the distinction without adding a redundant field callers must manage.
@@ -92,7 +92,7 @@ export type SpawnResult =
  * - Uses Bun.spawn() with detached: true
  * - Calls .unref() immediately so the handler can exit without waiting
  * - Redirects server stdout/stderr to serverLogPath()
- * - Polls GET /health until ready (max 2s)
+ * - Polls GET /health until ready (20 polls, ~2–12s depending on timeouts)
  *
  * Returns a SpawnResult discriminated on ok. Callers use failureKind to
  * distinguish a spawn failure ('spawn') from a health-probe timeout ('retry').
@@ -152,11 +152,12 @@ export async function spawnServer(): Promise<SpawnResult> {
   console.error('[hookwatch] Server spawned, polling health endpoint...');
 
   // Poll until the server is ready or timeout
+  const startTime = Date.now();
   const port = await waitForHealth();
 
   if (port === null) {
-    const timeoutSecs = (HEALTH_MAX_ATTEMPTS * HEALTH_POLL_INTERVAL_MS) / 1000;
-    const message = `Server health check timed out after ${timeoutSecs}s`;
+    const elapsedMs = Date.now() - startTime;
+    const message = `Server health check timed out after ${(elapsedMs / 1000).toFixed(1)}s`;
     console.error(`[hookwatch] ${message}`);
     return { ok: false, failureKind: 'retry', message };
   }

@@ -21,7 +21,7 @@ let db: Database | null = null;
  * On first open:
  *   1. Creates parent directory if needed.
  *   2. Opens the database file (bun:sqlite creates the file on open).
- *   3. Sets 0600 permissions (new files only).
+ *   3. Sets 0600 permissions (new and recreated files).
  *   4. Enables WAL mode.
  *   5. Checks schema version:
  *      - version=0 (fresh): applies schema, stamps CURRENT_VERSION.

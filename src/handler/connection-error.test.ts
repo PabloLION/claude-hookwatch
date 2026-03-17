@@ -3,7 +3,7 @@
  *
  * isConnectionError() classifies thrown values as connection-refusal errors
  * that should trigger the auto-start+retry path in postEvent(). It matches
- * multiple patterns across Bun and Node.js error shapes.
+ * 7 patterns across Bun and Node.js error shapes.
  *
  * Coverage:
  * - non-Error values (string, number, null, plain object) → false
