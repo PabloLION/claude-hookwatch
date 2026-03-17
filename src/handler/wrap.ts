@@ -40,7 +40,7 @@ import { describeExitCode, signalExitCode } from './signals.ts';
  * - stderr is written to process.stderr AND a capture buffer
  *
  * Returns the child exit code, buffered stdin, captured output strings, and
- * an optional hookwatchLog entry for signal deaths.
+ * a hookwatchLog entry for signal deaths (null when the child exited normally).
  * Never throws — errors are reported to stderr and exit code 1 is returned.
  * Signal deaths are converted to 128+N (e.g. SIGKILL → 137) and reported via
  * WrapResult.hookwatchLog.
@@ -126,7 +126,7 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
 
   // Build a [warn] log entry for signal deaths so the caller can store it in
   // hookwatch_log and surface it in the systemMessage.
-  let hookwatchLog: string | undefined;
+  let hookwatchLog: string | null = null;
   if (isSignalKill) {
     const description = describeExitCode(exitCode);
     const label = description === null ? '' : ` (${description})`;
@@ -139,7 +139,7 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
     stdin: stdinContent,
     stdout: capturedStdout,
     stderr: capturedStderr,
-    ...(hookwatchLog !== undefined && { hookwatchLog }),
+    hookwatchLog,
   };
 }
 
