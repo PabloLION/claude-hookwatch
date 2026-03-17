@@ -131,8 +131,13 @@ export async function handleStatic(pathname: string): Promise<Response> {
   // All other files — serve directly
   const contentType = CONTENT_TYPES[ext] ?? 'application/octet-stream';
   const file = Bun.file(filePath);
-  return new Response(file, {
-    status: HTTP_OK,
-    headers: { 'Content-Type': contentType },
-  });
+  try {
+    return new Response(file, {
+      status: HTTP_OK,
+      headers: { 'Content-Type': contentType },
+    });
+  } catch {
+    // TOCTOU: file deleted between statSync and Response construction
+    return errorResponse('NOT_FOUND', `File not found: ${normalised}`);
+  }
 }
