@@ -6,7 +6,7 @@
  */
 
 import { errorMsg } from '@/errors.ts';
-import { isErrnoException } from '@/guards.ts';
+import { extractErrorCode } from '@/guards.ts';
 import type { HookEvent } from '@/schemas/events.ts';
 import { type SpawnResult, spawnServer } from '@/server-spawn.ts';
 import { VERSION } from '@/version.ts';
@@ -79,7 +79,8 @@ export function isConnectionError(err: unknown): boolean {
   // Bun surfaces connection refusals with code "ConnectionRefused" and a
   // message like "Unable to connect. Is the computer able to access the url?"
   // Node.js uses code "ECONNREFUSED". Both are handled here.
-  const code = isErrnoException(err) ? err.code : undefined;
+  // extractErrorCode() also checks err.cause.code for Bun-wrapped errors.
+  const code = extractErrorCode(err);
   if (code === 'ConnectionRefused' || code === 'ECONNREFUSED') return true;
   return matchesConnectionMessage(err.message.toLowerCase());
 }
