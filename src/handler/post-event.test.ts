@@ -508,7 +508,7 @@ describe('failureKind — postEvent() unit tests', () => {
       expect(result.failureKind).toBe('http');
       expect(result.failureReason).toContain('500');
     } else {
-      expect(result.ok).toBe(false); // force fail — should not reach ok:true
+      throw new Error('expected ok:false — should not reach ok:true');
     }
   });
 
@@ -520,7 +520,7 @@ describe('failureKind — postEvent() unit tests', () => {
     if (!result.ok) {
       expect(result.failureKind).toBe('http');
     } else {
-      expect(result.ok).toBe(false); // force fail — should not reach ok:true
+      throw new Error('expected ok:false — should not reach ok:true');
     }
   });
 
@@ -533,7 +533,7 @@ describe('failureKind — postEvent() unit tests', () => {
       // PostEventResult ok:true has no failureKind field — verify via type narrowing
       expect(result.versionMismatchLog).toBeUndefined();
     } else {
-      expect(result.ok).toBe(true); // force fail — should not reach ok:false
+      throw new Error('expected ok:true — should not reach ok:false');
     }
   });
 
@@ -557,7 +557,7 @@ describe('failureKind — postEvent() unit tests', () => {
         expect(result.failureKind).toBe('exception');
         expect(result.failureReason).toContain('Failed to POST event to server');
       } else {
-        expect(result.ok).toBe(false); // force fail — should not reach ok:true
+        throw new Error('expected ok:false — should not reach ok:true');
       }
     } finally {
       globalThis.fetch = originalFetch;

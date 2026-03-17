@@ -42,7 +42,8 @@ describe('runWrapped — tee and capture', () => {
     const result = await runWrapRunner(['sh', '-c', 'echo hello'], 'event-json');
 
     expect(result.wrapResult).not.toBeNull();
-    expect(result.wrapResult?.stdout.trim()).toBe('hello');
+    expect(result.wrapResult?.stdout).not.toBeNull();
+    expect((result.wrapResult?.stdout ?? '').trim()).toBe('hello');
     // Tee: the child's stdout also appears as the runner's own stdout
     expect(result.runnerStdout.trim()).toBe('hello');
   });
@@ -51,7 +52,8 @@ describe('runWrapped — tee and capture', () => {
     const result = await runWrapRunner(['sh', '-c', 'echo error-msg >&2'], 'event-json');
 
     expect(result.wrapResult).not.toBeNull();
-    expect(result.wrapResult?.stderr.trim()).toBe('error-msg');
+    expect(result.wrapResult?.stderr).not.toBeNull();
+    expect((result.wrapResult?.stderr ?? '').trim()).toBe('error-msg');
     // Tee: child stderr appears in the runner's stderr output
     expect(result.runnerStderr).toContain('error-msg');
   });
@@ -74,8 +76,10 @@ describe('runWrapped — tee and capture', () => {
       'stdin-data',
     );
 
-    expect(result.wrapResult?.stdout.trim()).toBe('out-line');
-    expect(result.wrapResult?.stderr.trim()).toBe('err-line');
+    expect(result.wrapResult?.stdout).not.toBeNull();
+    expect((result.wrapResult?.stdout ?? '').trim()).toBe('out-line');
+    expect(result.wrapResult?.stderr).not.toBeNull();
+    expect((result.wrapResult?.stderr ?? '').trim()).toBe('err-line');
   });
 });
 
