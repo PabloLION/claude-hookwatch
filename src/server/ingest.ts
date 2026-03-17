@@ -69,6 +69,9 @@ function extractWrapFields(body: Record<string, unknown>): WrapFields {
   if (body.wrapped_command !== undefined && typeof body.wrapped_command !== 'string') {
     process.stderr.write('[hookwatch] [warn] wrapped_command has unexpected type\n');
   }
+  if (body.hook_duration_ms !== undefined && typeof body.hook_duration_ms !== 'number') {
+    process.stderr.write('[hookwatch] [warn] hook_duration_ms has unexpected type\n');
+  }
 
   return {
     wrappedCommand: stringOrNull(body.wrapped_command),
