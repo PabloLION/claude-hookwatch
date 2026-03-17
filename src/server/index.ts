@@ -166,6 +166,23 @@ function dispatch(req: Request): Promise<Response> {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Shutdown helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Run a single cleanup step, logging to stderr if it throws.
+ * Each step in stop() runs independently — a failure in one must not
+ * prevent the remaining steps from executing.
+ */
+function safeCleanup(label: string, fn: () => void): void {
+  try {
+    fn();
+  } catch (err) {
+    process.stderr.write(`[hookwatch] Error ${label} during shutdown: ${errorMsg(err)}\n`);
+  }
+}
+
 /** Thrown by startServer() when DEFAULT_PORT is already occupied. */
 export class PortInUseError extends Error {
   constructor(public readonly port: number) {
@@ -212,31 +229,11 @@ export async function startServer(): Promise<{ port: number; stop: () => void }>
     shutdownCallback = null;
     // Each cleanup step runs independently so a failure in one does not
     // prevent the remaining steps from executing.
-    try {
-      closeSseClients();
-    } catch (err) {
-      process.stderr.write(
-        `[hookwatch] Error closing SSE clients during shutdown: ${errorMsg(err)}\n`,
-      );
-    }
-    try {
-      server.stop(true);
-    } catch (err) {
-      process.stderr.write(`[hookwatch] Error stopping server during shutdown: ${errorMsg(err)}\n`);
-    }
-    try {
-      closeDb();
-    } catch (err) {
-      process.stderr.write(`[hookwatch] Error closing DB during shutdown: ${errorMsg(err)}\n`);
-    }
+    safeCleanup('closing SSE clients', () => closeSseClients());
+    safeCleanup('stopping server', () => server.stop(true));
+    safeCleanup('closing DB', () => closeDb());
     // removePortFile is last — it signals "server is gone" to other processes.
-    try {
-      removePortFile();
-    } catch (err) {
-      process.stderr.write(
-        `[hookwatch] Error removing port file during shutdown: ${errorMsg(err)}\n`,
-      );
-    }
+    safeCleanup('removing port file', () => removePortFile());
   };
 
   // Register the stop callback so the idle timeout handler can invoke it

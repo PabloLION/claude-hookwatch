@@ -76,6 +76,11 @@ async function waitForHealth(): Promise<number | null> {
  *     'spawn'  — Bun.spawn() itself threw (e.g. binary not found, EACCES).
  *     'retry'  — Bun.spawn() succeeded but health probe timed out.
  *     `message` carries the specific error for structured propagation to callers.
+ *
+ * Design note (G21): A `logFileOk: boolean` discriminant on the ok:true variant
+ * was considered to distinguish "no warning" from "warning present" at the type
+ * level. Skipped — there is only one call site and `warning !== undefined` already
+ * covers the distinction without adding a redundant field callers must manage.
  */
 export type SpawnResult =
   | { readonly ok: true; readonly port: number; readonly warning?: string }
