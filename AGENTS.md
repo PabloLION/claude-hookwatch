@@ -53,10 +53,10 @@ hookwatch/
 │   ├── db/                  — bun:sqlite: schema, migrations, query helpers
 │   ├── schemas/             — Zod schemas for all 18 event types
 │   ├── ui/                  — Preact + htm web UI components
-│   └── cli/                 — citty subcommands (install, uninstall, ui) + 18 PascalCase event subcommands
+│   ├── cli/                 — citty subcommands (install, uninstall, ui) + 18 PascalCase event subcommands
+│   └── test/                — shared test utilities (fixtures, setup, subprocess helpers)
 │
-├── tests/                   — integration tests only
-└── planning-artifacts/      — BMAD workflow outputs (not shipped)
+└── tests/                   — integration tests (handler-server, smoke-http)
 ```
 
 ## Tech Stack
@@ -65,7 +65,7 @@ hookwatch/
 Concern,Technology,Notes
 Runtime,Bun,Runs .ts natively — no transpilation or build step
 Database,bun:sqlite (built-in),"WAL mode, zero external deps"
-Validation,Zod,Only runtime dependency — validates stdin payloads
+Validation,Zod,Runtime event validation — validates stdin payloads for all 18 event types
 CLI,citty,"~10KB, 3 subcommands: install uninstall ui — plus 18 PascalCase event family subcommands"
 Web UI,Preact + htm,Tagged template literals — no JSX transform needed
 State,Preact signals,~1KB — automatic reactivity without prop drilling
@@ -104,10 +104,10 @@ Use `package.json` scripts for all tooling — never call `bunx biome` directly.
 
 ```csv
 Command,Script,What it runs
-bun run test,test,bun test
+bun run test,test,bun test src/ tests/handler-server.test.ts tests/smoke-http.test.ts
 bun run lint,lint,biome check .
 bun run format,format,biome format --write .
-bun run check,check,bun test && biome check .
+bun run check,check,bun test src/ tests/handler-server.test.ts tests/smoke-http.test.ts && biome check .
 ```
 
 Agents must run `bun run check` before each commit.
@@ -135,7 +135,7 @@ Both modes share the same `handleHook()` pipeline. The branch point is
 
 ## Process Rules
 
-- **Handler errors:** Fatal errors exit 0 + JSON stdout with `systemMessage` (server unreachable, schema parse failure). Non-fatal errors log to `hookwatch_log` DB column. Never exit 1 (generic "hook error", useless) or exit 2 (JSON ignored per Claude Code docs). Hookwatch must never block Claude Code.
+- **Handler errors:** Fatal errors exit 0 + JSON stdout with `systemMessage` (server unreachable, schema parse failure). Non-fatal errors log to `hookwatch_log` DB column. Never exit 1 (generic "hook error", useless) or exit 2 (JSON ignored per Claude Code docs). Hookwatch must never block Claude Code. `systemMessage` format: `"hookwatch captured <EventType> (<subtype>)"` (subtype omitted when not applicable).
 - **Server errors:** Structured JSON `{ "error": { "code": "...", "message": "..." } }`
 - **UI errors:** Display server errors — never swallow silently
 - **Imports:** Use `@/` path alias (maps to `./src/`) — no relative `../` chains

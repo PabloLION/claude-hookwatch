@@ -16,27 +16,27 @@ database with a web UI for browsing and querying.
 ## Install
 
 ```sh
-bun install
+hookwatch install
+```
+
+For local dev:
+
+```sh
+bun install && bun link
+```
+
+To uninstall:
+
+```sh
+hookwatch uninstall
 ```
 
 ## Dev Commands
 
 ```sh
 bun run dev      # start server with --watch (auto-reload on file changes)
-bun test         # run test suite
+bun run test     # run test suite (targets src/ and integration test files)
 bun run lint     # lint and format check (Biome)
-```
-
-## Installation
-
-```sh
-claude plugin install /path/to/claude-hookwatch
-```
-
-To uninstall:
-
-```sh
-claude plugin remove claude-hookwatch
 ```
 
 ## Storage
@@ -53,14 +53,19 @@ The path respects `$XDG_DATA_HOME` if set:
 ```csv
 Column,Type,Description
 id,INTEGER PRIMARY KEY,Auto-incrementing event ID
-ts,TEXT,ISO 8601 timestamp (generated at write time)
-event,TEXT,Hook event type (e.g. PreToolUse)
-session_id,TEXT,From hook stdin
-cwd,TEXT,Working directory at time of event
+timestamp,INTEGER NOT NULL,Epoch milliseconds (generated at write time)
+event,TEXT NOT NULL,Hook event type (e.g. PreToolUse)
+session_id,TEXT NOT NULL,From hook stdin
+cwd,TEXT NOT NULL,Working directory at time of event
 tool_name,TEXT,"Tool name for tool events, NULL otherwise"
 session_name,TEXT,Human-readable session name
-payload,TEXT,Full event JSON from stdin
-hook_duration_ms,INTEGER,hookwatch handler execution time in milliseconds (always NULL — not yet populated by ingest.ts; see ch-95ia)
+hook_duration_ms,INTEGER,hookwatch handler execution time in milliseconds
+stdin,TEXT NOT NULL,Full event JSON from hook stdin
+wrapped_command,TEXT,"Command being wrapped, NULL for bare handler events"
+stdout,TEXT,"Hook output JSON (bare) or captured child stdout (wrapped); NULL if no output"
+stderr,TEXT,"Captured child stderr for wrapped events; NULL for bare events"
+exit_code,INTEGER NOT NULL DEFAULT 0,Exit code of the hook or wrapped child process
+hookwatch_log,TEXT,"Internal diagnostics with severity prefix: [error] or [warn]; NULL if no issues"
 ```
 
 The full stdin schema for all 18 event types is documented in
@@ -126,17 +131,17 @@ SQL queries against the SQLite database:
 ```sh
 # All events from a session
 sqlite3 ~/.local/share/hookwatch/hookwatch.db \
-  "SELECT ts, event, tool_name FROM events WHERE session_id = 'abc123'"
+  "SELECT timestamp, event, tool_name FROM events WHERE session_id = 'abc123'"
 
 # Count events by type
 sqlite3 ~/.local/share/hookwatch/hookwatch.db \
   "SELECT event, COUNT(*) FROM events GROUP BY event ORDER BY COUNT(*) DESC"
 
-# Tool usage in the last hour
+# Tool usage in the last hour (timestamp is epoch ms)
 sqlite3 ~/.local/share/hookwatch/hookwatch.db \
   "SELECT tool_name, COUNT(*) FROM events
    WHERE event = 'PreToolUse'
-     AND ts > datetime('now', '-1 hour')
+     AND timestamp > (strftime('%s', 'now') - 3600) * 1000
    GROUP BY tool_name"
 
 # hookwatch handler time per event type (our processing time, not Claude Code tool duration)
@@ -153,8 +158,8 @@ hookwatch serves a local web UI on localhost for browsing events:
 
 - Real-time event timeline
 - Filter by session, event type, tool name, time range
-- Hook execution stats and performance profiling
-- Session naming and run tracking
+- Event detail viewer with full stdin payload
+- Wrap viewer for wrapped command I/O
 
 ## Versioning
 
