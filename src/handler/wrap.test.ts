@@ -170,17 +170,17 @@ describe('runWrapped — signal-killed child', () => {
     expect(result.runnerStderr).toContain('signal');
   });
 
-  test('normal exit: hookwatchLog is absent from WrapResult', async () => {
+  test('normal exit: hookwatchLog is null from WrapResult', async () => {
     const result = await runWrapRunner(['sh', '-c', 'exit 0'], '');
 
-    // No signal death — hookwatchLog should be undefined (not present in JSON)
-    expect(result.wrapResult?.hookwatchLog).toBeUndefined();
+    // No signal death — hookwatchLog is null (not undefined; WrapResult uses explicit nullable)
+    expect(result.wrapResult?.hookwatchLog).toBeNull();
   });
 
-  test('non-zero clean exit: hookwatchLog is absent (not a signal death)', async () => {
+  test('non-zero clean exit: hookwatchLog is null (not a signal death)', async () => {
     const result = await runWrapRunner(['sh', '-c', `exit ${EXIT_CODE_CLEAN_NONZERO}`], '');
 
     expect(result.wrapResult?.exitCode).toBe(EXIT_CODE_CLEAN_NONZERO);
-    expect(result.wrapResult?.hookwatchLog).toBeUndefined();
+    expect(result.wrapResult?.hookwatchLog).toBeNull();
   });
 });

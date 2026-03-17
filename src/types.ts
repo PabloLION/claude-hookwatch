@@ -109,13 +109,12 @@ export interface WrapResult {
   /** Captured child stderr, or null when the child produced no output. */
   readonly stderr: string | null;
   /**
-   * Hookwatch-internal diagnostic log entry for signal deaths, or undefined
-   * when the child exited normally. Format: "[warn] exit 137 (likely SIGKILL
-   * — forced termination)". Caller pushes this into logEntries so it appears
+   * Hookwatch-internal diagnostic log entry for signal deaths, or null when
+   * the child exited normally. Format: "[warn] exit 137 (likely SIGKILL —
+   * forced termination)". Caller pushes this into logEntries so it appears
    * in hookwatch_log and systemMessage.
    *
-   * Optional here (not nullable) because signal-kill is the only source.
-   * Converted to `string | null` for DB storage via `?? null` in the caller.
+   * Nullable (not optional) to match the DB convention: null means "no value".
    */
-  readonly hookwatchLog?: string;
+  readonly hookwatchLog: string | null;
 }

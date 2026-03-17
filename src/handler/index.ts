@@ -216,7 +216,7 @@ async function readStdinAndWrapOutput(wrapArgs: string[] | null): Promise<StdinA
     childStderr: wrapResult.stderr,
     childExitCode: wrapResult.exitCode,
     // Signal-death warning (if any): "[warn] exit 137 (likely SIGKILL …)"
-    hookwatchLogFromWrap: wrapResult.hookwatchLog ?? null,
+    hookwatchLogFromWrap: wrapResult.hookwatchLog,
   };
 }
 
