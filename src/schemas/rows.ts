@@ -4,8 +4,9 @@
  *
  * Design decisions:
  * - No .loose() — this schema validates data hookwatch itself writes.
- *   Unknown columns are stripped (safe default). The alignment check below
- *   requires matching index signatures; .loose() would break it.
+ *   Unknown columns are stripped (safe default). .loose() would add
+ *   [key: string]: unknown to the inferred type, making the bidirectional
+ *   alignment check below vacuously true and defeating its purpose.
  * - Nullable fields use z.string().nullable() / z.number().nullable() to
  *   match the SQLite column definitions exactly.
  * - exit_code is z.number() (NOT NULL DEFAULT 0 in the DB schema).

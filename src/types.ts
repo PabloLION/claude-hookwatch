@@ -136,7 +136,7 @@ export type WrapResult =
     }
   | {
       readonly outcome: 'error';
-      readonly exitCode: number;
+      readonly exitCode: 1;
       readonly stdin: string;
       /** Always null — child never ran. */
       readonly stdout: null;

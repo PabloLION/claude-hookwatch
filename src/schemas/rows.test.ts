@@ -15,7 +15,6 @@
 
 import { describe, expect, test } from 'bun:test';
 import { ZodError } from 'zod';
-import type { ParsedEventFields } from '@/test/types.ts';
 import { eventRowSchema, parseEventRow, parseSseEvent } from './rows.ts';
 
 // ---------------------------------------------------------------------------

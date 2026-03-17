@@ -16,7 +16,12 @@
 import { openDb } from '@/db/connection.ts';
 import { getDistinctSessions, queryEvents } from '@/db/queries.ts';
 import { type QueryFilter, queryFilterSchema } from '@/schemas/query.ts';
-import { dbErrorResponse, parseRequestJson, zodErrorResponse } from '@/server/errors.ts';
+import {
+  dbErrorResponse,
+  errorResponse,
+  parseRequestJson,
+  zodErrorResponse,
+} from '@/server/errors.ts';
 import { HTTP_OK } from '@/server/http-status.ts';
 
 export async function handleQuery(req: Request): Promise<Response> {
@@ -46,7 +51,7 @@ export async function handleQuery(req: Request): Promise<Response> {
       }
       default: {
         const _exhaustive: never = filter.queryType;
-        return Response.json({ error: `Unknown queryType: ${_exhaustive}` }, { status: HTTP_OK });
+        return errorResponse('INVALID_QUERY', `Unknown queryType: ${String(_exhaustive)}`);
       }
     }
   } catch (err) {

@@ -103,8 +103,11 @@ function openAndInit(path: string): Database {
   );
 
   // Close before rename so WAL is flushed and the file can be moved
-  conn.run('PRAGMA wal_checkpoint(TRUNCATE);');
-  conn.close();
+  try {
+    conn.run('PRAGMA wal_checkpoint(TRUNCATE);');
+  } finally {
+    conn.close();
+  }
 
   try {
     renameSync(path, backupPath);

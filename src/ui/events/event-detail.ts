@@ -101,8 +101,7 @@ export function EventDetail({ entry }: EventDetailProps): ReturnType<typeof html
   const toolName: string | null =
     parsed !== null && typeof parsed.tool_name === 'string' ? parsed.tool_name : null;
   const toolInput: unknown = parsed !== null ? (parsed.tool_input ?? null) : null;
-  const formattedToolInput =
-    toolInput === null || toolInput === undefined ? null : JSON.stringify(toolInput, null, 2);
+  const formattedToolInput = toolInput === null ? null : JSON.stringify(toolInput, null, 2);
 
   return html`
     <div class="event-detail">

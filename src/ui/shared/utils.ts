@@ -16,7 +16,8 @@ export function hasContent(value: string | null | undefined): value is string {
 export function formatJsonForDisplay(json: string): string {
   try {
     return JSON.stringify(JSON.parse(json), null, 2);
-  } catch {
+  } catch (err) {
+    console.warn('hookwatch: failed to format JSON for display', err);
     return json;
   }
 }

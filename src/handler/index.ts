@@ -14,9 +14,11 @@
  *   event with captured I/O to the server. Always passes the child exit code
  *   through. If the server is unreachable, still passes through I/O.
  *
- * STDOUT CONTRACT: Claude Code interprets ANY stdout as hook output JSON.
- * All other logging goes to stderr (console.error / process.stderr.write) —
- * NEVER console.log().
+ * STDOUT CONTRACT: Claude Code parses the last JSON object from stdout.
+ * In bare mode, hookwatch writes the only JSON. In wrapped mode, child
+ * stdout precedes the hook JSON (concatenated — known limitation, see
+ * types.ts stdout comment). All other logging goes to stderr
+ * (console.error / process.stderr.write) — NEVER console.log().
  *
  * Exit codes:
  *   0 — always (hookwatch never exits non-zero in bare mode)
@@ -24,7 +26,7 @@
  *   Never exits with code 1 — Claude Code shows generic "hook error" for exit 1
  *   and does not surface stderr.
  *
- * Fatal errors (schema parse failure in bare mode):
+ * Fatal errors (stdin read failure or schema parse failure, bare mode only):
  *   exit 0 + JSON stdout with hookwatch_fatal + continue: true + systemMessage.
  *   Claude Code only parses stdout JSON at exit 0 — exit 2 JSON is silently
  *   ignored. Using exit 0 + systemMessage makes the error visible to the user
@@ -310,8 +312,8 @@ function processPostResult(
       }
 
       default: {
-        const _exhaustive: never = postResult.failureKind;
-        logEntries.push(`[error] Unknown failure kind: ${_exhaustive}`);
+        const _exhaustive: never = postResult;
+        logEntries.push(`[error] Unknown post result variant: ${String(_exhaustive)}`);
         break;
       }
     }

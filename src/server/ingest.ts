@@ -54,6 +54,13 @@ function stringOrNull(val: unknown): string | null {
   return typeof val === 'string' && val ? val : null;
 }
 
+/** Coerce an exit_code value to a number. Accepts number or numeric string; defaults to 0. */
+function parseExitCode(val: unknown): number {
+  if (typeof val === 'number') return val;
+  if (typeof val === 'string' && !Number.isNaN(Number(val))) return Number(val);
+  return 0;
+}
+
 /**
  * Extracts optional wrap fields from the parsed request body object.
  * These fields are present when the handler runs in wrapped mode.
@@ -64,7 +71,11 @@ function extractWrapFields(body: Record<string, unknown>): WrapFields {
   // Log a warning for semantically important fields that arrive with an unexpected type.
   // These indicate a handler/server version mismatch or a malformed request.
   if (body.exit_code !== undefined && typeof body.exit_code !== 'number') {
-    process.stderr.write('[hookwatch] [warn] exit_code has unexpected type\n');
+    if (typeof body.exit_code === 'string' && !Number.isNaN(Number(body.exit_code))) {
+      process.stderr.write('[hookwatch] [warn] exit_code arrived as string, coerced to number\n');
+    } else {
+      process.stderr.write('[hookwatch] [warn] exit_code has unexpected type, defaulting to 0\n');
+    }
   }
   if (body.wrapped_command !== undefined && typeof body.wrapped_command !== 'string') {
     process.stderr.write('[hookwatch] [warn] wrapped_command has unexpected type\n');
@@ -77,12 +88,7 @@ function extractWrapFields(body: Record<string, unknown>): WrapFields {
     wrappedCommand: stringOrNull(body.wrapped_command),
     wrappedStdout: stringOrNull(body.stdout),
     wrappedStderr: stringOrNull(body.stderr),
-    wrappedExitCode:
-      typeof body.exit_code === 'number'
-        ? body.exit_code
-        : typeof body.exit_code === 'string' && !Number.isNaN(Number(body.exit_code))
-          ? Number(body.exit_code)
-          : 0,
+    wrappedExitCode: parseExitCode(body.exit_code),
     hookDurationMs: typeof body.hook_duration_ms === 'number' ? body.hook_duration_ms : null,
     hookwatchLog: stringOrNull(body.hookwatch_log),
   };

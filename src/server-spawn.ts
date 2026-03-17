@@ -96,8 +96,6 @@ export type SpawnResult =
  *
  * Returns a SpawnResult discriminated on ok. Callers use failureKind to
  * distinguish a spawn failure ('spawn') from a health-probe timeout ('retry').
- *
- * Exported for reuse by cli/ui.ts (the hookwatch ui command).
  */
 export async function spawnServer(): Promise<SpawnResult> {
   const logPath = serverLogPath();
