@@ -15,23 +15,11 @@ import { defineCommand } from 'citty';
 import open from 'open';
 import { CLI_HEALTH_TIMEOUT_MS, DEFAULT_PORT } from '@/config.ts';
 import { errorMsg } from '@/errors.ts';
-import { isErrnoException } from '@/guards.ts';
+import { extractErrorCode } from '@/guards.ts';
 import { readPort } from '@/paths.ts';
 import { spawnServer } from '@/server-spawn.ts';
 
 const PORT_PROBE_TIMEOUT_MS = 500;
-
-/**
- * Extract the error code from an unknown thrown value.
- * Bun wraps connection errors: the code may be on err itself or on err.cause.
- * Returns undefined when neither layer carries an errno code.
- */
-function extractErrorCode(err: unknown): string | undefined {
-  const outerCode = isErrnoException(err) ? err.code : undefined;
-  const cause = err instanceof Error ? err.cause : undefined;
-  const innerCode = isErrnoException(cause) ? cause.code : undefined;
-  return outerCode ?? innerCode;
-}
 
 /**
  * Checks if the hookwatch server at the given port responds to GET /health
