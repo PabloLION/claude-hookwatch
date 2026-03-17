@@ -99,22 +99,49 @@ export type InsertEventParams = Omit<EventRow, 'id'>;
 // Wrap handler types
 // ---------------------------------------------------------------------------
 
-/** Result returned by runWrapped() after the child process exits. */
-export interface WrapResult {
-  readonly exitCode: number;
-  /** Raw stdin content (the Claude Code event JSON) — for the caller to parse. */
-  readonly stdin: string;
-  /** Captured child stdout, or null when the child produced no output. */
-  readonly stdout: string | null;
-  /** Captured child stderr, or null when the child produced no output. */
-  readonly stderr: string | null;
-  /**
-   * Hookwatch-internal diagnostic log entry for signal deaths, or null when
-   * the child exited normally. Format: "[warn] exit 137 (likely SIGKILL —
-   * forced termination)". Caller pushes this into logEntries so it appears
-   * in hookwatch_log and systemMessage.
-   *
-   * Nullable (not optional) to match the DB convention: null means "no value".
-   */
-  readonly hookwatchLog: string | null;
-}
+/**
+ * Result returned by runWrapped() after the child process exits.
+ *
+ * Three variants discriminated by `outcome`:
+ *   - 'normal': child exited cleanly; hookwatchLog is null when there are no issues.
+ *   - 'signal': child was killed by a signal; hookwatchLog is always set with a [warn] entry.
+ *   - 'error':  child never ran (spawn failure, stdin read failure, empty command);
+ *               stdout/stderr are always null; hookwatchLog is always set with an [error] entry.
+ */
+export type WrapResult =
+  | {
+      readonly outcome: 'normal';
+      readonly exitCode: number;
+      /** Raw stdin content (the Claude Code event JSON) — for the caller to parse. */
+      readonly stdin: string;
+      /** Captured child stdout, or null when the child produced no output. */
+      readonly stdout: string | null;
+      /** Captured child stderr, or null when the child produced no output. */
+      readonly stderr: string | null;
+      /** Null when the child exited cleanly with no issues. */
+      readonly hookwatchLog: string | null;
+    }
+  | {
+      readonly outcome: 'signal';
+      readonly exitCode: number;
+      readonly stdin: string;
+      readonly stdout: string | null;
+      readonly stderr: string | null;
+      /**
+       * Signal-death warning, always set. Format: "[warn] exit 137 (likely SIGKILL —
+       * forced termination)". Caller pushes this into logEntries so it appears
+       * in hookwatch_log and systemMessage.
+       */
+      readonly hookwatchLog: string;
+    }
+  | {
+      readonly outcome: 'error';
+      readonly exitCode: number;
+      readonly stdin: string;
+      /** Always null — child never ran. */
+      readonly stdout: null;
+      /** Always null — child never ran. */
+      readonly stderr: null;
+      /** Error description, always set. Format: "[error] <message>". */
+      readonly hookwatchLog: string;
+    };
