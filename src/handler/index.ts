@@ -232,10 +232,10 @@ function buildPostPayload(opts: {
  * Processes the POST result: exits fatal on infrastructure failure, appends
  * non-fatal error and version mismatch entries to logEntries.
  *
- * Control flow note: the spawn/retry branch calls exitFatal() (typed never),
- * so execution never continues to the logEntries.push() below for those
- * failure kinds. TypeScript narrows postResult to the http/exception variant
- * (which has a required detail field) after the early-exit branches.
+ * A switch on failureKind gives TypeScript structural certainty for each
+ * variant. The 'spawn' and 'retry' cases call exitFatal() (typed never) so
+ * the compiler knows they never fall through. The 'http' and 'exception'
+ * cases have a required detail field — accessed here without assertion.
  */
 function processPostResult(
   postResult: PostEventResult,
@@ -243,21 +243,25 @@ function processPostResult(
   wrapArgs: string[] | null,
 ): void {
   if (!postResult.ok) {
-    // Fatal: infrastructure broken — server cannot be reached at all.
-    // exitFatal() is typed as never, so these branches terminate the process.
-    if (postResult.failureKind === 'spawn' || postResult.failureKind === 'retry') {
-      exitFatal(postResult.failureReason);
-    }
+    switch (postResult.failureKind) {
+      case 'spawn':
+      case 'retry':
+        // Fatal: infrastructure broken — server cannot be reached at all.
+        exitFatal(postResult.failureReason);
+        break; // unreachable — exitFatal() is typed never
 
-    // After the spawn/retry guard above, postResult is narrowed to the
-    // 'http' | 'exception' variant, and postResult.detail is a required string.
-    const detail = postResult.detail ? `: ${postResult.detail}` : '';
-    logEntries.push(`[error] ${postResult.failureReason}${detail}`);
-
-    if (wrapArgs !== null) {
-      console.error(
-        `[hookwatch] Failed to POST wrapped event (${failureReason}) — continuing (best-effort)`,
-      );
+      case 'http':
+      case 'exception': {
+        // Non-fatal: transient failure — log and continue.
+        const detail = postResult.detail ? `: ${postResult.detail}` : '';
+        logEntries.push(`[error] ${postResult.failureReason}${detail}`);
+        if (wrapArgs !== null) {
+          console.error(
+            `[hookwatch] Failed to POST wrapped event (${postResult.failureReason}) — continuing (best-effort)`,
+          );
+        }
+        break;
+      }
     }
     return;
   }
