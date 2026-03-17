@@ -41,6 +41,7 @@
  *   Never mutate wrapped command exit code.
  */
 
+import type { z } from 'zod';
 import { errorMsg } from '@/errors.ts';
 import { readPort } from '@/paths.ts';
 import { parseHookEvent } from '@/schemas/events.ts';
@@ -83,24 +84,32 @@ function exitFatal(message: string): never {
 // ---------------------------------------------------------------------------
 
 /**
+ * Discriminates the error-handling strategy for parseEventSafely().
+ *
+ * 'bare'    — calls exitFatal() → exit 0 + JSON stdout (hookwatch_fatal).
+ * 'wrapped' — calls process.exit(fallbackExitCode) to forward the child's
+ *             exit code even when event parsing fails (best-effort passthrough).
+ */
+type ErrorMode = { mode: 'bare' } | { mode: 'wrapped'; fallbackExitCode: number };
+
+/**
  * Parses jsonStr as JSON and validates it against the HookEvent discriminated
  * union schema. On any error, logs to stderr and terminates the process.
  *
- * The fallbackExitCode parameter controls error handling:
- *   - null (bare mode): calls exitFatal() → exit 0 + JSON stdout (fatal)
- *   - non-null (wrapped mode): calls process.exit(fallbackExitCode) to forward
- *     the child's exit code even when event parsing fails (best-effort)
+ * The errorMode discriminant controls the termination strategy:
+ *   - { mode: 'bare' }: calls exitFatal() → exit 0 + JSON stdout (fatal)
+ *   - { mode: 'wrapped', fallbackExitCode }: calls process.exit(fallbackExitCode)
+ *     to forward the child's exit code (best-effort passthrough)
  *
  * This helper eliminates duplicate try-catch blocks across the two error paths.
  *
  * @param jsonStr - Raw stdin JSON string from Claude Code
- * @param fallbackExitCode - Child process exit code to forward on failure, or
- *   null for bare mode (use exitFatal instead)
+ * @param errorMode - Termination strategy for parse failures
  * @returns Parsed and validated hook event. Never returns on failure.
  */
 function parseEventSafely(
   jsonStr: string,
-  fallbackExitCode: number | null,
+  errorMode: ErrorMode,
 ): ReturnType<typeof parseHookEvent> {
   let parsed: unknown;
   try {
@@ -108,8 +117,8 @@ function parseEventSafely(
   } catch (err) {
     const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to parse stdin as JSON: ${msg}`);
-    if (fallbackExitCode !== null) {
-      process.exit(fallbackExitCode);
+    if (errorMode.mode === 'wrapped') {
+      process.exit(errorMode.fallbackExitCode);
     }
     exitFatal(`Failed to parse stdin as JSON: ${msg}`);
   }
@@ -119,8 +128,8 @@ function parseEventSafely(
   } catch (err) {
     const msg = errorMsg(err);
     console.error(`[hookwatch] Zod validation failed: ${msg}`);
-    if (fallbackExitCode !== null) {
-      process.exit(fallbackExitCode);
+    if (errorMode.mode === 'wrapped') {
+      process.exit(errorMode.fallbackExitCode);
     }
     exitFatal(`Zod validation failed: ${msg}`);
   }
@@ -131,6 +140,20 @@ function parseEventSafely(
 // ---------------------------------------------------------------------------
 
 /**
+ * Validates { continue, systemMessage } against hookOutputSchema and returns
+ * the parsed output. Calls exitFatal() on any schema violation — this would
+ * only happen if hookOutputSchema itself changed incompatibly with the literal
+ * object we build here, so it is treated as an internal error.
+ */
+function buildHookOutput(systemMessage: string): z.output<typeof hookOutputSchema> {
+  try {
+    return hookOutputSchema.parse({ continue: true, systemMessage });
+  } catch (err) {
+    exitFatal(`hookwatch: internal error building hook output: ${errorMsg(err)}`);
+  }
+}
+
+/**
  * Shape returned by readStdinAndWrapOutput() — discriminated on mode.
  *
  * 'bare'    — stdin was read directly; no child was spawned.
@@ -139,6 +162,16 @@ function parseEventSafely(
  * The discriminant eliminates runtime null assertions in buildPostPayload():
  * childStdout/childStderr are typed as string|null in the wrapped variant —
  * null means the child produced no output (empty capture normalized to null).
+ *
+ * Design note (G13): WrapResult fields are spread individually rather than
+ * embedded as `wrapResult: WrapResult` because:
+ *   - Both modes expose `stdinJson` at the top level for uniform access
+ *   - Embedding WrapResult would create two names for the same data:
+ *     `stdinJson` (bare) vs `wrapResult.stdin` (wrapped), forcing callers
+ *     to know which variant they are in just to read stdin
+ *   - Child-prefixed names (childStdout, childStderr, childExitCode) make
+ *     the origin explicit at every call site — no ambiguity with hookwatch's
+ *     own stdout/exitCode concepts that appear nearby in the pipeline
  */
 type StdinAndWrapOutput =
   | { readonly mode: 'bare'; readonly stdinJson: string }
@@ -323,11 +356,13 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   const startMs = Date.now();
 
   // parseEventSafely handles both try-catch blocks (JSON.parse + Zod validation).
-  // In wrapped mode (fallbackExitCode = childExitCode): forwards child exit code
-  // on parse failure (best-effort). In bare mode (fallbackExitCode = null):
-  // calls exitFatal() → exit 0 + JSON stdout (fatal, non-blocking).
-  const fallbackExitCode = stdinAndWrap.mode === 'wrapped' ? stdinAndWrap.childExitCode : null;
-  const event = parseEventSafely(stdinAndWrap.stdinJson, fallbackExitCode);
+  // In wrapped mode: forward child exit code on parse failure (best-effort).
+  // In bare mode: call exitFatal() → exit 0 + JSON stdout (fatal, non-blocking).
+  const errorMode: ErrorMode =
+    stdinAndWrap.mode === 'wrapped'
+      ? { mode: 'wrapped', fallbackExitCode: stdinAndWrap.childExitCode }
+      : { mode: 'bare' };
+  const event = parseEventSafely(stdinAndWrap.stdinJson, errorMode);
 
   // -------------------------------------------------------------------------
   // Step 4: Resolve port
@@ -345,16 +380,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // Build with the event's base systemMessage. This is the value stored in the
   // DB as "stdout" (what Claude Code would see in the normal case). The final
   // hook output written to stdout may differ if the POST fails — see Step 6.
-  let preliminaryHookOutput: ReturnType<typeof hookOutputSchema.parse>;
-  try {
-    preliminaryHookOutput = hookOutputSchema.parse({
-      continue: true,
-      systemMessage: buildSystemMessage(event),
-    });
-  } catch (err) {
-    const msg = errorMsg(err);
-    exitFatal(`Failed to build hook output JSON: ${msg}`);
-  }
+  const preliminaryHookOutput = buildHookOutput(buildSystemMessage(event));
   const preliminaryHookOutputJson = JSON.stringify(preliminaryHookOutput);
 
   // -------------------------------------------------------------------------
@@ -384,14 +410,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // Rebuild with the final logEntries so any POST failure reason appears in
   // systemMessage. If no failures occurred, logEntries matches the preliminary
   // build and the result is identical.
-  let hookOutput: ReturnType<typeof hookOutputSchema.parse>;
-  try {
-    const systemMessage = buildSystemMessage(event, logEntries);
-    hookOutput = hookOutputSchema.parse({ continue: true, systemMessage });
-  } catch (err) {
-    const msg = errorMsg(err);
-    exitFatal(`Failed to build final hook output JSON: ${msg}`);
-  }
+  const hookOutput = buildHookOutput(buildSystemMessage(event, logEntries));
   const hookOutputJson = JSON.stringify(hookOutput);
 
   // In wrapped mode, child stdout was already written by teeStream.
