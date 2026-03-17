@@ -16,8 +16,8 @@
  *
  * STDOUT CONTRACT: Claude Code parses the last JSON object from stdout.
  * In bare mode, hookwatch writes the only JSON. In wrapped mode, child
- * stdout precedes the hook JSON (concatenated — known limitation, see
- * types.ts stdout comment). All other logging goes to stderr
+ * stdout precedes the hook JSON (concatenated — known limitation).
+ * All other logging goes to stderr
  * (console.error / process.stderr.write) — NEVER console.log().
  *
  * Exit codes:

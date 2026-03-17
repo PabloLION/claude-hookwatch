@@ -10,7 +10,7 @@
  * - parseSseEvent parses valid JSON into an EventRow
  * - parseSseEvent throws SyntaxError on non-JSON input
  * - parseSseEvent throws ZodError on missing required fields
- * - .loose() preserves unknown fields from future DB columns
+ * - Unknown fields are stripped (no .loose())
  */
 
 import { describe, expect, test } from 'bun:test';
