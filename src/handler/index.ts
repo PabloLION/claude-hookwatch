@@ -256,7 +256,7 @@ function buildPostPayload(opts: {
 
   return {
     mode: 'wrapped',
-    wrappedCommand: stdinAndWrap.wrapArgs.join(' '),
+    wrappedCommand: JSON.stringify(stdinAndWrap.wrapArgs),
     stdout: stdinAndWrap.childStdout,
     stderr: stdinAndWrap.childStderr,
     exitCode: stdinAndWrap.childExitCode,
@@ -368,7 +368,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
 
   // Bare mode timer starts after stdin read (before event parse)
   // Wrapped mode timer starts here (after child exits — measures hookwatch overhead only)
-  const startMs = Date.now();
+  const startMs = performance.now();
 
   // parseEventSafely handles both try-catch blocks (JSON.parse + Zod validation).
   // In wrapped mode: forward child exit code on parse failure (best-effort).
@@ -402,7 +402,7 @@ async function handleHook(wrapArgs: string[] | null): Promise<void> {
   // Step 5: POST event to server
   // -------------------------------------------------------------------------
 
-  const elapsedMs = Date.now() - startMs;
+  const elapsedMs = Math.round(performance.now() - startMs);
   // hookwatchLog snapshot is taken before POST. Version-mismatch warnings from
   // the POST response are not included in the DB record but do appear in the
   // stdout systemMessage that Claude Code sees.

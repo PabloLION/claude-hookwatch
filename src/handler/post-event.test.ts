@@ -244,7 +244,7 @@ describe('wrapped mode', () => {
     expect(result.exitCode).toBe(0);
     expect(ctx.server.events).toHaveLength(1);
     const body = firstEventBody(ctx.server);
-    expect(body?.wrapped_command).toBe('sh -c exit 0');
+    expect(body?.wrapped_command).toBe('["sh","-c","exit 0"]');
   });
 
   test('wrapped mode includes hook_duration_ms as a non-negative number in POST body', async () => {
