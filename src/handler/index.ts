@@ -44,7 +44,7 @@
 import type { z } from 'zod';
 import { errorMsg } from '@/errors.ts';
 import { readPort } from '@/paths.ts';
-import { parseHookEvent } from '@/schemas/events.ts';
+import { type HookEvent, parseHookEvent } from '@/schemas/events.ts';
 import { hookOutputSchema } from '@/schemas/output.ts';
 import { buildSystemMessage } from './context.ts';
 import { type EventPostPayload, type PostEventResult, postEvent } from './post-event.ts';
@@ -112,10 +112,7 @@ type ErrorMode = { mode: 'bare' } | { mode: 'wrapped'; fallbackExitCode: number 
  * @param errorMode - Termination strategy for parse failures
  * @returns Parsed and validated hook event. Never returns on failure.
  */
-function parseEventSafely(
-  jsonStr: string,
-  errorMode: ErrorMode,
-): ReturnType<typeof parseHookEvent> {
+function parseEventSafely(jsonStr: string, errorMode: ErrorMode): HookEvent {
   let parsed: unknown;
   try {
     parsed = JSON.parse(jsonStr);
@@ -236,7 +233,7 @@ async function readStdinAndWrapOutput(wrapArgs: string[] | null): Promise<StdinA
  * present (possibly null) in the wrapped branch — no runtime null assertions needed.
  */
 function buildPostPayload(opts: {
-  event: ReturnType<typeof parseHookEvent>;
+  event: HookEvent;
   stdinAndWrap: StdinAndWrapOutput;
   elapsedMs: number;
   hookwatchLog: string | null;
