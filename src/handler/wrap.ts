@@ -49,6 +49,7 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
   if (cmd.length === 0) {
     console.error('[hookwatch] runWrapped called with empty command');
     return {
+      outcome: 'error',
       exitCode: 1,
       stdin: '',
       stdout: null,
@@ -68,6 +69,7 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
     const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to read stdin: ${msg}`);
     return {
+      outcome: 'error',
       exitCode: 1,
       stdin: '',
       stdout: null,
@@ -90,6 +92,7 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
     const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to spawn wrapped command: ${msg}`);
     return {
+      outcome: 'error',
       exitCode: 1,
       stdin: stdinContent,
       stdout: null,
@@ -126,20 +129,28 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
 
   // Build a [warn] log entry for signal deaths so the caller can store it in
   // hookwatch_log and surface it in the systemMessage.
-  let hookwatchLog: string | null = null;
   if (isSignalKill) {
     const description = describeExitCode(exitCode);
     const label = description === null ? '' : ` (${description})`;
-    hookwatchLog = `[warn] exit ${exitCode}${label}`;
+    const hookwatchLog = `[warn] exit ${exitCode}${label}`;
     console.error(`[hookwatch] Child killed by signal: ${hookwatchLog}`);
+    return {
+      outcome: 'signal',
+      exitCode,
+      stdin: stdinContent,
+      stdout: capturedStdout,
+      stderr: capturedStderr,
+      hookwatchLog,
+    };
   }
 
   return {
+    outcome: 'normal',
     exitCode,
     stdin: stdinContent,
     stdout: capturedStdout,
     stderr: capturedStderr,
-    hookwatchLog,
+    hookwatchLog: null,
   };
 }
 
