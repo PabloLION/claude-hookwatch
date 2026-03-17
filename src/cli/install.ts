@@ -12,7 +12,7 @@
  */
 
 import { mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { defineCommand } from 'citty';
 import { errorMsg } from '@/errors.ts';
 import { description, name, version } from '../../package.json';
@@ -57,6 +57,27 @@ async function runBunLink(dryRun: boolean): Promise<boolean> {
   return exitCode === 0;
 }
 
+/**
+ * Writes content to a file, creating parent directories as needed.
+ * In dry-run mode, logs what would be written and returns without touching the filesystem.
+ * On write failure, prints to stderr and exits with code 1.
+ */
+async function writeFileOrExit(filePath: string, content: string, dryRun: boolean): Promise<void> {
+  if (dryRun) {
+    console.log(`[dry-run] Would write ${filePath}:`);
+    console.log(content);
+    return;
+  }
+  try {
+    mkdirSync(dirname(filePath), { recursive: true });
+    await Bun.write(filePath, content);
+    console.log(`Wrote ${filePath}`);
+  } catch (err) {
+    process.stderr.write(`[hookwatch] Failed to write ${filePath}: ${errorMsg(err)}\n`);
+    process.exit(1);
+  }
+}
+
 export const installCommand = defineCommand({
   meta: {
     name: 'install',
@@ -82,42 +103,14 @@ export const installCommand = defineCommand({
     }
 
     // 1. Generate .claude-plugin/plugin.json
-    const pluginDir = join(PACKAGE_ROOT, '.claude-plugin');
-    const pluginJsonPath = join(pluginDir, 'plugin.json');
+    const pluginJsonPath = join(PACKAGE_ROOT, '.claude-plugin', 'plugin.json');
     const pluginJsonContent = `${JSON.stringify(buildPluginJson({ name, version, description }), null, 2)}\n`;
-
-    if (dryRun) {
-      console.log(`[dry-run] Would write ${pluginJsonPath}:`);
-      console.log(pluginJsonContent);
-    } else {
-      try {
-        mkdirSync(pluginDir, { recursive: true });
-        await Bun.write(pluginJsonPath, pluginJsonContent);
-        console.log(`Wrote ${pluginJsonPath}`);
-      } catch (err) {
-        process.stderr.write(`[hookwatch] Failed to write ${pluginJsonPath}: ${errorMsg(err)}\n`);
-        process.exit(1);
-      }
-    }
+    await writeFileOrExit(pluginJsonPath, pluginJsonContent, dryRun);
 
     // 2. Generate hooks/hooks.json
-    const hooksDir = join(PACKAGE_ROOT, 'hooks');
-    const hooksJsonPath = join(hooksDir, 'hooks.json');
+    const hooksJsonPath = join(PACKAGE_ROOT, 'hooks', 'hooks.json');
     const hooksJsonContent = `${JSON.stringify({ hooks: buildHooksJson() }, null, 2)}\n`;
-
-    if (dryRun) {
-      console.log(`[dry-run] Would write ${hooksJsonPath}:`);
-      console.log(hooksJsonContent);
-    } else {
-      try {
-        mkdirSync(hooksDir, { recursive: true });
-        await Bun.write(hooksJsonPath, hooksJsonContent);
-        console.log(`Wrote ${hooksJsonPath}`);
-      } catch (err) {
-        process.stderr.write(`[hookwatch] Failed to write ${hooksJsonPath}: ${errorMsg(err)}\n`);
-        process.exit(1);
-      }
-    }
+    await writeFileOrExit(hooksJsonPath, hooksJsonContent, dryRun);
 
     // 3. Run bun link
     const linkOk = await runBunLink(dryRun);
