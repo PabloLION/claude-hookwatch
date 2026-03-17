@@ -17,10 +17,11 @@
  * real output). The hook output JSON written by index.ts AFTER runWrapped()
  * returns is appended after the child's output.
  *
- * Best-effort: if the child process fails to spawn, we still return an exit
- * code of 1 with null stdout/stderr — the caller handles server reporting.
- * If the child is signal-killed, Bun's proc.exited is typed as Promise<number>
- * but we guard against null defensively. Signal deaths are
+ * Best-effort: if the child process fails to spawn, stdin cannot be read, or
+ * the command array is empty, we still return an exit code of 1 with null
+ * stdout/stderr — the caller handles server reporting. If the child is
+ * signal-killed, Bun's proc.exited is typed as Promise<number> but we guard
+ * against null defensively. Signal deaths are
  * detected via proc.signalCode with a 128+N fallback computed from the signal
  * number. A [warn] log entry is included in WrapResult.hookwatchLog for the
  * caller.

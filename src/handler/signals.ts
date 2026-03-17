@@ -1,8 +1,10 @@
 /**
  * Signal-to-exit-code utilities for the hookwatch handler.
  *
- * When a child process is killed by a signal, Bun returns null for the exit
- * code. The POSIX convention is to report 128+N as the exit code for signal N.
+ * When a child process is killed by a signal, Bun's proc.exited typically
+ * resolves to 128+N for signal-killed children. A null guard is retained
+ * defensively since the runtime behavior may vary. The POSIX convention is to
+ * report 128+N as the exit code for signal N.
  * This module translates signal names to their conventional exit codes and
  * provides human-readable labels for diagnostics.
  *

@@ -9,6 +9,7 @@ import { applyFreshSchema, CURRENT_VERSION, checkVersion } from './schema.ts';
 const DB_FILE_MODE = 0o600;
 
 let db: Database | null = null;
+let activePath: string | null = null;
 
 /**
  * Open (or return the cached) database connection.
@@ -30,7 +31,14 @@ let db: Database | null = null;
  *        opens a fresh DB, applies schema. Logs warning to stderr.
  */
 export function openDb(dbPath?: string): Database {
-  if (db !== null) return db;
+  if (db !== null) {
+    if (dbPath !== undefined && dbPath !== activePath) {
+      process.stderr.write(
+        `[hookwatch] [warn] openDb: singleton already open at ${activePath}, ignoring requested path ${dbPath}\n`,
+      );
+    }
+    return db;
+  }
 
   const path = dbPath ?? resolveDbPath();
   const dir = dirname(path);
@@ -40,6 +48,7 @@ export function openDb(dbPath?: string): Database {
   }
 
   db = openAndInit(path);
+  activePath = path;
   return db;
 }
 
@@ -84,7 +93,10 @@ function openAndInit(path: string): Database {
     throw new Error('PRAGMA user_version returned no rows — database may be corrupted');
   }
   const oldVersion = versionRow.user_version;
-  const backupPath = `${path}.v${oldVersion}`;
+  let backupPath = `${path}.v${oldVersion}`;
+  if (existsSync(backupPath)) {
+    backupPath = `${backupPath}.${Date.now()}`;
+  }
   process.stderr.write(
     `[hookwatch] WARNING: DB schema version ${oldVersion} does not match expected ${CURRENT_VERSION}. ` +
       `Backing up to ${backupPath} and creating fresh database.\n`,
@@ -120,5 +132,6 @@ export function close(): void {
   if (db !== null) {
     db.close();
     db = null;
+    activePath = null;
   }
 }
