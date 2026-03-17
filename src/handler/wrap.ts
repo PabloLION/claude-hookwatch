@@ -48,7 +48,13 @@ import { describeExitCode, signalExitCode } from './signals.ts';
 export async function runWrapped(cmd: string[]): Promise<WrapResult> {
   if (cmd.length === 0) {
     console.error('[hookwatch] runWrapped called with empty command');
-    return { exitCode: 1, stdin: '', stdout: null, stderr: null };
+    return {
+      exitCode: 1,
+      stdin: '',
+      stdout: null,
+      stderr: null,
+      hookwatchLog: '[error] runWrapped called with empty command',
+    };
   }
 
   // Read stdin into a buffer so we can both pass it to the child AND parse it
@@ -61,7 +67,13 @@ export async function runWrapped(cmd: string[]): Promise<WrapResult> {
   } catch (err) {
     const msg = errorMsg(err);
     console.error(`[hookwatch] Failed to read stdin: ${msg}`);
-    return { exitCode: 1, stdin: '', stdout: null, stderr: null };
+    return {
+      exitCode: 1,
+      stdin: '',
+      stdout: null,
+      stderr: null,
+      hookwatchLog: `[error] failed to read stdin: ${msg}`,
+    };
   }
 
   // ReadableSubprocess = Subprocess<any, "pipe", "pipe"> — narrows stdout/stderr
