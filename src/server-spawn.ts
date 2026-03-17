@@ -18,7 +18,7 @@ import { isErrnoException } from '@/guards.ts';
 import { readPort, serverLogPath } from '@/paths.ts';
 
 const HEALTH_POLL_INTERVAL_MS = 100;
-const HEALTH_MAX_ATTEMPTS = 20; // 20 polls × 100ms sleep = 2s minimum; worst case ~12s with 500ms per-poll fetch timeout
+const HEALTH_MAX_ATTEMPTS = 20; // ~100ms on first-poll success; worst case 20 × (100ms + 500ms timeout) = 12s
 
 /** Absolute path to the server entry point.
  * import.meta.url is file:///…/src/server-spawn.ts

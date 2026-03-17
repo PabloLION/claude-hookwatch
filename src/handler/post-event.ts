@@ -193,8 +193,8 @@ async function postWithVersionCheck(
  * Typed mapping from WrappedEventPayload-specific camelCase fields to their
  * snake_case wire names.
  *
- * Keys are constrained to exactly the fields that WrappedEventPayload adds
- * over BaseEventPayload (plus 'mode' which is structural, not a wire field).
+ * Keys are constrained to the WrappedEventPayload-specific fields, excluding
+ * BaseEventPayload fields and the 'mode' discriminant (not a wire field).
  * The TypeScript compiler errors here if a new field is added to
  * WrappedEventPayload without a corresponding snake_case mapping.
  *

@@ -110,7 +110,7 @@ export async function handleIngest(req: Request): Promise<Response> {
   }
 
   // Extract optional wrap fields explicitly for typed DB storage.
-  // the .loose() schemas used by parseHookEvent() would preserve them as untyped index entries,
+  // The .loose() schemas used by parseHookEvent() would preserve them as untyped index entries,
   // but we need them as named, typed WrapFields for insertEvent().
   const {
     wrappedCommand,
