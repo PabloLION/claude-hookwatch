@@ -14,7 +14,7 @@
  * Note: Port file reading is tested in src/paths.test.ts.
  */
 
-import { afterAll, beforeAll, describe, expect, it, mock, spyOn } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, mock, spyOn, test } from 'bun:test';
 import { DEFAULT_PORT } from '@/config.ts';
 import { startServer } from '@/server/index.ts';
 import { UNUSED_PORT_A, UNUSED_PORT_B, UNUSED_PORT_C } from '@/test/constants.ts';
@@ -29,7 +29,7 @@ import { isPortOccupied, isServerRunning } from './ui.ts';
 const SNAPSHOT_DEFAULT_PORT = 6004;
 
 describe('DEFAULT_PORT', () => {
-  it('is 6004', () => {
+  test('is 6004', () => {
     expect(DEFAULT_PORT).toBe(SNAPSHOT_DEFAULT_PORT);
   });
 });
@@ -57,18 +57,18 @@ describe('isServerRunning', () => {
     xdg.cleanup();
   });
 
-  it('returns false for a port with nothing listening', async () => {
+  test('returns false for a port with nothing listening', async () => {
     // Use a port unlikely to be in use
     const result = await isServerRunning(UNUSED_PORT_A);
     expect(result).toBe(false);
   });
 
-  it('returns true when the hookwatch server is running on the port', async () => {
+  test('returns true when the hookwatch server is running on the port', async () => {
     const result = await isServerRunning(serverPort);
     expect(result).toBe(true);
   });
 
-  it('returns false when the port serves a non-200 health response', async () => {
+  test('returns false when the port serves a non-200 health response', async () => {
     // We can't easily test this with a real server, so test with a port that
     // has nothing listening (which also returns false)
     const result = await isServerRunning(UNUSED_PORT_B);
@@ -99,12 +99,12 @@ describe('isPortOccupied', () => {
     xdg.cleanup();
   });
 
-  it('returns false for a port with nothing listening', async () => {
+  test('returns false for a port with nothing listening', async () => {
     const result = await isPortOccupied(UNUSED_PORT_C);
     expect(result).toBe(false);
   });
 
-  it('returns true when an HTTP server is listening on the port', async () => {
+  test('returns true when an HTTP server is listening on the port', async () => {
     const result = await isPortOccupied(serverPort);
     expect(result).toBe(true);
   });
@@ -117,7 +117,7 @@ describe('isPortOccupied', () => {
 const TEST_UI_URL = 'http://localhost:6004';
 
 describe('openBrowser', () => {
-  it('calls the open package with the URL', async () => {
+  test('calls the open package with the URL', async () => {
     // mock.module replaces the module before dynamic import picks it up
     let capturedUrl: string | undefined;
     mock.module('open', () => ({
@@ -133,7 +133,7 @@ describe('openBrowser', () => {
     expect(capturedUrl).toBe(TEST_UI_URL);
   });
 
-  it('logs a warning and manual URL when open throws', async () => {
+  test('logs a warning and manual URL when open throws', async () => {
     const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
     const logSpy = spyOn(console, 'log').mockImplementation(() => {});
 

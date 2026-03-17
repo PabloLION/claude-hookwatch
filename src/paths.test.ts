@@ -163,8 +163,7 @@ describe('invalid port file content', () => {
     expect(result.warning).toContain('-1');
   });
 
-  test("float string → DEFAULT_PORT, non-null warning (parseInt truncates to NaN for '6.5'...)", () => {
-    // parseInt("6.5") = 6, which is valid — but "abc6" → NaN
+  test('non-numeric string → DEFAULT_PORT, non-null warning', () => {
     writePortFile('abc6');
     const result = readPort();
     expect(result.port).toBe(DEFAULT_PORT);
