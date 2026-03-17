@@ -41,6 +41,8 @@ export type HookOutput = z.infer<typeof hookOutputSchema>;
 // PreToolUse-specific schema
 // ---------------------------------------------------------------------------
 
+// Exported as contract documentation — consumed by tests today; future production
+// hook wrappers (PreToolUse blocking, Stop decision) will validate against these.
 /**
  * Output schema for PreToolUse hooks.
  * hookSpecificOutput carries the permission decision and optional modified input.

@@ -29,7 +29,6 @@ const CONTENT_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.js': CONTENT_TYPE_JS,
-  '.ts': CONTENT_TYPE_JS,
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
@@ -44,6 +43,7 @@ interface CacheEntry {
 // In-memory transpile cache — keyed by resolved file path
 const transpileCache = new Map<string, CacheEntry>();
 
+// tsx loader handles both .ts and .tsx — superset of ts loader
 const transpiler = new Bun.Transpiler({ loader: 'tsx' });
 
 /**
@@ -140,7 +140,10 @@ export async function handleStatic(pathname: string): Promise<Response> {
       headers: { 'Content-Type': contentType },
     });
   } catch {
-    // TOCTOU: file deleted between statSync and Response construction
+    // Last-resort backstop: Bun.file() + new Response() are deferred I/O (no
+    // read at construction), so filesystem errors surface during response
+    // streaming (caught by Bun.serve error handler). This catch guards against
+    // any synchronous Bun internal error during Response construction.
     return errorResponse('NOT_FOUND', `File not found: ${normalised}`);
   }
 }
