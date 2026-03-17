@@ -2,7 +2,7 @@
  * hookwatch UI entry point.
  *
  * Owns cross-component signals and mounts the root component.
- * ch-u88: all rendering via htm template literals — no innerHTML.
+ * All rendering via htm template literals — no innerHTML.
  */
 
 import { signal } from '@preact/signals';

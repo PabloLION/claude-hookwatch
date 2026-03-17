@@ -9,7 +9,7 @@
  *   - Other files: served directly with appropriate Content-Type
  *   - Missing files: 404 NOT_FOUND
  *
- * ch-u88: no innerHTML — this handler only returns file bytes or transpiled
+ * No innerHTML — this handler only returns file bytes or transpiled
  * text, never interpolates path values into HTML.
  */
 

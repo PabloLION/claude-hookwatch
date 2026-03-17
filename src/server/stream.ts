@@ -4,7 +4,7 @@
  * Maintains a set of connected SSE clients and broadcasts new events to all
  * of them as they are ingested via POST /api/events.
  *
- * ch-u88: SSE data is JSON.stringify()'d — never interpolated into HTML.
+ * SSE data is JSON.stringify()'d — never interpolated into HTML.
  *
  * SSE message format (per spec):
  *   data: <json>\n\n
@@ -77,7 +77,7 @@ const encoder = new TextEncoder();
  * Broadcast an event row to all connected SSE clients.
  * Dead clients (those that have already closed) are removed from the set.
  *
- * ch-u88: data is JSON.stringify()'d — never set via innerHTML.
+ * Data is JSON.stringify()'d — never set via innerHTML.
  */
 export function broadcast(event: EventRow): void {
   const message = encoder.encode(`data: ${JSON.stringify(event)}\n\n`);
