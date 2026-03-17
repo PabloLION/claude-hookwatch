@@ -46,7 +46,11 @@ export function resetIdleTimer(): void {
   idleTimer = setTimeout(() => {
     process.stderr.write('[hookwatch] Idle timeout reached — shutting down server\n');
     // stop() handles all cleanup steps independently; just call it once.
-    if (shutdownCallback !== null) shutdownCallback();
+    try {
+      if (shutdownCallback !== null) shutdownCallback();
+    } catch (err) {
+      process.stderr.write(`[hookwatch] Error during idle shutdown: ${errorMsg(err)}\n`);
+    }
     process.exit(0);
   }, IDLE_TIMEOUT_MS);
   // .unref() prevents the timer from keeping the process alive.
