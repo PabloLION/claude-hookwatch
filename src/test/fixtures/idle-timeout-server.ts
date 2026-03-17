@@ -11,6 +11,8 @@
  *   HOOKWATCH_TEST_IDLE_TIMEOUT_MS  — idle timeout in milliseconds (required)
  */
 
+import { isErrnoException } from '@/guards.ts';
+
 const BASE_PORT = 6900;
 const HOSTNAME = '127.0.0.1';
 
@@ -57,9 +59,8 @@ for (let port = BASE_PORT; port <= BASE_PORT + 60; port++) {
     break;
   } catch (err) {
     const isAddrInUse =
-      err instanceof Error &&
-      (('code' in err && err.code === 'EADDRINUSE') ||
-        err.message.includes('address already in use'));
+      (isErrnoException(err) && err.code === 'EADDRINUSE') ||
+      (err instanceof Error && err.message.includes('address already in use'));
     if (isAddrInUse) continue;
     throw err;
   }
