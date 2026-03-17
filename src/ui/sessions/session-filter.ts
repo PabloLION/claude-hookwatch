@@ -11,7 +11,7 @@
  * Signal ownership: activeSession is owned by app.ts and passed as a prop —
  * this component only reads and writes it, never creates it.
  *
- * ch-u88: all rendering via htm template literals — no innerHTML.
+ * All rendering via htm template literals — no innerHTML.
  */
 
 import type { Signal } from '@preact/signals';

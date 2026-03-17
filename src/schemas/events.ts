@@ -4,7 +4,6 @@
  * Design decisions:
  * - .loose() on ALL schemas — unknown fields are preserved, not stripped.
  *   Forward-compatible with Claude Code SDK changes.
- *   (.passthrough() was replaced by .loose() in Zod v4.)
  * - z.enum() for fields with documented fixed values (source, reason, etc.).
  * - z.record(z.string(), z.unknown()) for arbitrary JSON objects (tool_input, tool_response).
  *   Note: Zod v4 requires two arguments for z.record(); the single-arg form z.record(z.unknown()) is broken (throws TypeError).

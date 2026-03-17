@@ -17,7 +17,7 @@
  *   - Rows that fail parseEventRow validation are kept as { valid: false } entries
  *   - Rendered with a red/error background and expandable raw data + error detail
  *
- * ch-u88: all rendering via htm template literals — no innerHTML.
+ * All rendering via htm template literals — no innerHTML.
  */
 
 import type { Signal } from '@preact/signals';

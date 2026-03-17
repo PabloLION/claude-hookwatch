@@ -13,13 +13,12 @@
  * stdin (the Claude Code event JSON) IS captured by the wrap handler —
  * src/handler/wrap.ts reads it, buffers it, and pipes it to the child process.
  *
- * ch-u88: all rendering via htm template literals — no innerHTML.
+ * All rendering via htm template literals — no innerHTML.
  */
 
-import { errorMsg } from '@/errors.ts';
 import type { EventRow } from '@/types.ts';
 import { html } from '../shared/html.ts';
-import { hasContent } from '../shared/utils.ts';
+import { formatJsonForDisplay, hasContent } from '../shared/utils.ts';
 
 interface WrapViewerProps {
   readonly event: EventRow;
@@ -38,23 +37,10 @@ function exitCodeStyle(exitCode: number): Record<string, string> {
   return { color: 'var(--pico-del-color, #c0392b)', fontWeight: '600' };
 }
 
-/**
- * Parse a JSON stdin string for display. Falls back to raw string on failure.
- */
-function formatStdin(stdinJson: string): string {
-  try {
-    const parsed: unknown = JSON.parse(stdinJson);
-    return JSON.stringify(parsed, null, 2);
-  } catch (err) {
-    console.warn('[hookwatch] formatStdin: could not parse stdin JSON:', errorMsg(err));
-    return stdinJson;
-  }
-}
-
 export function WrapViewer({ event }: WrapViewerProps): ReturnType<typeof html> {
   const exitStyle = exitCodeStyle(event.exit_code);
   const exitLabel = String(event.exit_code);
-  const formattedStdin = formatStdin(event.stdin);
+  const formattedStdin = formatJsonForDisplay(event.stdin);
 
   return html`
     <div class="event-detail wrap-viewer" data-testid="wrap-viewer">

@@ -31,7 +31,7 @@ tests/wrap-viewer.test.ts (Playwright)
 
 - Import pattern: use bare specifiers (`import { html } from 'htm/preact'`) — resolved via `<script type="importmap">` in index.html pointing to local vendor files under src/ui/vendor/
 - Vendor setup: install preact, htm, @preact/signals via bun, copy browser ESM builds to src/ui/vendor/, add importmap entries in index.html
-- ch-u88: no innerHTML — all rendering via htm template literals
+- No innerHTML — all rendering via htm template literals
 - Pico CSS: local npm dependency (@picocss/pico, pinned version) — copy pico.min.css to src/ui/pico.min.css. NOT CDN (offline-first)
 - Signal ownership: app.ts owns cross-component signals (activeSession, eventList), passes as props
 - Multiple sections can be open simultaneously (not exclusive accordion)

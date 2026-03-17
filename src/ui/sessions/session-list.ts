@@ -5,8 +5,8 @@
  * Keeps fetch logic separate from the SessionFilter component so it can be
  * tested and reused independently.
  *
- * ch-lar: no SQL in this layer — all querying goes through the server API.
- * ch-u88: no innerHTML — this module does not render HTML.
+ * No SQL in this layer — all querying goes through the server API.
+ * No innerHTML — this module does not render HTML.
  */
 
 /**

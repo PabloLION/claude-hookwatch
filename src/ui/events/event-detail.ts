@@ -12,13 +12,13 @@
  *
  * Full stdin as JSON.stringify(parsed, null, 2) inside <pre><code>.
  *
- * ch-u88: all rendering via htm template literals — no innerHTML.
+ * All rendering via htm template literals — no innerHTML.
  */
 
 import { type HookEvent, parseHookEvent } from '@/schemas/events.ts';
 import type { EventRow } from '@/types.ts';
 import { html } from '../shared/html.ts';
-import { hasContent } from '../shared/utils.ts';
+import { formatJsonForDisplay, hasContent } from '../shared/utils.ts';
 import { WrapViewer } from '../wrap/wrap-viewer.ts';
 import type { RowEntry } from './event-list.ts';
 
@@ -55,25 +55,6 @@ function parseStdin(stdinJson: string): HookEvent | null {
   }
 }
 
-/**
- * Extract a string field from a parsed HookEvent.
- * Returns null when the field is absent or not a string.
- */
-function extractStringField(parsed: HookEvent | null, field: string): string | null {
-  if (parsed === null) return null;
-  const value = parsed[field];
-  return typeof value === 'string' ? value : null;
-}
-
-/**
- * Extract the tool_input field from a parsed HookEvent.
- * Returns null when absent.
- */
-function extractToolInput(parsed: HookEvent | null): unknown {
-  if (parsed === null) return null;
-  return parsed.tool_input ?? null;
-}
-
 interface EventDetailProps {
   readonly entry: RowEntry;
 }
@@ -108,17 +89,18 @@ export function EventDetail({ entry }: EventDetailProps): ReturnType<typeof html
   const event: EventRow = entry.row;
 
   // Wrapped events: delegate entirely to WrapViewer
-  if (event.wrapped_command != null) {
+  if (event.wrapped_command !== null) {
     return html`<${WrapViewer} event=${event} />`;
   }
 
   // Bare event: standard detail view
   const parsed = parseStdin(event.stdin);
-  const formattedStdin = parsed === null ? event.stdin : JSON.stringify(parsed, null, 2);
+  const formattedStdin = formatJsonForDisplay(event.stdin);
 
   const showToolInfo = isToolEvent(event.event);
-  const toolName = extractStringField(parsed, 'tool_name');
-  const toolInput = extractToolInput(parsed);
+  const toolName: string | null =
+    parsed !== null && typeof parsed.tool_name === 'string' ? parsed.tool_name : null;
+  const toolInput: unknown = parsed !== null ? (parsed.tool_input ?? null) : null;
   const formattedToolInput =
     toolInput === null || toolInput === undefined ? null : JSON.stringify(toolInput, null, 2);
 

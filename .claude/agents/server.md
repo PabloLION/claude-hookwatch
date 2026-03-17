@@ -25,8 +25,8 @@ src/server/query.ts, src/server/static.ts, src/server/stream.ts
 
 ## Key constraints
 
-- ch-lar: parameterized SQL only — no string concatenation in queries
-- ch-u88: no innerHTML — SSE data is JSON-stringified, never interpolated into HTML
+- Parameterized SQL only — no string concatenation in queries
+- No innerHTML — SSE data is JSON-stringified, never interpolated into HTML
 - snake_case for DB columns and API response fields
 - camelCase for TypeScript code
 - Path traversal prevention in static file serving (resolve + startsWith guard)

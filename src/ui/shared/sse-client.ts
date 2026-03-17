@@ -13,7 +13,7 @@
  * EventSource reconnects automatically on network interruptions — no custom
  * reconnect logic is needed.
  *
- * ch-u88: no innerHTML — this module does not render HTML.
+ * No innerHTML — this module does not render HTML.
  */
 
 import type { Signal } from '@preact/signals';

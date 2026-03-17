@@ -9,7 +9,7 @@
  *   - 503 DB_LOCKED      — SQLite SQLITE_BUSY/SQLITE_LOCKED
  *   - 500 INTERNAL       — any other unexpected error
  *
- * ch-lar: query values flow through queryEvents() parameterized helpers only —
+ * Query values flow through queryEvents() parameterized helpers only —
  * no SQL string concatenation in this handler.
  */
 
