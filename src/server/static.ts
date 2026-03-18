@@ -1,8 +1,10 @@
 /**
- * Static file handler — serves files from src/ui/.
+ * Static file handler — serves UI assets from src/ui/ and shared source
+ * modules from src/ (via the /@/ URL prefix).
  *
  * Features:
- *   - Path traversal prevention: resolved path must start with UI_DIR
+ *   - Path traversal prevention: resolved path must stay inside its base dir
+ *   - /@/* routes: shared source modules for browser (import map maps @/ → /@/)
  *   - .ts files: transpiled on-the-fly via Bun.Transpiler, served as JS
  *   - Transpiler cache: in-memory Map keyed by resolved path, invalidated
  *     when the file's mtime changes
@@ -20,8 +22,9 @@ import { isErrnoException } from '@/guards.ts';
 import { errorResponse } from '@/server/errors.ts';
 import { HTTP_OK } from '@/server/http-status.ts';
 
-// Resolve src/ui/ relative to this file's directory (src/server/ → ../ui/)
+// Resolve src/ui/ and src/ relative to this file's directory (src/server/)
 const UI_DIR = resolve(import.meta.dir, '../ui');
+const SRC_DIR = resolve(import.meta.dir, '..');
 
 const CONTENT_TYPE_JS = 'application/javascript; charset=utf-8';
 
@@ -47,19 +50,19 @@ const transpileCache = new Map<string, CacheEntry>();
 const transpiler = new Bun.Transpiler({ loader: 'tsx' });
 
 /**
- * Resolve the URL pathname to a file path inside UI_DIR.
- * Returns null if the path escapes UI_DIR (traversal attack).
+ * Resolve a URL pathname to a file path inside baseDir.
+ * Returns null if the path escapes baseDir (traversal attack).
  */
-function resolveUiPath(pathname: string): string | null {
+function resolveSafePath(baseDir: string, pathname: string): string | null {
   // Null byte in path is always invalid — reject before any filesystem call
   if (pathname.includes('\0')) return null;
 
-  // Strip leading slash so resolve() stays inside UI_DIR
+  // Strip leading slash so resolve() stays inside baseDir
   const relative = pathname.replace(/^\//, '');
-  const resolved = resolve(UI_DIR, relative);
+  const resolved = resolve(baseDir, relative);
 
-  // Guard: resolved path must remain inside UI_DIR
-  if (!resolved.startsWith(`${UI_DIR}/`) && resolved !== UI_DIR) {
+  // Guard: resolved path must remain inside baseDir
+  if (!resolved.startsWith(`${baseDir}/`) && resolved !== baseDir) {
     return null;
   }
 
@@ -71,10 +74,18 @@ function resolveUiPath(pathname: string): string | null {
  * @param pathname — URL pathname, e.g. "/index.html" or "/app.ts"
  */
 export async function handleStatic(pathname: string): Promise<Response> {
-  // Default / to index.html
-  const normalised = pathname === '/' ? '/index.html' : pathname;
+  // Normalize early: default / to index.html, resolve /@/ prefix for shared source modules
+  const normalized = pathname === '/' ? '/index.html' : pathname;
 
-  const filePath = resolveUiPath(normalised);
+  let filePath: string | null;
+  if (normalized.startsWith('/@/')) {
+    // Shared source modules requested by browser via import map (@/ → /@/).
+    // normalized.slice(2) turns "/@/schemas/rows.ts" → "/schemas/rows.ts".
+    filePath = resolveSafePath(SRC_DIR, normalized.slice(2));
+  } else {
+    filePath = resolveSafePath(UI_DIR, normalized);
+  }
+
   if (filePath === null) {
     return errorResponse('NOT_FOUND', 'Path not allowed');
   }
@@ -87,10 +98,10 @@ export async function handleStatic(pathname: string): Promise<Response> {
     // ENOENT is the normal "file not found" case — return 404.
     // All other errors (EACCES, EIO, etc.) indicate a real problem — log and return 500.
     if (isErrnoException(err) && err.code === 'ENOENT') {
-      return errorResponse('NOT_FOUND', `File not found: ${normalised}`);
+      return errorResponse('NOT_FOUND', `File not found: ${normalized}`);
     }
-    process.stderr.write(`[hookwatch] Static file error for ${normalised}: ${errorMsg(err)}\n`);
-    return errorResponse('INTERNAL', `Could not read file: ${normalised}`);
+    process.stderr.write(`[hookwatch] Static file error for ${normalized}: ${errorMsg(err)}\n`);
+    return errorResponse('INTERNAL', `Could not read file: ${normalized}`);
   }
 
   const mtime = stat.mtimeMs;
@@ -110,17 +121,17 @@ export async function handleStatic(pathname: string): Promise<Response> {
         source = await tsFile.text();
       } catch (err) {
         process.stderr.write(
-          `[hookwatch] Static file read error for ${normalised}: ${errorMsg(err)}\n`,
+          `[hookwatch] Static file read error for ${normalized}: ${errorMsg(err)}\n`,
         );
-        return errorResponse('INTERNAL', `Could not read file: ${normalised}`);
+        return errorResponse('INTERNAL', `Could not read file: ${normalized}`);
       }
       let transformed: string;
       try {
         transformed = transpiler.transformSync(source);
       } catch (err) {
         const message = errorMsg(err);
-        process.stderr.write(`[hookwatch] Transpile error for ${normalised}: ${message}\n`);
-        return errorResponse('INTERNAL', `Failed to transpile ${normalised}: ${message}`);
+        process.stderr.write(`[hookwatch] Transpile error for ${normalized}: ${message}\n`);
+        return errorResponse('INTERNAL', `Failed to transpile ${normalized}: ${message}`);
       }
       content = transformed;
       transpileCache.set(filePath, { mtime, content });
@@ -146,8 +157,8 @@ export async function handleStatic(pathname: string): Promise<Response> {
     // streaming (caught by Bun.serve error handler). This catch guards against
     // any synchronous Bun internal error during Response construction.
     process.stderr.write(
-      `[hookwatch] Response construction error for ${normalised}: ${errorMsg(err)}\n`,
+      `[hookwatch] Response construction error for ${normalized}: ${errorMsg(err)}\n`,
     );
-    return errorResponse('INTERNAL', `Could not serve file: ${normalised}`);
+    return errorResponse('INTERNAL', `Could not serve file: ${normalized}`);
   }
 }
