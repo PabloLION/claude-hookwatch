@@ -16,7 +16,7 @@ import { describe, expect, test } from 'bun:test';
 import { _resetInvalidKeyCounter, nextInvalidRowKey } from './event-list.ts';
 
 // ---------------------------------------------------------------------------
-// nextInvalidRowKey — counter behaviour
+// nextInvalidRowKey — counter behavior
 // ---------------------------------------------------------------------------
 
 describe('nextInvalidRowKey — unique negative keys', () => {

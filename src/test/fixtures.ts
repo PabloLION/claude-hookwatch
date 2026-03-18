@@ -53,7 +53,7 @@ export const GENERIC_EVENT_BASE: Record<string, unknown> = {
 
 /**
  * Creates a full InsertEventParams (compatible with EventRow) with sensible
- * defaults. Pass overrides to customise individual fields.
+ * defaults. Pass overrides to customize individual fields.
  *
  * Used by queries.test.ts, stream.test.ts, and any test that needs to insert
  * rows directly into the DB without going through the HTTP server.

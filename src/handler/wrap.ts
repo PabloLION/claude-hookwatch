@@ -35,7 +35,7 @@ import type { WrapResult } from '@/types.ts';
 import { describeExitCode, signalExitCode } from './signals.ts';
 
 /**
- * Runs the given command as a child process with tee behaviour:
+ * Runs the given command as a child process with tee behavior:
  * - stdin is read from process.stdin, buffered, and piped to the child
  * - stdout is written to process.stdout AND a capture buffer
  * - stderr is written to process.stderr AND a capture buffer

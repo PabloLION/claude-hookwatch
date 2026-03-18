@@ -14,7 +14,7 @@ let activePath: string | null = null;
 /**
  * Open (or return the cached) database connection.
  *
- * **First-call-wins singleton**: `dbPath` is only honoured on the very first
+ * **First-call-wins singleton**: `dbPath` is only honored on the very first
  * call. Every subsequent call returns the already-open connection and ignores
  * any `dbPath` argument. Callers that need a specific path must pass it on
  * the first call (or ensure the first call happens via the default path).

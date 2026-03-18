@@ -6,7 +6,7 @@
  * - postEvent(): server unavailable triggers auto-start
  * - postEvent(): connection error → spawn → health probe → retry succeeds
  * - postEvent(): server down in wrapped mode — child exit code still forwarded
- * - Wrapped mode: exit code forwarding, tee behaviour, POST body fields
+ * - Wrapped mode: exit code forwarding, tee behavior, POST body fields
  * - Unified pipeline: bare/wrapped POST body contract (wrapped_command, exit_code, etc.)
  *
  * Strategy: run the handler as a child process via Bun.spawn(), feeding stdin
@@ -174,7 +174,7 @@ describe('auto-start (server unavailable)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Wrapped mode: server-side behaviour
+// Wrapped mode: server-side behavior
 // ---------------------------------------------------------------------------
 
 describe('wrapped mode', () => {

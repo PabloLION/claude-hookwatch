@@ -30,7 +30,7 @@ import { parseJsonWithPreview } from './parse-json.ts';
  * Used to validate data received over SSE and from the /api/query endpoint.
  *
  * The `event` field is modelled as z.string() so that future event names don't
- * cause validation failures. A .transform() normalises unrecognised names to
+ * cause validation failures. A .transform() normalizes unrecognized names to
  * 'unknown' via toKnownEventName(), making z.infer<typeof eventRowSchema>
  * return KnownEventName for the event field — matching EventRow exactly.
  * parseEventRow()/parseSseEvent() no longer need to call toKnownEventName()
@@ -76,7 +76,7 @@ const _alignCheck2: _EventRowMatchesSchemaOutput = true;
  * Unlike parseSseEvent (which takes a JSON string), this takes an already-parsed
  * object — for use after res.json() in the fetch path.
  *
- * Unknown event names are normalised to 'unknown' by the eventRowSchema
+ * Unknown event names are normalized to 'unknown' by the eventRowSchema
  * .transform() on the event field — no manual call needed here.
  *
  * Throws:
@@ -91,7 +91,7 @@ export function parseEventRow(obj: unknown): EventRow {
  *
  * Boundary #4: SSE/fetch event data (string) → typed EventRow.
  *
- * Unknown event names are normalised to 'unknown' by the eventRowSchema
+ * Unknown event names are normalized to 'unknown' by the eventRowSchema
  * .transform() on the event field — no manual call needed here.
  *
  * Throws:

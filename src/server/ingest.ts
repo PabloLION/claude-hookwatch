@@ -128,11 +128,11 @@ export async function handleIngest(req: Request): Promise<Response> {
     return zodErrorResponse(err);
   }
 
-  // Normalise event name — log a warning when a new event type is not yet recognised
+  // Normalize event name — log a warning when a new event type is not yet recognized
   const eventName = toKnownEventName(event.hook_event_name);
   if (eventName === 'unknown') {
     process.stderr.write(
-      `[hookwatch] [warn] Unrecognised event type "${event.hook_event_name}" — stored as "unknown"\n`,
+      `[hookwatch] [warn] Unrecognized event type "${event.hook_event_name}" — stored as "unknown"\n`,
     );
   }
 

@@ -153,7 +153,7 @@ function checkVersionHeader(res: Response): string | undefined {
 }
 
 /**
- * Performs a single POST to the given URL with the serialised payload and
+ * Performs a single POST to the given URL with the serialized payload and
  * handles the response uniformly.
  *
  * On a non-2xx response the caller supplies the `failurePrefix` that is
