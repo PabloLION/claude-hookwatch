@@ -115,7 +115,7 @@ if (args.length < 1 || args[0] === '--help' || args[0] === '-h') {
   usage();
 }
 
-const pluginDir = args[0]!;
+const pluginDir = args[0] as string;
 
 if (!isAbsolute(pluginDir)) {
   console.error('Error: plugin-dir must be an absolute path.');
@@ -254,7 +254,9 @@ if (newEvents <= 0) {
   console.log('  Troubleshooting:');
   console.log('    1. Is hookwatch on PATH?       which hookwatch');
   console.log('    2. Claude Code version:        claude --version');
-  console.log(`    3. Debug hook loading:         claude --debug hooks -p --plugin-dir ${pluginDir} "hello"`);
+  console.log(
+    `    3. Debug hook loading:         claude --debug hooks -p --plugin-dir ${pluginDir} "hello"`,
+  );
   console.log(`    4. Check server log:           cat ${DB_DIR}/server.log`);
   db.close();
   process.exit(1);
