@@ -103,14 +103,22 @@ Config,smol-toml,~/.config/hookwatch/config.toml (not yet used — planned for c
 Use `package.json` scripts for all tooling — never call `bunx biome` directly.
 
 ```csv
-Command,Script,What it runs
-bun run test,test,bun test src/ tests/handler-server.test.ts tests/smoke-http.test.ts
-bun run lint,lint,biome check .
-bun run format,format,biome format --write .
-bun run check,check,bun test src/ tests/handler-server.test.ts tests/smoke-http.test.ts && biome check .
+Command,What it runs
+bun run check,tests + biome lint (run before each commit)
+bun run dev,start server with --watch
+bun run format,biome format --write .
+bun run generate,regenerate .claude-plugin/plugin.json and hooks/hooks.json
+bun run lint,biome check .
+bun run probe:launcher,run Claude Code probe scripts
+bun run release <version>,pre-release validation + git tag (accepts v0.1.0 or 0.1.0)
+bun run start,start server
+bun run test,unit + integration tests
+bun run test:e2e,Playwright UI e2e tests
+bun run test:smoke-browser,Playwright browser smoke test
+bun run test:smoke-http,HTTP smoke test
+bun run test:sse-e2e,Playwright SSE e2e tests
+bun run verify <plugin-dir>,e2e verification with Claude Code (absolute path required)
 ```
-
-Agents must run `bun run check` before each commit.
 
 ## Handler Entry Point
 

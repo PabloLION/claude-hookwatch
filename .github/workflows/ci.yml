@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run test
+
+  e2e:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - run: bun run test:e2e
+      - run: bun run test:sse-e2e
+      - run: bun run test:smoke-browser
+
+  plugin-structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate plugin structure
+        run: |
+          test -f .claude-plugin/plugin.json || { echo "Missing .claude-plugin/plugin.json"; exit 1; }
+          test -f hooks/hooks.json || { echo "Missing hooks/hooks.json"; exit 1; }
+          HOOK_COUNT=$(jq '.hooks | keys | length' hooks/hooks.json)
+          test "$HOOK_COUNT" -eq 18 || { echo "Expected 18 hook events, found $HOOK_COUNT"; exit 1; }
+          echo "Plugin structure valid ($HOOK_COUNT hook events)"
