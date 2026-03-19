@@ -4,14 +4,51 @@ See what Claude did, debug your hooks, query your sessions — as a Claude Code
 plugin that captures all 18 hook event types and stores them in a local SQLite
 database with a web UI for browsing and querying.
 
+## Quick Start
+
+Get from zero to seeing events in under 2 minutes:
+
+```sh
+# 1. Clone and install
+git clone https://github.com/PabloLION/claude-hookwatch.git
+cd claude-hookwatch
+bun install
+
+# 2. Start Claude Code with hookwatch
+claude --plugin-dir "$PWD"
+
+# 3. Use Claude normally — every hook event is captured
+
+# 4. Open the web UI to browse events
+hookwatch ui
+```
+
+The web UI opens at `http://localhost:6004` with a live-updating event timeline.
+
+## Demo
+
+> Demo coming soon — a short walkthrough showing hookwatch capturing events
+> in real time.
+
 ## Features
 
-- Installs as a Claude Code plugin — one command in, one command out
-- Web UI for real-time event browsing and filtering
-- SQLite storage via `bun:sqlite` — fast queries, WAL mode, zero external deps
-- Covers all 18 hook events (PreToolUse, PostToolUse, SessionStart, etc.)
-- Zod validation of all stdin payloads
-- Localhost-only, zero external deps — no network calls, no accounts, no config
+- **Plugin install** — `hookwatch install` registers the plugin, `hookwatch uninstall` removes it cleanly
+- **18 hook events** — PreToolUse, PostToolUse, SessionStart, Stop, and 14 more — every event Claude Code emits
+- **Web UI** — real-time event timeline with session filter, event detail, and wrap viewer
+- **SQLite storage** — `bun:sqlite` with WAL mode, fast queries, zero external deps
+- **Zod validation** — all 18 stdin payloads validated at runtime
+- **Wrap mode** — wrap any command to capture its stdin/stdout/stderr alongside the hook event
+- **SSE live updates** — events appear in the UI as they happen, no polling
+- **Offline-first** — localhost only, no network calls, no accounts, no config files required
+
+## Web UI
+
+hookwatch serves a local web UI at `http://localhost:6004`:
+
+- Real-time event timeline with SSE live updates
+- Filter by session, event type, tool name, time range
+- Event detail viewer with full stdin payload
+- Wrap viewer for wrapped command I/O (solid badge = wrapped, outline = bare)
 
 ## Install
 
@@ -151,15 +188,6 @@ sqlite3 ~/.local/share/hookwatch/hookwatch.db \
 ```
 
 The web UI provides the same capabilities with a graphical interface.
-
-## Web UI
-
-hookwatch serves a local web UI on localhost for browsing events:
-
-- Real-time event timeline
-- Filter by session, event type, tool name, time range
-- Event detail viewer with full stdin payload
-- Wrap viewer for wrapped command I/O
 
 ## Versioning
 
