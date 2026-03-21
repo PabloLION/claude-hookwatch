@@ -37,6 +37,8 @@ import type { ServerHandle } from '@/test';
 // ---------------------------------------------------------------------------
 
 const SERVER_PATH = new URL('../src/server/index.ts', import.meta.url).pathname;
+/** Port 0 = OS auto-assigns a free port. The server writes the actual port to the port file. */
+const TEST_PORT = 0;
 const BASE_SESSION_START = {
   session_id: 'e2e-test-session-001',
   transcript_path: '/tmp/transcript.jsonl',
@@ -104,7 +106,7 @@ async function startServer(tmpBase: string, label: string): Promise<ServerHandle
   const xdgDataHome = join(tmpBase, label);
   mkdirSync(xdgDataHome, { recursive: true });
 
-  const proc = spawn('bun', ['--bun', SERVER_PATH], {
+  const proc = spawn('bun', ['--bun', SERVER_PATH, '--port', String(TEST_PORT)], {
     env: {
       ...process.env,
       XDG_DATA_HOME: xdgDataHome,

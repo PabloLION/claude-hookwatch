@@ -192,16 +192,18 @@ export class PortInUseError extends Error {
 }
 
 /**
- * Start the server on DEFAULT_PORT. Throws PortInUseError if the port is
- * already occupied — no auto-increment.
+ * Start the server on the given port (defaults to DEFAULT_PORT).
+ * Throws PortInUseError if the port is already occupied — no auto-increment.
  * Returns the bound server instance.
  */
-export async function startServer(): Promise<{ port: number; stop: () => void }> {
+export async function startServer(
+  port: number = DEFAULT_PORT,
+): Promise<{ port: number; stop: () => void }> {
   let server: ReturnType<typeof Bun.serve>;
   try {
     server = Bun.serve({
       hostname: HOSTNAME,
-      port: DEFAULT_PORT,
+      port,
       fetch: dispatch,
       error(err) {
         const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
@@ -216,13 +218,16 @@ export async function startServer(): Promise<{ port: number; stop: () => void }>
       (err instanceof Error && err.message.includes('address already in use'));
 
     if (isAddrInUse) {
-      throw new PortInUseError(DEFAULT_PORT);
+      throw new PortInUseError(port);
     }
 
     throw err;
   }
 
-  await writePortFile(DEFAULT_PORT);
+  // When port is 0, Bun assigns a random free port — read the actual value
+  const boundPort = server.port;
+
+  await writePortFile(boundPort);
 
   const stop = (): void => {
     // cancelIdleTimer and clearing shutdownCallback are safe — no try-catch needed.
@@ -243,7 +248,7 @@ export async function startServer(): Promise<{ port: number; stop: () => void }>
   // Start the initial idle timer now that the server is bound
   resetIdleTimer();
 
-  return { port: DEFAULT_PORT, stop };
+  return { port: boundPort, stop };
 }
 
 // ---------------------------------------------------------------------------
@@ -253,7 +258,9 @@ export async function startServer(): Promise<{ port: number; stop: () => void }>
 if (import.meta.main) {
   let serverRef: { port: number; stop: () => void };
   try {
-    serverRef = await startServer();
+    const portFlag = process.argv.find((_, i, a) => a[i - 1] === '--port' || a[i - 1] === '-p');
+    const cliPort = portFlag ? Number(portFlag) : undefined;
+    serverRef = await startServer(cliPort);
   } catch (err) {
     if (err instanceof PortInUseError) {
       process.stderr.write(`[hookwatch] ${err.message}\n`);

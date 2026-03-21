@@ -33,6 +33,8 @@ import type { ServerHandle } from '@/test';
 // ---------------------------------------------------------------------------
 
 const SERVER_PATH = new URL('../src/server/index.ts', import.meta.url).pathname;
+/** Port 0 = OS auto-assigns a free port. The server writes the actual port to the port file. */
+const TEST_PORT = 0;
 
 /** A minimal valid SessionStart payload. */
 const SESSION_START_EVENT = {
@@ -105,7 +107,7 @@ async function startServer(tmpBase: string, label: string): Promise<ServerHandle
   const xdgDataHome = join(tmpBase, label);
   mkdirSync(xdgDataHome, { recursive: true });
 
-  const proc = spawn('bun', ['--bun', SERVER_PATH], {
+  const proc = spawn('bun', ['--bun', SERVER_PATH, '--port', String(TEST_PORT)], {
     env: { ...process.env, XDG_DATA_HOME: xdgDataHome },
     stdio: 'pipe',
     detached: false,
