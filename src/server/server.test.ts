@@ -15,7 +15,7 @@
  *   - GET /nonexistent.html: 404 for missing UI file
  */
 
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, spyOn, test } from 'bun:test';
 import { close as closeDb } from '@/db/connection.ts';
 import { HTTP_BAD_REQUEST, HTTP_CREATED, HTTP_NOT_FOUND, HTTP_OK } from '@/server/http-status.ts';
 import { PortInUseError, startServer } from '@/server/index.ts';
@@ -109,13 +109,20 @@ describe('X-Hookwatch-Version header', () => {
   });
 
   test('present on POST /api/events (400 error response)', async () => {
-    const res = await fetch(url(PATH_API_EVENTS), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{ invalid json',
-    });
-    expect(res.status).toBe(HTTP_BAD_REQUEST);
-    expect(res.headers.get(HEADER_HOOKWATCH_VERSION)).toBe(VERSION);
+    // Suppress expected [hookwatch] stderr from parseRequestJson() on malformed JSON
+    const stderrSpy = spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      const res = await fetch(url(PATH_API_EVENTS), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{ invalid json',
+      });
+      expect(res.status).toBe(HTTP_BAD_REQUEST);
+      expect(res.headers.get(HEADER_HOOKWATCH_VERSION)).toBe(VERSION);
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('[hookwatch]'));
+    } finally {
+      stderrSpy.mockRestore();
+    }
   });
 
   test('present on POST /api/query', async () => {
@@ -157,14 +164,23 @@ describe('POST /api/events', () => {
   });
 
   test('returns 400 for malformed JSON', async () => {
-    const res = await fetch(url(PATH_API_EVENTS), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{ not valid json',
-    });
-    expect(res.status).toBe(HTTP_BAD_REQUEST);
-    const body = await res.json();
-    expect(body.error.code).toBe('INVALID_QUERY');
+    // Suppress expected [hookwatch] stderr from parseRequestJson() on malformed JSON
+    const stderrSpy = spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      const res = await fetch(url(PATH_API_EVENTS), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{ not valid json',
+      });
+      expect(res.status).toBe(HTTP_BAD_REQUEST);
+      const body = await res.json();
+      expect(body.error.code).toBe('INVALID_QUERY');
+      expect(stderrSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[hookwatch] Failed to parse request JSON'),
+      );
+    } finally {
+      stderrSpy.mockRestore();
+    }
   });
 
   test('returns 400 when required Zod field is missing', async () => {
@@ -202,19 +218,28 @@ describe('POST /api/events', () => {
   });
 
   test('accepts unknown event type via fallback schema', async () => {
-    const res = await fetch(url(PATH_API_EVENTS), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        session_id: 'sess-002',
-        transcript_path: '/tmp/t.json',
-        cwd: '/home/user',
-        permission_mode: 'default',
-        hook_event_name: 'FutureUnknownEvent',
-        extra_field: 'preserved',
-      }),
-    });
-    expect(res.status).toBe(HTTP_CREATED);
+    // Suppress expected [hookwatch] [warn] stderr from ingest on unrecognized event names
+    const stderrSpy = spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      const res = await fetch(url(PATH_API_EVENTS), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: 'sess-002',
+          transcript_path: '/tmp/t.json',
+          cwd: '/home/user',
+          permission_mode: 'default',
+          hook_event_name: 'FutureUnknownEvent',
+          extra_field: 'preserved',
+        }),
+      });
+      expect(res.status).toBe(HTTP_CREATED);
+      expect(stderrSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[hookwatch] [warn] Unrecognized event type'),
+      );
+    } finally {
+      stderrSpy.mockRestore();
+    }
   });
 
   test('returns 400 when body is a JSON array (not an object)', async () => {
@@ -366,14 +391,23 @@ describe('POST /api/query', () => {
   });
 
   test('returns 400 INVALID_QUERY for malformed JSON body', async () => {
-    const res = await fetch(url(PATH_API_QUERY), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{ bad json',
-    });
-    expect(res.status).toBe(HTTP_BAD_REQUEST);
-    const body = await res.json();
-    expect(body.error.code).toBe('INVALID_QUERY');
+    // Suppress expected [hookwatch] stderr from parseRequestJson() on malformed JSON
+    const stderrSpy = spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      const res = await fetch(url(PATH_API_QUERY), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{ bad json',
+      });
+      expect(res.status).toBe(HTTP_BAD_REQUEST);
+      const body = await res.json();
+      expect(body.error.code).toBe('INVALID_QUERY');
+      expect(stderrSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[hookwatch] Failed to parse request JSON'),
+      );
+    } finally {
+      stderrSpy.mockRestore();
+    }
   });
 
   test('filters by hook_event_name', async () => {

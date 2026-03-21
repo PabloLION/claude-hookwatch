@@ -17,7 +17,16 @@
  * real server process. These are killed in afterAll to avoid leaking processes.
  */
 
-import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  spyOn,
+  test,
+} from 'bun:test';
 import { join } from 'node:path';
 import type { parseHookEvent } from '@/schemas/events.ts';
 import { parseHookOutput } from '@/schemas/output.ts';
@@ -484,6 +493,10 @@ describe('version mismatch detection', () => {
  */
 describe('failureKind — postEvent() unit tests', () => {
   let unitServer: ReturnType<typeof startTestServer>;
+  // Suppress expected [hookwatch] console.error output from postEvent() error paths.
+  // These tests deliberately trigger HTTP errors and fetch exceptions — the resulting
+  // console.error calls are expected and verified below, not defects.
+  let consoleSpy: ReturnType<typeof spyOn>;
 
   beforeAll(() => {
     unitServer = startTestServer();
@@ -493,7 +506,12 @@ describe('failureKind — postEvent() unit tests', () => {
     unitServer.stop();
   });
 
+  beforeEach(() => {
+    consoleSpy = spyOn(console, 'error').mockImplementation(() => {});
+  });
+
   afterEach(() => {
+    consoleSpy.mockRestore();
     unitServer.nextStatus = 201;
     unitServer.serverVersion = null;
     unitServer.events.splice(0);
@@ -504,6 +522,7 @@ describe('failureKind — postEvent() unit tests', () => {
 
     const result: PostEventResult = await postEvent(unitServer.port, makeBarePayload());
 
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[hookwatch]'));
     if (!result.ok) {
       expect(result.failureKind).toBe('http');
       expect(result.failureReason).toContain('500');
@@ -517,6 +536,7 @@ describe('failureKind — postEvent() unit tests', () => {
 
     const result: PostEventResult = await postEvent(unitServer.port, makeBarePayload());
 
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[hookwatch]'));
     if (!result.ok) {
       expect(result.failureKind).toBe('http');
     } else {
@@ -529,6 +549,7 @@ describe('failureKind — postEvent() unit tests', () => {
 
     const result: PostEventResult = await postEvent(unitServer.port, makeBarePayload());
 
+    // ok:true path — no console.error expected
     if (result.ok) {
       // PostEventResult ok:true has no failureKind field — verify via type narrowing
       expect(result.versionMismatchLog).toBeUndefined();
@@ -553,6 +574,7 @@ describe('failureKind — postEvent() unit tests', () => {
 
     try {
       const result: PostEventResult = await postEvent(unitServer.port, makeBarePayload());
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[hookwatch]'));
       if (!result.ok) {
         expect(result.failureKind).toBe('exception');
         expect(result.failureReason).toContain('Failed to POST event to server');
