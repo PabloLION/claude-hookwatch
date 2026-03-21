@@ -106,7 +106,7 @@ hookwatch_log,TEXT,"Internal diagnostics with severity prefix: [error] or [warn]
 ```
 
 The full stdin schema for all 18 event types is documented in
-`./docs/hook-stdin-schema.md`.
+`./docs/reference/hook-stdin-schema.md`.
 
 ## Hook Events
 

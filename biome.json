@@ -41,7 +41,9 @@
       "!.git-ignored",
       "!.claude/worktrees",
       "!test-results",
-      "!playwright-report"
+      "!playwright-report",
+      "!docs/.vitepress/cache",
+      "!docs/.vitepress/dist"
     ]
   }
 }

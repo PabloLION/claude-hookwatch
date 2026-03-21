@@ -144,7 +144,7 @@ CLAUDECODE,(set),Nested-session guard — must unset before spawning child claud
 
 hookwatch handles all 18 Claude Code hook event types. Full schema with common
 fields and event-specific fields: `./hook-stdin-schema.md`. Hook output format:
-`./hook-stdout-schema.md`.
+`./hook-stdout-schema.md`. Both files are in this same `reference/` directory.
 
 Registration in hooks.json follows the pattern
 `"command": "hookwatch <EventType>"` for each of the 18 PascalCase event family

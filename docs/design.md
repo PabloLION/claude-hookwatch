@@ -133,7 +133,7 @@ I1-I7 API-level,"Fundamentally different approach (proxy/OTEL). Not hook-based."
 
 hookwatch handles all 18 confirmed Claude Code hook event types. Every event's
 full stdin payload (common fields + event-specific fields) is captured. The
-complete schema is documented in `./hook-stdin-schema.md`.
+complete schema is documented in `./reference/hook-stdin-schema.md`.
 
 All matcher target fields (tool_name, source, reason, notification_type,
 agent_type, trigger) are included in the stdin payload — no data is hidden
@@ -272,7 +272,7 @@ detection), C13 (exfiltration detection).
 
 The handler validates every stdin payload against Zod schemas before logging.
 TypeScript interfaces and Zod schemas are generated from the hook stdin
-reference (`./hook-stdin-schema.md`).
+reference (`./reference/hook-stdin-schema.md`).
 
 - One Zod schema per event type (e.g. `PreToolUseSchema`, `SessionStartSchema`)
 - One discriminated union over all event types (`HookEventSchema`)

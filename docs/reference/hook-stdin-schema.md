@@ -3,7 +3,7 @@
 Status: Draft
 Created: 20260224, updated 20260225
 Source: [Claude Code hooks reference](https://code.claude.com/docs/en/hooks),
-cross-verified against [hooks changelog](../changelog) 20260225.
+cross-verified against hooks changelog 20260225.
 
 Complete reference for the JSON payload Claude Code sends to hooks via stdin.
 Used by hookwatch to define TypeScript interfaces and Zod validation schemas.
@@ -332,5 +332,5 @@ gracefully if they appear.
 Source,URL,Content
 Hooks reference,https://code.claude.com/docs/en/hooks,"17 events, narrative + JSON examples"
 Agent SDK types,https://platform.claude.com/docs/en/agent-sdk/typescript,"18 events, TypeScript type definitions (authoritative)"
-Hooks changelog,./changelog (local),"Version history of every hook-related change"
+Hooks changelog,(removed — stale link),"Version history of every hook-related change"
 ```
