@@ -17,13 +17,12 @@ system. hookwatch bridges both.
 
 ## Versioning
 
-```csv
-Version,Scope,Description
-v0,Core,"Logging + SQLite + basic web UI + plugin system + Zod validation"
-v1,Human UX,"UI polish + desktop notifications + waterfall chart + swim lanes + session renaming + log retention"
-v2,HITL,"Human-in-the-loop — detect risky actions, ask the human"
-v3,Guardrails,"Automated HITL — machine decides based on rules"
-```
+| Version | Scope      | Description                                                                                         |
+|---------|------------|-----------------------------------------------------------------------------------------------------|
+| v0      | Core       | Logging + SQLite + basic web UI + plugin system + Zod validation                                    |
+| v1      | Human UX   | UI polish + desktop notifications + waterfall chart + swim lanes + session renaming + log retention |
+| v2      | HITL       | Human-in-the-loop — detect risky actions, ask the human                                             |
+| v3      | Guardrails | Automated HITL — machine decides based on rules                                                     |
 
 ## Feature Decisions
 
@@ -32,100 +31,98 @@ reviewed and classified as goal (with version), non-goal (with reason), or TBD
 (tracked as beads issue). See `.git-ignored/notes/upstream-feature-catalog.md`
 for the full upstream comparison.
 
-```csv
-#,Feature,Decision,Version
-A1,Full hook event coverage (18 types),Goal,v0
-A2,Unknown event resilience,Goal,v0
-A3,Matcher patterns per event,Non-goal,—
-B1,JSONL daily files,Non-goal,—
-B2,SQLite database,Goal,v0
-B3,Per-event-type JSON files,Non-goal,—
-B4,Per-session directories,Non-goal,—
-B5,OTEL backend export,TBD,tracked (claude-hookwatch-0rm)
-B6,Promoted top-level fields,Non-goal,subsumed by SQLite
-B7,Log retention (high/low water mark),Goal,v1 (human UX)
-C1,Block dangerous commands,Goal,v2 (HITL)
-C2,Protect secrets/env files,Goal,v2 (HITL)
-C3,File scope enforcement,Goal,v2 (HITL)
-C4,Agent-scoped rules,TBD,v3 (guardrail) tracked (claude-hookwatch-r2z)
-C5,Permission auto-approve/deny,Goal,v3 (guardrail)
-C6,Input modification,Non-goal,—
-C7,Path traversal prevention,Goal,v2 (HITL)
-C8,Bash pipeline detection,Goal,v2 (HITL)
-C9,Risk scoring + posture escalation,Goal,v3 (guardrail)
-C10,Autonomy budgets,Goal,v3 (guardrail)
-C11,Cryptographic receipts,Goal,v3 (guardrail)
-C12,Quality gates,TBD,v3 (guardrail) tracked (claude-hookwatch-cme)
-C13,Exfiltration detection,Goal,v2 (HITL)
-D1,Real-time event timeline,Goal,v0
-D2,Live pulse chart,Goal,v1 (human UX)
-D3,Agent swim lanes,Goal,v1 (human UX)
-D4,Filter panel,Goal,v0
-D5,Chat transcript viewer,Non-goal,—
-D6,Grafana dashboard,Non-goal,—
-D7,Cost tracking,Non-goal,—
-D8,Token tracking,Non-goal,—
-D9,Hook performance profiling,Goal,v0
-D10,Hook execution stats,Goal,v0
-D11,Waterfall chart,Goal,v1 (human UX)
-E1,Slack alerts,Non-goal,—
-E2,Desktop notifications (toggleable),Goal,v1 (human UX)
-E3,TTS announcements,Non-goal,—
-E4,LLM completion messages,Non-goal,—
-E5,Agent naming via LLM,Non-goal,—
-E6,Toast notifications (in web UI),Goal,v1 (human UX)
-F1,Interactive approvals,Goal,v2 (HITL)
-F2,Question/permission/choice types,Goal,v2 (HITL)
-F3,Response routing,Goal,v2 (HITL)
-G1,Codebase map injection,Non-goal,—
-G2,Thinking level injection,Non-goal,—
-G3,Self-review on stop,Non-goal,—
-G4,Git auto-stash checkpoints,Non-goal,—
-G5,Auto-stage modified files,Non-goal,—
-G6,Context injection,Non-goal,—
-G7,Infinite mode,Non-goal,—
-G8,Stop commands,Non-goal,—
-G9,Session auto-naming (cwd + first prompt),Goal,v0
-G10,Slash commands,Non-goal,—
-G11,Transcript backup,Non-goal,—
-G12,Run tracking,Goal,v0
-G13,Session renaming (web UI edit),Goal,v1 (human UX)
-H1,Plugin install (`hookwatch install` + `claude --plugin-dir`),Goal,v0
-H2,Clean uninstall,Goal,v0
-H3,CLAUDE_PLUGIN_ROOT env var,Goal,v0
-I1,Proxy-based interception,Non-goal,—
-I2,OAuth passthrough,Non-goal,—
-I3,Multi-backend routing,Non-goal,—
-I4,Built-in OTEL telemetry,Non-goal,—
-I5,Session reconstruction,Non-goal,—
-I6,Span duplication analysis,Non-goal,—
-I7,Privacy controls,Non-goal,—
-```
+| #   | Feature                                                      | Decision | Version                                       |
+|-----|--------------------------------------------------------------|----------|-----------------------------------------------|
+| A1  | Full hook event coverage (18 types)                          | Goal     | v0                                            |
+| A2  | Unknown event resilience                                     | Goal     | v0                                            |
+| A3  | Matcher patterns per event                                   | Non-goal | —                                             |
+| B1  | JSONL daily files                                            | Non-goal | —                                             |
+| B2  | SQLite database                                              | Goal     | v0                                            |
+| B3  | Per-event-type JSON files                                    | Non-goal | —                                             |
+| B4  | Per-session directories                                      | Non-goal | —                                             |
+| B5  | OTEL backend export                                          | TBD      | tracked (claude-hookwatch-0rm)                |
+| B6  | Promoted top-level fields                                    | Non-goal | subsumed by SQLite                            |
+| B7  | Log retention (high/low water mark)                          | Goal     | v1 (human UX)                                 |
+| C1  | Block dangerous commands                                     | Goal     | v2 (HITL)                                     |
+| C2  | Protect secrets/env files                                    | Goal     | v2 (HITL)                                     |
+| C3  | File scope enforcement                                       | Goal     | v2 (HITL)                                     |
+| C4  | Agent-scoped rules                                           | TBD      | v3 (guardrail) tracked (claude-hookwatch-r2z) |
+| C5  | Permission auto-approve/deny                                 | Goal     | v3 (guardrail)                                |
+| C6  | Input modification                                           | Non-goal | —                                             |
+| C7  | Path traversal prevention                                    | Goal     | v2 (HITL)                                     |
+| C8  | Bash pipeline detection                                      | Goal     | v2 (HITL)                                     |
+| C9  | Risk scoring + posture escalation                            | Goal     | v3 (guardrail)                                |
+| C10 | Autonomy budgets                                             | Goal     | v3 (guardrail)                                |
+| C11 | Cryptographic receipts                                       | Goal     | v3 (guardrail)                                |
+| C12 | Quality gates                                                | TBD      | v3 (guardrail) tracked (claude-hookwatch-cme) |
+| C13 | Exfiltration detection                                       | Goal     | v2 (HITL)                                     |
+| D1  | Real-time event timeline                                     | Goal     | v0                                            |
+| D2  | Live pulse chart                                             | Goal     | v1 (human UX)                                 |
+| D3  | Agent swim lanes                                             | Goal     | v1 (human UX)                                 |
+| D4  | Filter panel                                                 | Goal     | v0                                            |
+| D5  | Chat transcript viewer                                       | Non-goal | —                                             |
+| D6  | Grafana dashboard                                            | Non-goal | —                                             |
+| D7  | Cost tracking                                                | Non-goal | —                                             |
+| D8  | Token tracking                                               | Non-goal | —                                             |
+| D9  | Hook performance profiling                                   | Goal     | v0                                            |
+| D10 | Hook execution stats                                         | Goal     | v0                                            |
+| D11 | Waterfall chart                                              | Goal     | v1 (human UX)                                 |
+| E1  | Slack alerts                                                 | Non-goal | —                                             |
+| E2  | Desktop notifications (toggleable)                           | Goal     | v1 (human UX)                                 |
+| E3  | TTS announcements                                            | Non-goal | —                                             |
+| E4  | LLM completion messages                                      | Non-goal | —                                             |
+| E5  | Agent naming via LLM                                         | Non-goal | —                                             |
+| E6  | Toast notifications (in web UI)                              | Goal     | v1 (human UX)                                 |
+| F1  | Interactive approvals                                        | Goal     | v2 (HITL)                                     |
+| F2  | Question/permission/choice types                             | Goal     | v2 (HITL)                                     |
+| F3  | Response routing                                             | Goal     | v2 (HITL)                                     |
+| G1  | Codebase map injection                                       | Non-goal | —                                             |
+| G2  | Thinking level injection                                     | Non-goal | —                                             |
+| G3  | Self-review on stop                                          | Non-goal | —                                             |
+| G4  | Git auto-stash checkpoints                                   | Non-goal | —                                             |
+| G5  | Auto-stage modified files                                    | Non-goal | —                                             |
+| G6  | Context injection                                            | Non-goal | —                                             |
+| G7  | Infinite mode                                                | Non-goal | —                                             |
+| G8  | Stop commands                                                | Non-goal | —                                             |
+| G9  | Session auto-naming (cwd + first prompt)                     | Goal     | v0                                            |
+| G10 | Slash commands                                               | Non-goal | —                                             |
+| G11 | Transcript backup                                            | Non-goal | —                                             |
+| G12 | Run tracking                                                 | Goal     | v0                                            |
+| G13 | Session renaming (web UI edit)                               | Goal     | v1 (human UX)                                 |
+| H1  | Plugin install (`hookwatch install` + `claude --plugin-dir`) | Goal     | v0                                            |
+| H2  | Clean uninstall                                              | Goal     | v0                                            |
+| H3  | CLAUDE_PLUGIN_ROOT env var                                   | Goal     | v0                                            |
+| I1  | Proxy-based interception                                     | Non-goal | —                                             |
+| I2  | OAuth passthrough                                            | Non-goal | —                                             |
+| I3  | Multi-backend routing                                        | Non-goal | —                                             |
+| I4  | Built-in OTEL telemetry                                      | Non-goal | —                                             |
+| I5  | Session reconstruction                                       | Non-goal | —                                             |
+| I6  | Span duplication analysis                                    | Non-goal | —                                             |
+| I7  | Privacy controls                                             | Non-goal | —                                             |
 
 ### Non-goal rationale
 
 Features excluded for a stated reason — not because they lack value, but because
 they conflict with hookwatch's design constraints or belong in a separate tool.
 
-```csv
-Category,Reason
-A3 Matcher patterns,"Users filter at query time (SQL), not capture time. Filtering at capture = data loss."
-B1 JSONL,"SQLite (bun:sqlite built-in) is better for querying and agent consumption."
-B3/B4 Split files/dirs,"Fragments data across files. Daily SQLite keeps everything together."
-B5 OTEL export,TBD — tracked for later evaluation.
-B6 Promoted fields,"Subsumed by SQLite columns — tool_name, session_id are indexed columns."
-C6 Input modification,"Rewrites tool inputs silently. Intervention, not observation."
-D5 Chat transcript,"transcript_path is logged. Users open the file directly."
-D6 Grafana,"Separate install, designed for infra monitoring. Our web UI is simpler."
-D7/D8 Cost/token tracking,"No cost or token data in hook stdin payloads. Only available at API level."
-E1 Slack,"Requires API keys, webhook URLs, network calls."
-E3 TTS,"Requires external APIs (ElevenLabs, OpenAI) or platform-specific engines."
-E4/E5 LLM features,"Requires API keys and network calls. Conflicts with offline goal."
-G1-G8 Context/workflow,"Modify agent behavior rather than observe it. Separate concern."
-G10 Slash commands,"Web UI and CLI serve the same purpose."
-G11 Transcript backup,"Not hookwatch's responsibility."
-I1-I7 API-level,"Fundamentally different approach (proxy/OTEL). Not hook-based."
-```
+| Category                  | Reason                                                                                |
+|---------------------------|---------------------------------------------------------------------------------------|
+| A3 Matcher patterns       | Users filter at query time (SQL), not capture time. Filtering at capture = data loss. |
+| B1 JSONL                  | SQLite (bun:sqlite built-in) is better for querying and agent consumption.            |
+| B3/B4 Split files/dirs    | Fragments data across files. Daily SQLite keeps everything together.                  |
+| B5 OTEL export            | TBD — tracked for later evaluation.                                                   |
+| B6 Promoted fields        | Subsumed by SQLite columns — tool_name, session_id are indexed columns.               |
+| C6 Input modification     | Rewrites tool inputs silently. Intervention, not observation.                         |
+| D5 Chat transcript        | transcript_path is logged. Users open the file directly.                              |
+| D6 Grafana                | Separate install, designed for infra monitoring. Our web UI is simpler.               |
+| D7/D8 Cost/token tracking | No cost or token data in hook stdin payloads. Only available at API level.            |
+| E1 Slack                  | Requires API keys, webhook URLs, network calls.                                       |
+| E3 TTS                    | Requires external APIs (ElevenLabs, OpenAI) or platform-specific engines.             |
+| E4/E5 LLM features        | Requires API keys and network calls. Conflicts with offline goal.                     |
+| G1-G8 Context/workflow    | Modify agent behavior rather than observe it. Separate concern.                       |
+| G10 Slash commands        | Web UI and CLI serve the same purpose.                                                |
+| G11 Transcript backup     | Not hookwatch's responsibility.                                                       |
+| I1-I7 API-level           | Fundamentally different approach (proxy/OTEL). Not hook-based.                        |
 
 ## Functional Requirements
 
@@ -162,23 +159,22 @@ dependencies). WAL mode for concurrent read/write.
 
 Key columns are indexed for fast querying:
 
-```csv
-Column,Type,Description
-id,INTEGER PRIMARY KEY,Auto-incrementing event ID
-timestamp,INTEGER,Unix epoch milliseconds (generated at write time)
-event,TEXT,Hook event type (e.g. PreToolUse)
-session_id,TEXT,From hook stdin
-cwd,TEXT,Working directory at time of event
-tool_name,TEXT,"Tool name for tool events, NULL otherwise"
-session_name,TEXT,Human-readable session name
-stdin,TEXT,Full event JSON from stdin
-hook_duration_ms,INTEGER,hookwatch handler execution time in milliseconds
-wrapped_command,TEXT,"NULL = bare handler; non-NULL = user command being wrapped"
-stdout,TEXT,Captured stdout from wrapped command (NULL for bare handler)
-stderr,TEXT,Captured stderr from wrapped command (NULL for bare handler)
-exit_code,INTEGER NOT NULL DEFAULT 0,Exit code (bare handler: always 0; wrapped: child's exit code; signal-killed: 128+signal)
-hookwatch_log,TEXT,"Hookwatch's own log messages with severity prefix (NULL = no issues). Non-fatal errors: [error] prefix. Warnings: [warn] prefix. Multiple entries joined with '; '. Fatal errors (server unreachable, schema parse failure): exit 0 + JSON systemMessage — no DB record written."
-```
+| Column           | Type                       | Description                                                                                                                                                                                                                                                                      |
+|------------------|----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| id               | INTEGER PRIMARY KEY        | Auto-incrementing event ID                                                                                                                                                                                                                                                       |
+| timestamp        | INTEGER                    | Unix epoch milliseconds (generated at write time)                                                                                                                                                                                                                                |
+| event            | TEXT                       | Hook event type (e.g. PreToolUse)                                                                                                                                                                                                                                                |
+| session_id       | TEXT                       | From hook stdin                                                                                                                                                                                                                                                                  |
+| cwd              | TEXT                       | Working directory at time of event                                                                                                                                                                                                                                               |
+| tool_name        | TEXT                       | Tool name for tool events, NULL otherwise                                                                                                                                                                                                                                        |
+| session_name     | TEXT                       | Human-readable session name                                                                                                                                                                                                                                                      |
+| stdin            | TEXT                       | Full event JSON from stdin                                                                                                                                                                                                                                                       |
+| hook_duration_ms | INTEGER                    | hookwatch handler execution time in milliseconds                                                                                                                                                                                                                                 |
+| wrapped_command  | TEXT                       | NULL = bare handler; non-NULL = user command being wrapped                                                                                                                                                                                                                       |
+| stdout           | TEXT                       | Captured stdout from wrapped command (NULL for bare handler)                                                                                                                                                                                                                     |
+| stderr           | TEXT                       | Captured stderr from wrapped command (NULL for bare handler)                                                                                                                                                                                                                     |
+| exit_code        | INTEGER NOT NULL DEFAULT 0 | Exit code (bare handler: always 0; wrapped: child's exit code; signal-killed: 128+signal)                                                                                                                                                                                        |
+| hookwatch_log    | TEXT                       | Hookwatch's own log messages with severity prefix (NULL = no issues). Non-fatal errors: [error] prefix. Warnings: [warn] prefix. Multiple entries joined with '; '. Fatal errors (server unreachable, schema parse failure): exit 0 + JSON systemMessage — no DB record written. |
 
 Indexed on: `event`, `session_id`, `timestamp`, `tool_name`.
 
@@ -250,12 +246,11 @@ no build step required (Bun runs `.ts` directly).
 HITL enables the hook to pause execution and ask the user a question before
 proceeding. Three interaction types:
 
-```csv
-Type,Input,Output
-permission,"Yes/No question (e.g., ""Delete production database?"")",Boolean (approve/deny)
-question,Free-text prompt,User-typed string
-choice,"List of options (e.g., [""skip"", ""retry"", ""abort""])",Selected option
-```
+| Type       | Input                                                 | Output                 |
+|------------|-------------------------------------------------------|------------------------|
+| permission | Yes/No question (e.g., "Delete production database?") | Boolean (approve/deny) |
+| question   | Free-text prompt                                      | User-typed string      |
+| choice     | List of options (e.g., ["skip", "retry", "abort"])    | Selected option        |
 
 HITL is triggered by specific event conditions (configurable). When triggered:
 
@@ -458,22 +453,21 @@ heal.
 Decisions made during the research phase. These are final unless revisited
 explicitly.
 
-```csv
-Decision,Rationale,Alternatives Considered
-Bun/TypeScript (no Python),"User requirement. Eliminates Python/uv dependency. Bun runs TS natively, fast startup, built-in SQLite.","Python (used by 5/10 upstream tools), Node.js, Rust"
-SQLite over JSONL,"bun:sqlite is built-in (zero deps). SQL queries for time range, event type, aggregation. Better for agent consumption — precise queries, bounded results.","JSONL (greppable but requires full scan), OTEL backends, per-event files"
-Web UI included,"Local web server for browsing events. Enables v1 UX polish and v2 HITL response routing through the UI.","No server (CLI only), Grafana (separate install)"
-HITL included (v2),"User requirement. PreToolUse blocking decisions add meaningful safety. Web UI provides the response routing mechanism.","Logging-only (no blocking), platform-native dialogs"
-Plugin compliant,"User requirement. One-command install/uninstall. Only DazzleML has done this; hookwatch extends it to full event coverage.","Manual settings.json editing (used by 7/10 upstream tools)"
-Single handler,"One handler.ts for all events. Simpler than 18 separate scripts (observability has 26). Event routing via payload inspection.","Per-event scripts (observability), per-category handlers"
-Zod validation,"Runtime validation of stdin payloads. Detects upstream schema changes. Only runtime dependency (justified by correctness guarantees).","Hand-written validators, no validation (trust stdin)"
-Bun runtime (not standalone),"Users already need Bun for bun:sqlite. Small TS files over ~80MB binary. Plugin updates are file changes, no recompilation. Easy to switch later via bun build --compile.","Standalone binary (eliminates runtime dep but large)"
-TOML config,"Supports comments (JSON does not). Human-readable. May need smol-toml (~15KB) if Bun lacks native TOML imports.","JSON (no comments), YAML (verbose)"
-Preact + htm for web UI,"Tagged template literals — no JSX transform or build step. ~4KB runtime. Fits Bun-native no-transpilation goal.","Svelte (requires build step — conflicts with NFR-5), Vanilla HTML/JS (harder to maintain), React (heavier)"
-Log retention (v1),"High/low water mark pattern. Checked at SessionStart (once per session). Both age and size limits active. Margin prevents re-triggering.","No retention (user responsibility), PreCompact trigger (adds latency during active work)"
-Unified handler pipeline (template method),"Single entry point; bare handler = wrapped handler with no child process. Branch on wrappedCommand being null/non-null. Pipeline: readStdin → parseEvent → resolvePort → [if wrapped: spawn child] → postEvent → writeOutput. One algorithm skeleton with a conditional branch — template method without inheritance. Replaces strategy pattern (two separate functions).","Strategy pattern with runBare + runWrappedMode — rejected: 80%+ shared logic, divergent behavior risk"
-Exit code strategy,"Fatal: exit 0 + JSON systemMessage (never block Claude Code). Non-fatal: hookwatch_log DB column with [error]/[warn] prefix. Normal: hookwatch_log NULL. Never exit 1 (useless generic error) or exit 2 (JSON ignored per docs). Wrapped command exit code passed through unchanged. Signal-killed children: 128+signal convention.","Exit 1 + stderr (rejected: not surfaced), Exit 2 + JSON (rejected: JSON ignored at exit 2 per Claude Code docs, may block events), serverLogPath() fallback (rejected: if can POST, can write DB — simpler)"
-```
+| Decision                                   | Rationale                                                                                                                                                                                                                                                                                                                                                                 | Alternatives Considered                                                                                                                                                                                     |
+|--------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Bun/TypeScript (no Python)                 | User requirement. Eliminates Python/uv dependency. Bun runs TS natively, fast startup, built-in SQLite.                                                                                                                                                                                                                                                                   | Python (used by 5/10 upstream tools), Node.js, Rust                                                                                                                                                         |
+| SQLite over JSONL                          | bun:sqlite is built-in (zero deps). SQL queries for time range, event type, aggregation. Better for agent consumption — precise queries, bounded results.                                                                                                                                                                                                                 | JSONL (greppable but requires full scan), OTEL backends, per-event files                                                                                                                                    |
+| Web UI included                            | Local web server for browsing events. Enables v1 UX polish and v2 HITL response routing through the UI.                                                                                                                                                                                                                                                                   | No server (CLI only), Grafana (separate install)                                                                                                                                                            |
+| HITL included (v2)                         | User requirement. PreToolUse blocking decisions add meaningful safety. Web UI provides the response routing mechanism.                                                                                                                                                                                                                                                    | Logging-only (no blocking), platform-native dialogs                                                                                                                                                         |
+| Plugin compliant                           | User requirement. One-command install/uninstall. Only DazzleML has done this; hookwatch extends it to full event coverage.                                                                                                                                                                                                                                                | Manual settings.json editing (used by 7/10 upstream tools)                                                                                                                                                  |
+| Single handler                             | One handler.ts for all events. Simpler than 18 separate scripts (observability has 26). Event routing via payload inspection.                                                                                                                                                                                                                                             | Per-event scripts (observability), per-category handlers                                                                                                                                                    |
+| Zod validation                             | Runtime validation of stdin payloads. Detects upstream schema changes. Only runtime dependency (justified by correctness guarantees).                                                                                                                                                                                                                                     | Hand-written validators, no validation (trust stdin)                                                                                                                                                        |
+| Bun runtime (not standalone)               | Users already need Bun for bun:sqlite. Small TS files over ~80MB binary. Plugin updates are file changes, no recompilation. Easy to switch later via bun build --compile.                                                                                                                                                                                                 | Standalone binary (eliminates runtime dep but large)                                                                                                                                                        |
+| TOML config                                | Supports comments (JSON does not). Human-readable. May need smol-toml (~15KB) if Bun lacks native TOML imports.                                                                                                                                                                                                                                                           | JSON (no comments), YAML (verbose)                                                                                                                                                                          |
+| Preact + htm for web UI                    | Tagged template literals — no JSX transform or build step. ~4KB runtime. Fits Bun-native no-transpilation goal.                                                                                                                                                                                                                                                           | Svelte (requires build step — conflicts with NFR-5), Vanilla HTML/JS (harder to maintain), React (heavier)                                                                                                  |
+| Log retention (v1)                         | High/low water mark pattern. Checked at SessionStart (once per session). Both age and size limits active. Margin prevents re-triggering.                                                                                                                                                                                                                                  | No retention (user responsibility), PreCompact trigger (adds latency during active work)                                                                                                                    |
+| Unified handler pipeline (template method) | Single entry point; bare handler = wrapped handler with no child process. Branch on wrappedCommand being null/non-null. Pipeline: readStdin → parseEvent → resolvePort → [if wrapped: spawn child] → postEvent → writeOutput. One algorithm skeleton with a conditional branch — template method without inheritance. Replaces strategy pattern (two separate functions). | Strategy pattern with runBare + runWrappedMode — rejected: 80%+ shared logic, divergent behavior risk                                                                                                       |
+| Exit code strategy                         | Fatal: exit 0 + JSON systemMessage (never block Claude Code). Non-fatal: hookwatch_log DB column with [error]/[warn] prefix. Normal: hookwatch_log NULL. Never exit 1 (useless generic error) or exit 2 (JSON ignored per docs). Wrapped command exit code passed through unchanged. Signal-killed children: 128+signal convention.                                       | Exit 1 + stderr (rejected: not surfaced), Exit 2 + JSON (rejected: JSON ignored at exit 2 per Claude Code docs, may block events), serverLogPath() fallback (rejected: if can POST, can write DB — simpler) |
 
 ## Open Questions
 
@@ -481,34 +475,32 @@ None — all initial questions resolved. See Key Decisions for rationale.
 
 ## Tracked Issues
 
-```csv
-ID,Title,Category
-claude-hookwatch-fgm,Write hookwatch design doc,This document
-claude-hookwatch-0rm,Evaluate OTEL backend export (B5),TBD
-claude-hookwatch-r2z,Evaluate agent-scoped guardrail rules (C4),TBD
-claude-hookwatch-cme,Evaluate quality gates (C12),TBD
-claude-hookwatch-bgr,Update hook-json-schema.md in agent-console-dashboard,Docs
-claude-hookwatch-9d5,Interesting features for other projects,Research
-```
+| ID                   | Title                                                 | Category      |
+|----------------------|-------------------------------------------------------|---------------|
+| claude-hookwatch-fgm | Write hookwatch design doc                            | This document |
+| claude-hookwatch-0rm | Evaluate OTEL backend export (B5)                     | TBD           |
+| claude-hookwatch-r2z | Evaluate agent-scoped guardrail rules (C4)            | TBD           |
+| claude-hookwatch-cme | Evaluate quality gates (C12)                          | TBD           |
+| claude-hookwatch-bgr | Update hook-json-schema.md in agent-console-dashboard | Docs          |
+| claude-hookwatch-9d5 | Interesting features for other projects               | Research      |
 
 ## Prior Art
 
 Detailed comparison of all 10 upstream tools is in
 `.git-ignored/notes/upstream-feature-catalog.md`. Summary of positioning:
 
-```csv
-Tool,Events,Plugin,Server,Language
-hookwatch (this project),18,yes,yes (local),Bun/TypeScript
-DazzleML/claude-session-logger,2,yes,no,Python
-disler/observability,12,no,yes,Python + Bun
-connerohnesorge/conclaude,18,no,no,Rust
-karanb192/claude-code-hooks,12,no,no,Node.js
-carlrannaberg/claudekit,12,no,no,Node.js
-MacFall7/M87-Spine-lite,8,no,no,Python
-TechNickAI/claude_telemetry,6,no,no,Python
-ColeMurray/claude-code-otel,0 (built-in),no,yes,Docker
-Teraflop-Inc/dev-agent-lens,0 (proxy),no,yes,Docker
-```
+| Tool                           | Events       | Plugin | Server      | Language       |
+|--------------------------------|--------------|--------|-------------|----------------|
+| hookwatch (this project)       | 18           | yes    | yes (local) | Bun/TypeScript |
+| DazzleML/claude-session-logger | 2            | yes    | no          | Python         |
+| disler/observability           | 12           | no     | yes         | Python + Bun   |
+| connerohnesorge/conclaude      | 18           | no     | no          | Rust           |
+| karanb192/claude-code-hooks    | 12           | no     | no          | Node.js        |
+| carlrannaberg/claudekit        | 12           | no     | no          | Node.js        |
+| MacFall7/M87-Spine-lite        | 8            | no     | no          | Python         |
+| TechNickAI/claude_telemetry    | 6            | no     | no          | Python         |
+| ColeMurray/claude-code-otel    | 0 (built-in) | no     | yes         | Docker         |
+| Teraflop-Inc/dev-agent-lens    | 0 (proxy)    | no     | yes         | Docker         |
 
 hookwatch is the only tool targeting full event coverage + plugin compliance +
 local web UI.

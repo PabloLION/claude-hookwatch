@@ -100,21 +100,20 @@ Zsh-specific syntax (`print -l`, glob qualifier `*(.)`) worked.
 
 ### Environment variables available to hooks
 
-```csv
-Variable,Value observed,Notes
-SHELL,/bin/zsh,User login shell — NOT the hook interpreter
-BASH_VERSION,3.2.57(1)-release,Inherited even when hook runs under sh/bash
-ZSH_VERSION,(unset in POSIX probe),Only set when #!/bin/zsh shebang is used
-CLAUDE_PLUGIN_ROOT,/tmp/hookwatch-probe-plugin,Set only when plugin registered via --plugin-dir
-CLAUDE_PROJECT_DIR,/private/tmp,Absolute path to session's working directory
-CLAUDE_CODE_ENTRYPOINT,cli,How Claude Code was launched
-CLAUDE_CODE_TMPDIR,./.claude/tmp,Relative path to Claude Code temp directory
-CLAUDE_ENV_FILE,/Users/pablo/.claude/session-env/<uuid>/sessionstart-hook-N.sh,Session env file (from session-env plugin)
-PATH,<full user PATH>,Full user PATH including all local tools
-HOME,/Users/pablo,User home directory
-USER,pablo,Username
-PWD,/tmp,Working directory when hook fired
-```
+| Variable               | Value observed                                                 | Notes                                            |
+|------------------------|----------------------------------------------------------------|--------------------------------------------------|
+| SHELL                  | /bin/zsh                                                       | User login shell — NOT the hook interpreter      |
+| BASH_VERSION           | 3.2.57(1)-release                                              | Inherited even when hook runs under sh/bash      |
+| ZSH_VERSION            | (unset in POSIX probe)                                         | Only set when #!/bin/zsh shebang is used         |
+| CLAUDE_PLUGIN_ROOT     | /tmp/hookwatch-probe-plugin                                    | Set only when plugin registered via --plugin-dir |
+| CLAUDE_PROJECT_DIR     | /private/tmp                                                   | Absolute path to session's working directory     |
+| CLAUDE_CODE_ENTRYPOINT | cli                                                            | How Claude Code was launched                     |
+| CLAUDE_CODE_TMPDIR     | ./.claude/tmp                                                  | Relative path to Claude Code temp directory      |
+| CLAUDE_ENV_FILE        | /Users/pablo/.claude/session-env/<uuid>/sessionstart-hook-N.sh | Session env file (from session-env plugin)       |
+| PATH                   | <full user PATH>                                               | Full user PATH including all local tools         |
+| HOME                   | /Users/pablo                                                   | User home directory                              |
+| USER                   | pablo                                                          | Username                                         |
+| PWD                    | /tmp                                                           | Working directory when hook fired                |
 
 Note: `CLAUDE_ENV_FILE` appears because the session-env plugin is active on
 this machine. It will not be present in standard hookwatch installations.

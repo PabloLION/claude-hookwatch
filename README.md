@@ -86,23 +86,22 @@ Events are stored in a SQLite database:
 The path respects `$XDG_DATA_HOME` if set:
 `$XDG_DATA_HOME/hookwatch/hookwatch.db`
 
-```csv
-Column,Type,Description
-id,INTEGER PRIMARY KEY,Auto-incrementing event ID
-timestamp,INTEGER NOT NULL,Epoch milliseconds (generated at write time)
-event,TEXT NOT NULL,Hook event type (e.g. PreToolUse)
-session_id,TEXT NOT NULL,From hook stdin
-cwd,TEXT NOT NULL,Working directory at time of event
-tool_name,TEXT,"Tool name for tool events, NULL otherwise"
-session_name,TEXT,Human-readable session name
-hook_duration_ms,INTEGER,hookwatch handler execution time in milliseconds
-stdin,TEXT NOT NULL,Full event JSON from hook stdin
-wrapped_command,TEXT,"Command being wrapped, NULL for bare handler events"
-stdout,TEXT,"Hook output JSON (bare) or captured child stdout (wrapped); NULL if no output"
-stderr,TEXT,"Captured child stderr for wrapped events; NULL for bare events"
-exit_code,INTEGER NOT NULL DEFAULT 0,Exit code of the hook or wrapped child process
-hookwatch_log,TEXT,"Internal diagnostics with severity prefix: [error] or [warn]; NULL if no issues"
-```
+| Column | Type | Description |
+|--------|------|-------------|
+| id | INTEGER PRIMARY KEY | Auto-incrementing event ID |
+| timestamp | INTEGER NOT NULL | Epoch milliseconds (generated at write time) |
+| event | TEXT NOT NULL | Hook event type (e.g. PreToolUse) |
+| session_id | TEXT NOT NULL | From hook stdin |
+| cwd | TEXT NOT NULL | Working directory at time of event |
+| tool_name | TEXT | Tool name for tool events, NULL otherwise |
+| session_name | TEXT | Human-readable session name |
+| hook_duration_ms | INTEGER | hookwatch handler execution time in milliseconds |
+| stdin | TEXT NOT NULL | Full event JSON from hook stdin |
+| wrapped_command | TEXT | Command being wrapped, NULL for bare handler events |
+| stdout | TEXT | Hook output JSON (bare) or captured child stdout (wrapped); NULL if no output |
+| stderr | TEXT | Captured child stderr for wrapped events; NULL for bare events |
+| exit_code | INTEGER NOT NULL DEFAULT 0 | Exit code of the hook or wrapped child process |
+| hookwatch_log | TEXT | Internal diagnostics with severity prefix: [error] or [warn]; NULL if no issues |
 
 The full stdin schema for all 18 event types is documented in
 `./docs/reference/hook-stdin-schema.md`.
@@ -111,27 +110,26 @@ The full stdin schema for all 18 event types is documented in
 
 All 18 Claude Code hook event types are captured:
 
-```csv
-Event,Description
-PreToolUse,Before a tool executes
-PostToolUse,After a tool executes successfully
-PostToolUseFailure,After a tool execution fails
-UserPromptSubmit,When the user submits a prompt
-Notification,System notifications
-PermissionRequest,When a permission is requested
-Stop,When the agent stops
-SessionStart,Session begins
-SessionEnd,Session ends
-SubagentStart,Sub-agent spawned
-SubagentStop,Sub-agent finished
-PreCompact,Before context compaction
-TeammateIdle,Teammate becomes idle
-TaskCompleted,Task marked complete
-ConfigChange,Configuration changed
-WorktreeCreate,Git worktree created
-WorktreeRemove,Git worktree removed
-InstructionsLoaded,Instructions loaded (SDK-only — not in hooks reference docs)
-```
+| Event | Description |
+|-------|-------------|
+| PreToolUse | Before a tool executes |
+| PostToolUse | After a tool executes successfully |
+| PostToolUseFailure | After a tool execution fails |
+| UserPromptSubmit | When the user submits a prompt |
+| Notification | System notifications |
+| PermissionRequest | When a permission is requested |
+| Stop | When the agent stops |
+| SessionStart | Session begins |
+| SessionEnd | Session ends |
+| SubagentStart | Sub-agent spawned |
+| SubagentStop | Sub-agent finished |
+| PreCompact | Before context compaction |
+| TeammateIdle | Teammate becomes idle |
+| TaskCompleted | Task marked complete |
+| ConfigChange | Configuration changed |
+| WorktreeCreate | Git worktree created |
+| WorktreeRemove | Git worktree removed |
+| InstructionsLoaded | Instructions loaded (SDK-only — not in hooks reference docs) |
 
 17 events are documented in the [hooks reference](https://code.claude.com/docs/en/hooks).
 InstructionsLoaded is the 18th — present in the
@@ -190,13 +188,12 @@ The web UI provides the same capabilities with a graphical interface.
 
 ## Versioning
 
-```csv
-Version,Scope,Description
-v0,Core,"Logging + SQLite + basic web UI + plugin system + Zod validation"
-v1,Human UX,"UI polish + desktop notifications + waterfall chart + swim lanes"
-v2,HITL,"Human-in-the-loop — detect risky actions, ask the human"
-v3,Guardrails,"Automated HITL — machine decides based on rules"
-```
+| Version | Scope | Description |
+|---------|-------|-------------|
+| v0 | Core | Logging + SQLite + basic web UI + plugin system + Zod validation |
+| v1 | Human UX | UI polish + desktop notifications + waterfall chart + swim lanes |
+| v2 | HITL | Human-in-the-loop — detect risky actions, ask the human |
+| v3 | Guardrails | Automated HITL — machine decides based on rules |
 
 See `./docs/design.md` for the full design document and feature decisions.
 

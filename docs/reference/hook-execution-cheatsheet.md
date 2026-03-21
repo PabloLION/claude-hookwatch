@@ -11,12 +11,11 @@ is not available.
 Claude Code uses `sh -c '<command>'` for inline hook commands defined in
 hooks.json.
 
-```csv
-Platform,Interpreter,Details,Status
-macOS,/bin/sh,"bash 3.2 in POSIX compatibility mode",Tested (Claude Code 2.1.71)
-Linux,/bin/sh,"likely dash (Debian/Ubuntu) or bash",Untested
-Windows,Unknown,"cmd.exe, PowerShell, or WSL sh",Untested
-```
+| Platform | Interpreter | Details                              | Status                      |
+|----------|-------------|--------------------------------------|-----------------------------|
+| macOS    | /bin/sh     | bash 3.2 in POSIX compatibility mode | Tested (Claude Code 2.1.71) |
+| Linux    | /bin/sh     | likely dash (Debian/Ubuntu) or bash  | Untested                    |
+| Windows  | Unknown     | cmd.exe, PowerShell, or WSL sh       | Untested                    |
 
 ### Script files (shebang)
 
@@ -31,19 +30,18 @@ shebang line. Claude Code does not override it.
 
 Only POSIX sh syntax is guaranteed to work in inline commands:
 
-```csv
-Status,Syntax,Example
-Safe,Variable expansion,"$VAR, ${VAR:-default}"
-Safe,Conditionals and tests,"test, [, &&, ||"
-Safe,Pipes and sequences,"|, ;, &&"
-Safe,Redirection,"> file, 2>&1, >> file"
-Safe,Command substitution,$(command)
-Unsafe,Bash arrays,"declare -A, ${PIPESTATUS[@]}"
-Unsafe,Bash conditionals,[[ ]]
-Unsafe,Bash process substitution,<(command)
-Unsafe,Zsh glob qualifiers,"*(.), *(@)"
-Unsafe,Zsh builtins,print -l
-```
+| Status | Syntax                    | Example                      |
+|--------|---------------------------|------------------------------|
+| Safe   | Variable expansion        | $VAR, ${VAR:-default}        |
+| Safe   | Conditionals and tests    | test, [, &&, ||              |
+| Safe   | Pipes and sequences       | |, ;, &&                     |
+| Safe   | Redirection               | > file, 2>&1, >> file        |
+| Safe   | Command substitution      | $(command)                   |
+| Unsafe | Bash arrays               | declare -A, ${PIPESTATUS[@]} |
+| Unsafe | Bash conditionals         | [[ ]]                        |
+| Unsafe | Bash process substitution | <(command)                   |
+| Unsafe | Zsh glob qualifiers       | *(.), *(@)                   |
+| Unsafe | Zsh builtins              | print -l                     |
 
 ### Common traps
 
@@ -61,13 +59,12 @@ actual interpreter executing the hook command.
 
 ### Priority chain
 
-```csv
-Severity,Condition,Exit code,Output
-fatal,"Server unreachable, schema parse failure",0,"JSON stdout: systemMessage + hookwatch_fatal (no DB record)"
-error,"Server OK, hookwatch had an issue","Wrapped: pass-through; Bare: 0","hookwatch_log with [error] prefix"
-warn,"Non-critical issue (e.g. slow handler)","Wrapped: pass-through; Bare: 0","hookwatch_log with [warn] prefix"
-normal,No hookwatch issues,"Wrapped: pass-through; Bare: 0",hookwatch_log NULL
-```
+| Severity | Condition                                | Exit code                      | Output                                                      |
+|----------|------------------------------------------|--------------------------------|-------------------------------------------------------------|
+| fatal    | Server unreachable, schema parse failure | 0                              | JSON stdout: systemMessage + hookwatch_fatal (no DB record) |
+| error    | Server OK, hookwatch had an issue        | Wrapped: pass-through; Bare: 0 | hookwatch_log with [error] prefix                           |
+| warn     | Non-critical issue (e.g. slow handler)   | Wrapped: pass-through; Bare: 0 | hookwatch_log with [warn] prefix                            |
+| normal   | No hookwatch issues                      | Wrapped: pass-through; Bare: 0 | hookwatch_log NULL                                          |
 
 ### Never exit 1 or 2
 
@@ -126,19 +123,18 @@ reads from hook stdin and what it accepts from hook stdout.
 
 Variables available to hooks, inherited from the Claude Code session:
 
-```csv
-Variable,Example,Notes
-CLAUDE_PROJECT_DIR,/path/to/project,Project working directory (matches cwd in stdin)
-CLAUDE_PLUGIN_ROOT,/path/to/plugin,Only when registered via --plugin-dir or claude plugin install
-CLAUDE_CODE_ENTRYPOINT,cli,How Claude Code was launched
-CLAUDE_CODE_TMPDIR,./.claude/tmp,Relative to project directory
-PATH,(full user PATH),Includes ~/.local/bin and other user-added directories
-HOME,/Users/pablo,User home directory
-USER,pablo,Username
-PWD,/path/to/cwd,Working directory when hook fired
-SHELL,/bin/zsh,User login shell — NOT the hook interpreter (see Common Traps)
-CLAUDECODE,(set),Nested-session guard — must unset before spawning child claude processes
-```
+| Variable               | Example          | Notes                                                                    |
+|------------------------|------------------|--------------------------------------------------------------------------|
+| CLAUDE_PROJECT_DIR     | /path/to/project | Project working directory (matches cwd in stdin)                         |
+| CLAUDE_PLUGIN_ROOT     | /path/to/plugin  | Only when registered via --plugin-dir or claude plugin install           |
+| CLAUDE_CODE_ENTRYPOINT | cli              | How Claude Code was launched                                             |
+| CLAUDE_CODE_TMPDIR     | ./.claude/tmp    | Relative to project directory                                            |
+| PATH                   | (full user PATH) | Includes ~/.local/bin and other user-added directories                   |
+| HOME                   | /Users/pablo     | User home directory                                                      |
+| USER                   | pablo            | Username                                                                 |
+| PWD                    | /path/to/cwd     | Working directory when hook fired                                        |
+| SHELL                  | /bin/zsh         | User login shell — NOT the hook interpreter (see Common Traps)           |
+| CLAUDECODE             | (set)            | Nested-session guard — must unset before spawning child claude processes |
 
 ## Event Types
 
@@ -158,12 +154,11 @@ control).
 
 ### Available probes
 
-```csv
-Probe type,Location,What it tests
-Shebang probes (3 scripts),./docs/agents/qa/research-output/shell-probes/,Which interpreter runs script-file hooks
-Inline command probe launcher,./scripts/claude-code-probes/probe-launcher.ts,Which interpreter runs inline hook commands
-Output schema strictness,./scripts/claude-code-probes/probe-output-strictness.ts,Whether Claude Code rejects hook stdout with extra JSON fields
-```
+| Probe type                    | Location                                                | What it tests                                                  |
+|-------------------------------|---------------------------------------------------------|----------------------------------------------------------------|
+| Shebang probes (3 scripts)    | ./docs/agents/qa/research-output/shell-probes/          | Which interpreter runs script-file hooks                       |
+| Inline command probe launcher | ./scripts/claude-code-probes/probe-launcher.ts          | Which interpreter runs inline hook commands                    |
+| Output schema strictness      | ./scripts/claude-code-probes/probe-output-strictness.ts | Whether Claude Code rejects hook stdout with extra JSON fields |
 
 ### Running probes
 
