@@ -4,7 +4,7 @@ layout: home
 hero:
   name: hookwatch
   text: See what Claude did
-  tagline: Debug your hooks, query your sessions — a Claude Code plugin that captures all 18 hook event types to local SQLite with a web UI.
+  tagline: Debug your hooks, query your sessions — every event captured, browsable, and queryable.
   actions:
     - theme: brand
       text: Quick Start

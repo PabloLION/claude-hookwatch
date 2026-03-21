@@ -2,7 +2,8 @@ import { defineConfig } from 'vitepress';
 
 export default defineConfig({
   title: 'hookwatch',
-  description: 'Claude Code plugin that captures all 18 hook events to SQLite with a local web UI',
+  description:
+    'Local observability for Claude Code — captures every hook event to SQLite with a live web UI',
   base: '/claude-hookwatch/',
 
   srcExclude: ['**/agents/**'],

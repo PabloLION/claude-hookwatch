@@ -1,8 +1,7 @@
 # claude-hookwatch
 
-See what Claude did, debug your hooks, query your sessions — as a Claude Code
-plugin that captures all 18 hook event types and stores them in a local SQLite
-database with a web UI for browsing and querying.
+See what Claude did, debug your hooks, query your sessions — local
+observability for Claude Code with SQLite storage and a live web UI.
 
 ## Quick Start
 
