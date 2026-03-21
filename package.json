@@ -2,13 +2,37 @@
   "name": "hookwatch",
   "version": "0.1.0",
   "description": "Claude Code plugin that logs all hook events to SQLite and serves a local web UI",
+  "author": "Pablo LION",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PabloLION/claude-hookwatch.git"
+  },
+  "homepage": "https://github.com/PabloLION/claude-hookwatch",
+  "keywords": [
+    "claude-code",
+    "hooks",
+    "plugin",
+    "observability",
+    "sqlite",
+    "bun"
+  ],
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "files": [
+    "src/",
+    "hooks/",
+    ".claude-plugin/",
+    "LICENSE",
+    "README.md"
+  ],
   "module": "src/cli/index.ts",
   "bin": {
     "hookwatch": "src/cli/index.ts"
   },
   "type": "module",
   "scripts": {
-    "postinstall": "bun link",
     "prepare": "husky",
     "check": "bun test src/ tests/handler-server.test.ts tests/smoke-http.test.ts && biome check .",
     "dev": "bun --watch src/server/index.ts",
