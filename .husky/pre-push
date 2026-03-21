@@ -1,2 +1,2 @@
 bun run check
-playwright test tests/ui-e2e.test.ts tests/sse-e2e.test.ts tests/smoke-browser.test.ts
+bun run test:e2e

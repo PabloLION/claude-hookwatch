@@ -40,8 +40,6 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: npx playwright install --with-deps chromium
       - run: bun run test:e2e
-      - run: bun run test:sse-e2e
-      - run: bun run test:smoke-browser
 
   plugin-structure:
     runs-on: ubuntu-latest

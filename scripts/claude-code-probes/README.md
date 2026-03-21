@@ -16,15 +16,28 @@ hook behavior assumptions.
 Determines which shell interpreter Claude Code uses for inline hook commands.
 
 ```sh
-bun run probe:launcher
+bun scripts/claude-code-probes/probe-launcher.ts
 ```
 
-Results are written to `<tmpdir>/hookwatch-probe-inline-report.txt` and printed
-to the console.
+### probe-non-interactive
+
+Tests hook behavior in non-interactive (`-p`) mode.
+
+```sh
+bun scripts/claude-code-probes/probe-non-interactive.ts
+```
+
+### probe-output-strictness
+
+Tests how Claude Code handles hook stdout JSON at different exit codes.
+
+```sh
+bun scripts/claude-code-probes/probe-output-strictness.ts
+```
 
 ## Adding probes
 
 1. Create a new `.ts` file in this directory
 2. Follow the probe-launcher pattern: register a hook, run `claude --print`,
    inspect output
-3. Add a `probe:<name>` script entry in the root `package.json`
+3. Document the probe in AGENTS.md under Scripts → Probes

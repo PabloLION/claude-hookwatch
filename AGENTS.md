@@ -109,16 +109,26 @@ bun run dev,start server with --watch
 bun run format,biome format --write .
 bun run generate,regenerate .claude-plugin/plugin.json and hooks/hooks.json
 bun run lint,biome check .
-bun run probe:launcher,run Claude Code probe scripts
 bun run release <version>,pre-release validation + git tag (accepts v0.1.0 or 0.1.0)
 bun run start,start server
 bun run test,unit + integration tests
-bun run test:e2e,Playwright UI e2e tests
-bun run test:smoke-browser,Playwright browser smoke test
-bun run test:smoke-http,HTTP smoke test
-bun run test:sse-e2e,Playwright SSE e2e tests
-bun run verify <plugin-dir>,e2e verification with Claude Code (absolute path required)
+bun run test:e2e,all Playwright e2e tests (UI + SSE + smoke-browser)
+bun run verify,e2e verification with Claude Code
 ```
+
+### Probes
+
+Empirical tests against a real Claude Code instance — not in package.json
+scripts. Run directly with `bun scripts/claude-code-probes/<name>.ts`.
+
+```csv
+Script,Purpose
+probe-launcher.ts,determine which shell interpreter Claude Code uses for hook commands
+probe-non-interactive.ts,test hook behavior in non-interactive (-p) mode
+probe-output-strictness.ts,test how Claude Code handles hook stdout JSON
+```
+
+See `scripts/claude-code-probes/README.md` for prerequisites.
 
 ## Handler Entry Point
 
