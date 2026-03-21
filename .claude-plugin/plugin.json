@@ -1,7 +1,7 @@
 {
   "name": "hookwatch",
-  "version": "0.1.0",
-  "description": "Claude Code plugin that logs all hook events to SQLite and serves a local web UI",
+  "version": "0.1.1",
+  "description": "Local observability for Claude Code — captures every hook event to SQLite with a live web UI",
   "author": {
     "name": "PabloLION"
   }
