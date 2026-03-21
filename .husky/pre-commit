@@ -1,1 +1,1 @@
-biome check .
+bun run lint
