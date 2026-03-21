@@ -1,9 +1,9 @@
 # AGENTS.md — hookwatch
 
-Claude Code plugin that captures all 18 hook event types, stores them in a
-local SQLite database, and serves a web UI for browsing and querying events.
-Install with `hookwatch install` (registers via `bun link`), then activate with
-`claude --plugin-dir <path>`. Uninstall cleanly with `hookwatch uninstall`.
+Local observability for Claude Code — captures every hook event to SQLite with
+a live web UI. Install with `hookwatch install` (registers via `bun link`),
+then activate with `claude --plugin-dir <path>`. Uninstall cleanly with
+`hookwatch uninstall`.
 
 ## Mandatory Rules
 
@@ -129,6 +129,46 @@ probe-output-strictness.ts,test how Claude Code handles hook stdout JSON
 ```
 
 See `scripts/claude-code-probes/README.md` for prerequisites.
+
+## CI/CD
+
+### GitHub Actions Workflows
+
+```csv
+Workflow,Trigger,What it does
+ci.yml,push to main / PR,lint + test + e2e (ubuntu + macos) + plugin structure validation
+publish.yml,GitHub Release published,bun install → bun run check → npm publish --provenance (OIDC Trusted Publishing)
+docs.yml,push to main,build VitePress docs → deploy to GitHub Pages
+```
+
+### Release Process
+
+1. Update version in `package.json`
+2. Run `bun run generate` to sync `plugin.json`
+3. Commit version bump
+4. Run `bun run release <version>` (8-step validation + git tag)
+5. Push commits and tag (`git push origin main && git push origin v<version>`)
+6. Create GitHub Release (`gh release create v<version> --title "v<version>" --generate-notes`)
+7. npm publish happens automatically via OIDC Trusted Publishing (no tokens needed)
+8. Verify: GitHub Release page, npm package, GitHub Actions run
+
+Full checklist at `.git-ignored/memory/reference/reference_release-checklist.md`.
+
+### npm Trusted Publishing
+
+npm publishes via OIDC — no tokens or repository secrets. GitHub Actions proves
+identity to npm with a short-lived signed token. Prerequisite: trusted publisher
+must be configured on npm website (Settings → Trusted Publisher →
+PabloLION/claude-hookwatch/publish.yml).
+
+### Docs
+
+VitePress static site deployed to GitHub Pages on every push to main.
+
+- Source: `docs/`
+- Config: `docs/.vitepress/config.ts`
+- Base path: `/claude-hookwatch/` (required for GitHub Pages)
+- URL: https://pablolion.github.io/claude-hookwatch/
 
 ## Handler Entry Point
 
