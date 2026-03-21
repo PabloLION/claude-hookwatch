@@ -21,7 +21,7 @@
  * Playwright runs in Node.js — we use child_process.spawn (not Bun.spawn)
  * for server lifecycle management.
  *
- * Run with: bun run test:sse-e2e
+ * Run with: bun run test:e2e
  */
 
 import { spawn } from 'node:child_process';
@@ -176,7 +176,7 @@ async function seedEvent(baseUrl: string, payload: Record<string, unknown>): Pro
 // ---------------------------------------------------------------------------
 
 let browser: Awaited<ReturnType<typeof chromium.launch>>;
-const tmpRoot = join(tmpdir(), `hookwatch-sse-e2e-${Date.now()}`);
+const tmpRoot = join(tmpdir(), `hookwatch-sse-stream-${Date.now()}`);
 
 test.beforeAll(async () => {
   mkdirSync(tmpRoot, { recursive: true });

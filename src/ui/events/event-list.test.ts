@@ -9,7 +9,7 @@
  *
  * Note: The EventList component and fetchEvents function require browser APIs
  * (EventSource, fetch) and a running server — those are covered by Playwright
- * E2E tests in tests/sse-e2e.test.ts and tests/ui-e2e.test.ts.
+ * E2E tests in tests/sse-stream.test.ts and tests/ui-e2e.test.ts.
  */
 
 import { describe, expect, test } from 'bun:test';
