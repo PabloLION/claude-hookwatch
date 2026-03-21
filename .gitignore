@@ -35,6 +35,7 @@ Thumbs.db
 # Playwright output directories
 test-results/
 playwright-report/
+.playwright-mcp/
 
 # VitePress
 docs/.vitepress/cache/
