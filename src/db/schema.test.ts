@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { chmodSync, existsSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { TS_EARLY, TS_LATE, TS_MID } from '@/test/fixtures.ts';
@@ -347,22 +347,30 @@ describe('version mismatch — backup-and-recreate', () => {
     const backupPath = `${handle.dbPath}.v2`;
     expect(existsSync(backupPath)).toBe(false);
 
-    // Reopen — should detect mismatch, rename to .v2, recreate
-    const db2 = openDb(handle.dbPath);
+    // Suppress expected WARNING stderr from openDb() version mismatch path
+    const stderrSpy = spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      // Reopen — should detect mismatch, rename to .v2, recreate
+      const db2 = openDb(handle.dbPath);
 
-    // Backup must exist at .v2 path
-    expect(existsSync(backupPath)).toBe(true);
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('[hookwatch] WARNING:'));
 
-    // New DB should be at version 3
-    const row = db2.query<PragmaUserVersionRow, []>(PRAGMA_USER_VERSION).get();
-    expect(row).not.toBeNull();
-    expect(row?.user_version).toBe(CURRENT_VERSION);
+      // Backup must exist at .v2 path
+      expect(existsSync(backupPath)).toBe(true);
 
-    // New DB should have the events table with hookwatch_log column
-    const cols = db2.query<PragmaTableInfoRow, []>(PRAGMA_TABLE_INFO).all();
-    const colNames = cols.map((r) => r.name);
-    expect(colNames).toContain('hookwatch_log');
-    expect(colNames).not.toContain('hookwatch_error');
+      // New DB should be at version 3
+      const row = db2.query<PragmaUserVersionRow, []>(PRAGMA_USER_VERSION).get();
+      expect(row).not.toBeNull();
+      expect(row?.user_version).toBe(CURRENT_VERSION);
+
+      // New DB should have the events table with hookwatch_log column
+      const cols = db2.query<PragmaTableInfoRow, []>(PRAGMA_TABLE_INFO).all();
+      const colNames = cols.map((r) => r.name);
+      expect(colNames).toContain('hookwatch_log');
+      expect(colNames).not.toContain('hookwatch_error');
+    } finally {
+      stderrSpy.mockRestore();
+    }
   });
 
   test('throws and logs error when DB creation fails after version mismatch backup', () => {
@@ -379,13 +387,18 @@ describe('version mismatch — backup-and-recreate', () => {
     // Original DB is intact before the call
     expect(existsSync(handle.dbPath)).toBe(true);
 
+    // Suppress expected WARNING/ERROR stderr from openDb() version mismatch + failure paths
+    const stderrSpy = spyOn(process.stderr, 'write').mockImplementation(() => true);
     try {
       // openDb must throw because renameSync fails with EACCES (read-only dir)
       expect(() => openDb(handle.dbPath)).toThrow();
 
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('[hookwatch]'));
+
       // Original DB must still exist (rename failed — data not lost)
       expect(existsSync(handle.dbPath)).toBe(true);
     } finally {
+      stderrSpy.mockRestore();
       // Restore write permission so afterEach can clean up the directory
       chmodSync(dbDir, 0o755);
     }

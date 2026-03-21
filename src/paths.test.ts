@@ -16,7 +16,7 @@
  * - OS error (EISDIR) → returns DEFAULT_PORT, warning is non-null string describing the error
  */
 
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -184,10 +184,17 @@ describe('OS error reading port file (non-ENOENT)', () => {
     const portFilePath = join(dir, PORT_FILE_NAME);
     mkdirSync(portFilePath, { recursive: true }); // create dir at file path
 
-    const result = readPort();
-    expect(result.port).toBe(DEFAULT_PORT);
-    expect(result.warning).not.toBeNull();
-    expect(typeof result.warning).toBe('string');
+    // Suppress expected [hookwatch] stderr output from readPort() OS error path
+    const consoleSpy = spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const result = readPort();
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[hookwatch]'));
+      expect(result.port).toBe(DEFAULT_PORT);
+      expect(result.warning).not.toBeNull();
+      expect(typeof result.warning).toBe('string');
+    } finally {
+      consoleSpy.mockRestore();
+    }
   });
 
   test('EISDIR: warning string mentions the error code or DEFAULT_PORT', () => {
@@ -195,14 +202,21 @@ describe('OS error reading port file (non-ENOENT)', () => {
     const portFilePath = join(dir, PORT_FILE_NAME);
     mkdirSync(portFilePath, { recursive: true });
 
-    const result = readPort();
-    // Warning should reference either the error code or the fallback
-    const warning = result.warning ?? '';
-    expect(warning.length).toBeGreaterThan(0);
-    // The message includes either the OS code or a description
-    const containsCode = warning.includes('EISDIR') || warning.includes('unknown');
-    const containsFallback =
-      warning.toLowerCase().includes('default_port') || warning.includes('DEFAULT_PORT');
-    expect(containsCode || containsFallback).toBe(true);
+    // Suppress expected [hookwatch] stderr output from readPort() OS error path
+    const consoleSpy = spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const result = readPort();
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[hookwatch]'));
+      // Warning should reference either the error code or the fallback
+      const warning = result.warning ?? '';
+      expect(warning.length).toBeGreaterThan(0);
+      // The message includes either the OS code or a description
+      const containsCode = warning.includes('EISDIR') || warning.includes('unknown');
+      const containsFallback =
+        warning.toLowerCase().includes('default_port') || warning.includes('DEFAULT_PORT');
+      expect(containsCode || containsFallback).toBe(true);
+    } finally {
+      consoleSpy.mockRestore();
+    }
   });
 });
