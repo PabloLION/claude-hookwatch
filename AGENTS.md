@@ -152,7 +152,6 @@ docs.yml,push to main,build VitePress docs → deploy to GitHub Pages
 7. npm publish happens automatically via OIDC Trusted Publishing (no tokens needed)
 8. Verify: GitHub Release page, npm package, GitHub Actions run
 
-Full checklist at `.git-ignored/memory/reference/reference_release-checklist.md`.
 
 ### npm Trusted Publishing
 
