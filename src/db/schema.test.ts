@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
-import { chmodSync, existsSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { TS_EARLY, TS_LATE, TS_MID } from '@/test/fixtures.ts';
 import { closeTestDb, setupTestDb, type TestDbHandle } from '@/test/setup.ts';
 import { close, openDb } from './connection.ts';
@@ -378,11 +377,16 @@ describe('version mismatch — backup-and-recreate', () => {
     handle.db.run('PRAGMA user_version = 2;');
     close();
 
-    // Make the parent directory read-only so any renameSync target fails with
-    // EACCES regardless of the generated backup path (including timestamp suffix).
-    // Restore write permission in finally so afterEach cleanup can remove the dir.
-    const dbDir = dirname(handle.dbPath);
-    chmodSync(dbDir, 0o555);
+    // Block both possible backup paths with non-empty directories so renameSync
+    // fails with EISDIR. This avoids making the parent directory read-only, which
+    // prevents SQLite from opening WAL/SHM files on Linux (SQLITE_IOERR_VNODE).
+    const primaryBackup = `${handle.dbPath}.v2`;
+    const dateNowSpy = spyOn(Date, 'now').mockReturnValue(99999);
+    const timestampBackup = `${primaryBackup}.99999`;
+    mkdirSync(primaryBackup);
+    writeFileSync(`${primaryBackup}/blocker`, 'x');
+    mkdirSync(timestampBackup);
+    writeFileSync(`${timestampBackup}/blocker`, 'x');
 
     // Original DB is intact before the call
     expect(existsSync(handle.dbPath)).toBe(true);
@@ -390,7 +394,7 @@ describe('version mismatch — backup-and-recreate', () => {
     // Suppress expected WARNING/ERROR stderr from openDb() version mismatch + failure paths
     const stderrSpy = spyOn(process.stderr, 'write').mockImplementation(() => true);
     try {
-      // openDb must throw because renameSync fails with EACCES (read-only dir)
+      // openDb must throw because renameSync target is a non-empty directory
       expect(() => openDb(handle.dbPath)).toThrow();
 
       expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('[hookwatch]'));
@@ -399,8 +403,7 @@ describe('version mismatch — backup-and-recreate', () => {
       expect(existsSync(handle.dbPath)).toBe(true);
     } finally {
       stderrSpy.mockRestore();
-      // Restore write permission so afterEach can clean up the directory
-      chmodSync(dbDir, 0o755);
+      dateNowSpy.mockRestore();
     }
   });
 

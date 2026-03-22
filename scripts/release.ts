@@ -14,10 +14,11 @@
  *   2. Clean working tree
  *   3. Tests pass (bun run test)
  *   4. Lint passes (biome check .)
- *   5. Version consistency (package.json <-> plugin.json)
- *   6. Plugin structure valid
- *   7. Plugin files freshness
- *   8. Create annotated git tag vX.Y.Z
+ *   5. E2E tests pass (bun run test:e2e)
+ *   6. Version consistency (package.json <-> plugin.json)
+ *   7. Plugin structure valid
+ *   8. Plugin files freshness
+ *   9. Create annotated git tag vX.Y.Z
  *
  * After tagging, run: bun scripts/e2e-verify.ts <plugin-dir>
  */
@@ -210,9 +211,20 @@ if (lintExit !== 0) {
 pass('Biome check passes');
 
 // ---------------------------------------------------------------------------
-// 5. Version consistency (package.json <-> plugin.json)
+// 5. E2E tests
 // ---------------------------------------------------------------------------
-step('5. Version consistency');
+step('5. E2E tests');
+
+const e2eExit = await runVisible(['bun', 'run', 'test:e2e']);
+if (e2eExit !== 0) {
+  fail('E2E tests failed');
+}
+pass('E2E tests pass');
+
+// ---------------------------------------------------------------------------
+// 6. Version consistency (package.json <-> plugin.json)
+// ---------------------------------------------------------------------------
+step('6. Version consistency');
 
 if (!existsSync(pluginJsonPath)) {
   fail('Missing .claude-plugin/plugin.json');
@@ -226,9 +238,9 @@ if (pkgJson.version !== pluginJson.version) {
 pass(`package.json = plugin.json (${pkgJson.version})`);
 
 // ---------------------------------------------------------------------------
-// 6. Plugin structure
+// 7. Plugin structure
 // ---------------------------------------------------------------------------
-step('6. Plugin structure');
+step('7. Plugin structure');
 
 if (!existsSync(hooksJsonPath)) {
   fail('Missing hooks/hooks.json');
@@ -242,9 +254,9 @@ if (hookCount !== 18) {
 pass(`Plugin structure valid (manifest + ${hookCount} hook events)`);
 
 // ---------------------------------------------------------------------------
-// 7. Plugin files freshness
+// 8. Plugin files freshness
 // ---------------------------------------------------------------------------
-step('7. Plugin files freshness');
+step('8. Plugin files freshness');
 
 const expectedPluginJson = {
   name: pkgJson.name,
@@ -266,9 +278,9 @@ if (expectedStr !== actualStr) {
 }
 
 // ---------------------------------------------------------------------------
-// 8. Git tag
+// 9. Git tag
 // ---------------------------------------------------------------------------
-step('8. Git tag');
+step('9. Git tag');
 
 const tagCheck = await run(['git', 'tag', '-l', tag]);
 if (tagCheck.stdout.includes(tag)) {
