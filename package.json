@@ -1,6 +1,6 @@
 {
   "name": "hookwatch",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Local observability for Claude Code — captures every hook event to SQLite with a live web UI",
   "author": "Pablo LION",
   "license": "MIT",
